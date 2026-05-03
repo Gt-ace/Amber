@@ -1,0 +1,3 @@
+amber.yourdomain.com {
+  reverse_proxy amber:80
+}
