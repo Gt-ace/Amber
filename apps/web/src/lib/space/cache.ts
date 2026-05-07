@@ -24,7 +24,7 @@ import {
 	type Space
 } from '$lib/types/schema';
 
-const SCHEMA_VERSION = '1';
+const SCHEMA_VERSION = '2';
 
 export class SpaceCache {
 	private db: Database;
@@ -67,6 +67,11 @@ export class SpaceCache {
 				source TEXT,
 				message TEXT NOT NULL
 			);
+			CREATE TABLE IF NOT EXISTS renders (
+				content_hash TEXT PRIMARY KEY,
+				html TEXT NOT NULL,
+				created_at INTEGER NOT NULL
+			);
 		`);
 		const stored = this.getMeta('schema_version');
 		if (stored == null) {
@@ -74,7 +79,9 @@ export class SpaceCache {
 		} else if (stored !== SCHEMA_VERSION) {
 			// Silently wipe — the cache is regenerable, so an old schema is
 			// not a data-loss event.
-			this.db.exec('DELETE FROM meta; DELETE FROM pages; DELETE FROM warnings');
+			this.db.exec(
+				'DELETE FROM meta; DELETE FROM pages; DELETE FROM warnings; DELETE FROM renders'
+			);
 			this.setMeta('schema_version', SCHEMA_VERSION);
 		}
 	}
@@ -276,6 +283,45 @@ export class SpaceCache {
 			tx();
 		} catch (err) {
 			console.warn('[amber] cache replacePageWarnings failed:', err);
+		}
+	}
+
+	/**
+	 * Look up a cached render by content hash. Returns the HTML string, or
+	 * null if no row exists. The hash is sha256 of the page body alone, not
+	 * the full file (frontmatter is excluded so two pages with identical
+	 * bodies share a row).
+	 */
+	getRender(contentHash: string): string | null {
+		try {
+			const row = this.db
+				.prepare('SELECT html FROM renders WHERE content_hash = ?')
+				.get(contentHash) as { html: string } | null;
+			return row ? row.html : null;
+		} catch (err) {
+			console.warn('[amber] cache getRender failed:', err);
+			return null;
+		}
+	}
+
+	/**
+	 * Persist a rendered HTML string under its content hash. No-ops on the
+	 * conflict — identical hash means identical body means identical HTML.
+	 *
+	 * Eviction is intentionally unimplemented: orphaned rows (left after a
+	 * page body changes) are cheap, and a vacuum step can land later. See
+	 * `lib/render/README.md`.
+	 */
+	putRender(contentHash: string, html: string): void {
+		try {
+			this.db
+				.prepare(
+					'INSERT INTO renders(content_hash, html, created_at) VALUES (?, ?, ?) ' +
+						'ON CONFLICT(content_hash) DO NOTHING'
+				)
+				.run(contentHash, html, Date.now());
+		} catch (err) {
+			console.warn('[amber] cache putRender failed:', err);
 		}
 	}
 

@@ -4,7 +4,9 @@ import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:
 import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { Database } from 'bun:sqlite';
 import { Space } from './space.ts';
+import { SpaceCache } from './cache.ts';
 
 const FIXTURE = fileURLToPath(new URL('../../../fixtures/example-space/', import.meta.url));
 
@@ -125,6 +127,70 @@ describe('SpaceCache hydration', () => {
 		expect(second.space.pages.has('/colophon')).toBe(true);
 		expect(second.space.pages.get('/colophon')!.frontmatter.title).toBe('Colophon');
 		second.space.close();
+	});
+
+	test('renders table round-trips html keyed by content hash', () => {
+		const cache = new SpaceCache(dir);
+		expect(cache.getRender('deadbeef')).toBeNull();
+		cache.putRender('deadbeef', '<p>hi</p>');
+		expect(cache.getRender('deadbeef')).toBe('<p>hi</p>');
+		// Re-putting the same hash is a no-op (ON CONFLICT DO NOTHING).
+		cache.putRender('deadbeef', '<p>different</p>');
+		expect(cache.getRender('deadbeef')).toBe('<p>hi</p>');
+		cache.close();
+	});
+
+	test('renders cache survives across SpaceCache instances', () => {
+		const a = new SpaceCache(dir);
+		a.putRender('abc123', '<p>persisted</p>');
+		a.close();
+
+		const b = new SpaceCache(dir);
+		expect(b.getRender('abc123')).toBe('<p>persisted</p>');
+		b.close();
+	});
+
+	test('schema bump from v1 wipes cache cleanly', () => {
+		// Hand-craft a v1 cache.db (no renders table, schema_version='1').
+		// Opening it under the new code must trigger the wipe path and
+		// recreate the renders table.
+		const dbPath = join(dir, '.amber', 'cache.db');
+		execSync(`mkdir -p "${join(dir, '.amber')}"`, { shell: '/bin/sh' });
+		// The fixture might carry a stray cache.db from earlier ad-hoc runs;
+		// `cp -r` copies it. Start from a clean slate so we control schema.
+		rmSync(dbPath, { force: true });
+		rmSync(dbPath + '-wal', { force: true });
+		rmSync(dbPath + '-shm', { force: true });
+		const raw = new Database(dbPath, { create: true });
+		raw.exec(`
+			CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+			CREATE TABLE pages (
+				rel TEXT PRIMARY KEY, url TEXT NOT NULL, frontmatter TEXT NOT NULL,
+				extra TEXT NOT NULL, body TEXT NOT NULL, mtime REAL NOT NULL,
+				content_hash TEXT NOT NULL
+			);
+			CREATE TABLE warnings (code TEXT NOT NULL, source TEXT, message TEXT NOT NULL);
+			INSERT INTO meta(key, value) VALUES ('schema_version', '1');
+			INSERT INTO meta(key, value) VALUES ('manifest_mtime', '99999');
+			INSERT INTO pages(rel, url, frontmatter, extra, body, mtime, content_hash)
+				VALUES ('stale.md', '/stale', '{}', '{}', 'stale', 1, 'h');
+		`);
+		raw.close();
+
+		// Now open with the current code. Schema mismatch → wipe.
+		const cache = new SpaceCache(dir);
+		// renders table now exists and is empty.
+		expect(cache.getRender('h')).toBeNull();
+		cache.putRender('h', '<p>fresh</p>');
+		expect(cache.getRender('h')).toBe('<p>fresh</p>');
+		cache.close();
+
+		// And the stale meta/pages rows are gone — the next Space.load() will
+		// rebuild from the filesystem rather than hydrating the bogus row.
+		const result = Space.load(dir);
+		expect(result.space.pages.has('/stale')).toBe(false);
+		expect(result.space.pages.has('/about')).toBe(true);
+		result.space.close();
 	});
 
 	test('deleting cache.db is safe; next load rebuilds it from filesystem', () => {

@@ -205,6 +205,20 @@ export class Space implements SpaceData {
 		}
 	}
 
+	/**
+	 * Read a cached HTML render by content hash, or null on miss / cacheless
+	 * mode. The render layer owns the hash format — this is just a passthrough
+	 * to the SQLite row.
+	 */
+	getCachedRender(contentHash: string): string | null {
+		return this.cache ? this.cache.getRender(contentHash) : null;
+	}
+
+	/** Persist a rendered HTML string under its content hash. No-op when the cache is off. */
+	putCachedRender(contentHash: string, html: string): void {
+		this.cache?.putRender(contentHash, html);
+	}
+
 	// ─── apply helpers ────────────────────────────────────────────────────
 
 	private applyAdd(rawPath: string): void {
