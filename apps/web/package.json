@@ -39,6 +39,7 @@
 		"vitest-browser-svelte": "^2.1.0"
 	},
 	"dependencies": {
+		"chokidar": "^5.0.0",
 		"smol-toml": "^1.6.1",
 		"yaml": "^2.8.4"
 	}
