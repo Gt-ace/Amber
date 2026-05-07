@@ -17,7 +17,7 @@
 
 import { createHash } from 'node:crypto';
 import { render } from './render.ts';
-import type { Space } from '$lib/space/space.ts';
+import type { Space } from '$lib/space/space';
 import type { Page } from '$lib/types/schema';
 
 export function bodyHash(body: string): string {

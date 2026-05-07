@@ -1,9 +1,11 @@
 import { describe, expect, test } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
-import { load } from './load.ts';
+import { load, LoadError } from './load.ts';
 
 const FIXTURE = fileURLToPath(new URL('../../../fixtures/example-space/', import.meta.url));
+const INVALID = (name: string): string =>
+	fileURLToPath(new URL(`../../../fixtures/invalid-spaces/${name}/`, import.meta.url));
 
 describe('load(spacePath)', () => {
 	test('parses the example-space fixture', () => {
@@ -128,5 +130,56 @@ describe('load(spacePath)', () => {
 		load(FIXTURE);
 		const after = readFileSync(manifestPath);
 		expect(after.equals(before)).toBe(true);
+	});
+});
+
+describe('load() — LoadError cases', () => {
+	test('throws when amber.toml is missing', () => {
+		expect.assertions(3);
+		try {
+			load(INVALID('missing-manifest'));
+		} catch (err) {
+			expect(err).toBeInstanceOf(LoadError);
+			const e = err as LoadError;
+			expect(e.source).toBe('amber.toml');
+			expect(e.message).toMatch(/amber\.toml not found/);
+		}
+	});
+
+	test('throws when amber.toml is unparseable TOML', () => {
+		expect.assertions(3);
+		try {
+			load(INVALID('unparseable-manifest'));
+		} catch (err) {
+			expect(err).toBeInstanceOf(LoadError);
+			const e = err as LoadError;
+			expect(e.source).toBe('amber.toml');
+			expect(e.message).toMatch(/failed to parse/);
+		}
+	});
+
+	test('throws when amber_version is missing', () => {
+		expect.assertions(3);
+		try {
+			load(INVALID('missing-amber-version'));
+		} catch (err) {
+			expect(err).toBeInstanceOf(LoadError);
+			const e = err as LoadError;
+			expect(e.source).toBe('amber.toml');
+			expect(e.message).toMatch(/missing required `amber_version`/);
+		}
+	});
+
+	test('throws when slug: is set on an index.md', () => {
+		expect.assertions(3);
+		try {
+			load(INVALID('slug-on-index'));
+		} catch (err) {
+			expect(err).toBeInstanceOf(LoadError);
+			const e = err as LoadError;
+			// The source is the offending page's relative path.
+			expect(e.source).toBe('folder/index.md');
+			expect(e.message).toMatch(/slug.*index\.md.*incoherent/);
+		}
 	});
 });

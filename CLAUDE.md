@@ -142,7 +142,11 @@ five:
   the space still builds.
 - `duplicate_url` — two pages resolve to the same URL (e.g. a `slug:`
   collision, or `foo.md` colliding with `foo/index.md`). First one wins;
-  later ones are dropped from `Space.pages`.
+  later ones are dropped from `Space.pages`. Asymmetry: in `apply()`, if
+  the *winner* is unlinked the suppressed loser does **not** auto-promote
+  (the loser's content isn't kept around). A subsequent `change` on the
+  loser, or any cold start, picks the right winner. Cold start is
+  authoritative; live state can lag.
 - `reserved_name_in_content` — manifest references a path containing a
   reserved segment (e.g., a nav entry pointing into `_drafts/`). The
   top-level reserved-prefix skip is silent; this warning is specifically

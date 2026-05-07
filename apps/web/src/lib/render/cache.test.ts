@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { Space } from '$lib/space/space.ts';
+import { Space } from '$lib/space/space';
 import { bodyHash, getOrRenderHtml } from './cache.ts';
 import type { Page } from '$lib/types/schema';
 
@@ -24,7 +24,6 @@ function fakePage(overrides: Partial<Page> & { body: string }): Page {
 		url: '/x',
 		frontmatter: {},
 		extra: {},
-		body: overrides.body,
 		mtime: 0,
 		contentHash: 'irrelevant',
 		...overrides
