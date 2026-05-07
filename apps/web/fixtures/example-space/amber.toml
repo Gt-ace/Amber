@@ -1,0 +1,37 @@
+amber_version = "0.1"
+
+[site]
+title = "Mira Halden"
+description = "Illustrator and quiet-software person, working out of Lisbon."
+url = "https://mirahalden.example"
+author = "Mira Halden"
+language = "en"
+
+[[nav]]
+kind = "page"
+path = "about.md"
+label = "About"
+
+[[nav]]
+kind = "page"
+path = "projects/index.md"
+label = "Projects"
+
+[[nav]]
+kind = "page"
+path = "hello.md"
+label = "Say hi"
+
+[[nav]]
+kind = "page"
+path = "talks.md"
+label = "Talks"
+
+[[nav]]
+kind = "external"
+url = "https://merveilles.town/@mira"
+label = "Mastodon"
+
+[redirects]
+"/old-portfolio" = "/projects"
+"/blog" = "/notes"
