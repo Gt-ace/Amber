@@ -32,7 +32,8 @@ filesystem wins.
 **Loader and watcher are one subsystem.** A `Space` object owns the in-memory
 index, exposes `load()` for cold start and `apply(event)` for incremental
 updates. SQLite writes are a side effect of `apply()`, not a separate
-pipeline.
+pipeline. The watcher runs in all environments; production hot-reloads
+content on `git pull`.
 
 **Manifest is never silently rewritten.** Missing nav targets are dropped
 from the in-memory nav with a `LoadWarning`. The on-disk `amber.toml` is the
@@ -168,17 +169,19 @@ sort keys fall back from `date` to filesystem `mtime` if absent. Themes may
 display it. RSS/sitemap concerns aren't in v0.1 scope; revisit when feeds
 ship.
 
-## Build order — current sprint
+## Build order — done in v0.1 to date
 
 1. Fixture space at `apps/web/fixtures/example-space/` covering the
    schema's interesting cases.
 2. Loader as a pure function, tested against the fixture.
 3. Watcher and incremental updates, layered on the loader.
 4. SQLite cache behind the loader interface.
-5. Replace the nginx placeholder with the SvelteKit app.
+5. Markdown→HTML render pipeline with body-hash render cache.
+6. SvelteKit page handler + Space singleton replacing the nginx placeholder.
 
-The nginx placeholder stays until the loader actually works against pure
-filesystem. We are not racing to delete it.
+The first real (non-fixture) Amber space lives at `spaces/avp-software/` —
+the landing page Amber serves about itself. Future build-order work picks
+up from a working content pipeline; the substrate is in place.
 
 ## Roadmap shape
 

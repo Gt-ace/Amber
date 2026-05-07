@@ -1,0 +1,10 @@
+node_modules
+.svelte-kit
+build
+fixtures
+.git
+.gitignore
+.env
+.env.*
+*.log
+.DS_Store

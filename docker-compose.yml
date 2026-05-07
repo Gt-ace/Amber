@@ -1,9 +1,21 @@
 services:
-  amber:
-    image: nginx:alpine
+  web:
+    build:
+      context: ./apps/web
     restart: unless-stopped
     expose:
-      - "80"
+      - "3000"
+    environment:
+      AMBER_SPACE_PATH: /space
+      NODE_ENV: production
+      PORT: "3000"
+      HOST: 0.0.0.0
+    volumes:
+      - ./spaces/avp-software:/space
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      interval: 30s
+      start_period: 10s
 
   caddy:
     image: caddy:2
@@ -15,6 +27,8 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    depends_on:
+      - web
 
 volumes:
   caddy_data:
