@@ -131,17 +131,31 @@ references.
 
 ## `LoadWarning` codes
 
-Every code in the enum must have a defined trigger. Currently:
+Every code in the enum must have a defined trigger. The schema declares
+five:
 
-- `nav_target_missing` — manifest nav references a path that doesn't exist
-  in the filesystem.
+- `manifest_nav_missing_target` — manifest nav references a path that
+  doesn't exist in the filesystem; the entry is dropped from the in-memory
+  nav (the on-disk manifest is never rewritten).
+- `frontmatter_parse_error` — a page's YAML frontmatter block is malformed;
+  the page is included in the index with empty frontmatter so the rest of
+  the space still builds.
+- `duplicate_url` — two pages resolve to the same URL (e.g. a `slug:`
+  collision, or `foo.md` colliding with `foo/index.md`). First one wins;
+  later ones are dropped from `Space.pages`.
 - `reserved_name_in_content` — manifest references a path containing a
   reserved segment (e.g., a nav entry pointing into `_drafts/`). The
   top-level reserved-prefix skip is silent; this warning is specifically
   for *active* references into reserved space.
+- `redirect_loop` — a chain of redirects cycles. **Reserved from day one,
+  unreachable in v0.1**: redirects aren't resolved yet, so this code ships
+  declared but unfired. Same rationale as the redirects table itself —
+  having it in the enum means landing the redirect handler later doesn't
+  require a schema bump.
 
 If a code can't be triggered by any code path, it gets removed from the
-enum. Unreachable codes are bugs.
+enum. Unreachable codes are bugs — `redirect_loop` is the deliberate
+exception, paired with the reserved redirects table.
 
 ## `updated` frontmatter field
 
