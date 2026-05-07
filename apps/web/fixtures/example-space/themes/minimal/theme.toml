@@ -1,0 +1,5 @@
+name = "minimal"
+
+# Stub theme. The themes/ directory is a top-level reserved name and is
+# skipped by content discovery — this file's existence proves the skip is
+# at the directory level, not because of any `.` prefix on the file itself.

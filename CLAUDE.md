@@ -1,133 +1,191 @@
-# CLAUDE.md
+# Amber — architectural rules and scope guards
 
-Guidance for Claude Code working in this repo. Keep this file current; stale
-instructions are worse than none.
+This file is the source of truth for architectural intent. If something here
+conflicts with code, the code is wrong or this file is out of date — fix one
+of them, don't paper over the gap.
 
 ## What Amber is
 
-A self-hostable personal canvas — link-in-bio, small site, notebook, or blog,
-depending on what the user needs. The pitch: your software, your server, your
-files. Markdown on disk, no database lock-in, AGPL-3.0.
+A self-hostable personal canvas: link-in-bio, small site, notebook, blog.
+Your software, your server, your files. Markdown on disk, no database
+lock-in, AGPL-3.0.
 
-The product principle that drives most decisions: **the user's content is files
-on their disk, not rows in our database.** Anything that violates this needs an
-explicit justification.
+## Stack — decided, not up for casual revision
 
-## Repo layout
+SvelteKit + Bun + adapter-node. SQLite. Docker Compose. Caddy with automatic
+Let's Encrypt. systemd for survival across reboots. restic to B2 for backups.
+UptimeRobot for liveness.
 
-```
-amber/
-├── apps/
-│   └── web/              SvelteKit app (Bun runtime, adapter-node)
-├── docker-compose.yml    production deploy: app + Caddy
-├── Caddyfile             TLS termination, reverse proxy to app
-└── CLAUDE.md             this file
-```
-
-Future: `apps/desktop/` (Tauri, v0.3), `packages/` for shared code. Don't create
-these speculatively.
-
-## Stack (decided, not up for debate in passing)
-
-- **Runtime:** Bun. Use `bun` for install/run/test, not npm/pnpm/yarn.
-- **Framework:** SvelteKit with `@sveltejs/adapter-node`.
-- **Storage:** Markdown files on disk are the source of truth. SQLite (when it
-  arrives) is a regenerable cache at `.amber/cache.db` inside the space dir,
-  never the source of any user-visible fact.
-- **Deploy:** One Hetzner box, Docker Compose, Caddy in front, systemd for
-  boot. No Kubernetes, no Coolify, no Cloudflare proxy, no GitHub Actions CI
-  yet. Deploy is `git pull && docker compose up -d`.
-
-Things explicitly rejected for v0.1: Kubernetes, Portainer, Pangolin, Coolify,
+Explicitly **not** in v0.1: Kubernetes, Portainer, Pangolin, Coolify,
 Cloudflare in front, GitHub Actions CI, monitoring stacks, ORMs, UI component
-libraries. Every dependency must justify its presence.
+libraries.
+
+One server, one Compose file, one process. Every dependency justifies its
+presence. Complexity is added when it's needed, not speculatively.
+
+## Architecture — the rules that shape everything
+
+**Filesystem is truth. SQLite is a regenerable cache** at `.amber/cache.db`.
+Deleting the cache must never lose user data. If a discrepancy arises, the
+filesystem wins.
+
+**Loader and watcher are one subsystem.** A `Space` object owns the in-memory
+index, exposes `load()` for cold start and `apply(event)` for incremental
+updates. SQLite writes are a side effect of `apply()`, not a separate
+pipeline.
+
+**Manifest is never silently rewritten.** Missing nav targets are dropped
+from the in-memory nav with a `LoadWarning`. The on-disk `amber.toml` is the
+user's file; we read it, we don't edit it.
+
+**Rendering is not the loader's job.** `Page.body` is raw markdown. HTML
+rendering happens at request time, cached by content hash. The loader
+produces an index of what exists; it does not decide what is shown.
+
+**Route filtering is not the loader's job either.** Drafts are *in* the page
+index. Consumers (nav builder, page handler, sitemap, RSS) decide what to
+expose. See "Drafts" below.
+
+**Server-only for content.** `+page.server.ts`, never `+page.ts`. Content
+never crosses to the client as data — only as rendered HTML.
+
+**Space directory path comes from `AMBER_SPACE_PATH`.** No hardcoded paths,
+no config-file-pointing-to-config-file.
 
 ## On-disk format
 
-A space is a directory containing `amber.toml` at its root.
+A space is a directory containing `amber.toml` at its root. Visible markdown
+files are content. `.amber/` holds regenerable runtime state (cache, drafts,
+plugin state) and is safe to delete.
 
-- **Visible files** are content (markdown).
-- **`.amber/`** is regenerable runtime state (cache, drafts, plugin state).
-  Safe to delete; rebuilds on next boot.
-- **`themes/`** holds installed themes.
-- **Reserved names:** `amber.toml`, `.amber/`, `themes/`, plus any path segment
-  starting with `_` or `.`.
+- TOML for the manifest, YAML for frontmatter.
+- Manifest is authoritative for **nav order**. Filesystem is authoritative
+  for **what exists**.
+- Folder-with-`index.md` is the colocated-assets pattern.
+- `amber_version` in the manifest gates migrations.
+- Redirects table is reserved from day one even if unused.
 
-Manifest is TOML, frontmatter is YAML. Manifest is authoritative for nav order;
-filesystem is authoritative for what exists. Folder-with-`index.md` enables
-colocated assets. Drafts are `draft: true` frontmatter, not a directory. URLs
-derive from filesystem paths with frontmatter `slug:` as escape hatch.
+### Reserved names
 
-The full schema lives at `apps/web/src/lib/types/schema.ts`. That file is the
-contract — don't modify shapes there casually; manifest changes need an
-`amber_version` bump and a migration plan.
+`amber.toml`, `.amber/`, `themes/`, plus the `_*` and `.*` prefixes anywhere
+in the content tree. The top-level reserved-prefix scan is **silent** — those
+directories are skipped without warning, by design (they're scratch/decoy
+space). The warning fires only when the manifest *references* into reserved
+space (see `reserved_name_in_content` below).
 
-## Architecture rules
+## URL derivation rules
 
-1. **Filesystem is truth.** Routes resolve URLs through a Space loader that
-   reads from disk. SQLite caches the parsed result; if the DB vanishes, we
-   rebuild from disk. Don't add features that require the DB to be present.
-2. **Loader and watcher are one subsystem.** A `Space` object owns the
-   in-memory index, exposes `load()` for cold start and `apply(event)` for
-   incremental updates. The watcher feeds events in. SQLite writes are a side
-   effect of `apply()`, not a separate code path.
-3. **Manifest is never silently rewritten.** If a nav entry points at a missing
-   file, drop it from the in-memory nav and add a `LoadWarning`. The user (or a
-   future admin UI) edits `amber.toml`; we don't.
-4. **Rendering is not the loader's job.** `Page.body` is raw markdown; HTML
-   rendering happens at request time, cached by content hash. Theme changes
-   shouldn't require a reload.
-5. **Server-only for content.** Use `+page.server.ts`, not `+page.ts`, for
-   anything that touches the filesystem. Keep the FS as a server boundary.
+URLs derive from filesystem paths. The rules, exhaustively:
 
-## Conventions
+- `foo.md` → `/foo`
+- `foo/bar.md` → `/foo/bar`
+- `foo/index.md` → `/foo` (folder-with-index, colocated assets pattern)
+- root `index.md` → `/` (the homepage is always `index.md` at the space
+  root; it is **not** configurable via the manifest)
+- `slug:` frontmatter replaces the filename-as-URL-segment, never parent
+  directories
 
-- **Imports:** `$lib/...` for the SvelteKit app's own code. Types live under
-  `$lib/types/`, server-only code under `$lib/server/`.
-- **Path config:** The space directory path is read from `AMBER_SPACE_PATH` in
-  `hooks.server.ts`. Dev defaults to `./fixtures/example-space` (once that
-  exists); prod is a Docker volume mount. No clever auto-detection.
-- **Tests:** Vitest. Pure functions (loader, parsers, URL derivation) get unit
-  tests against fixture spaces in `apps/web/fixtures/`. Don't write
-  integration tests against a live SvelteKit server until there's a reason.
-- **Commits:** Conventional commits (`feat:`, `chore:`, `fix:`, `docs:`). Small
-  and logical — one concern per commit.
+`Space.pages` keys: leading slash, no trailing slash, `/` for the root
+index. This is the canonical form everywhere.
 
-## What's done
+### Slug on `index.md` is an error
 
-- Hetzner CX22 provisioned, hardened (SSH keys only, ufw, fail2ban).
-- Docker Compose + Caddy + systemd, surviving reboots.
-- Placeholder nginx serving `amber.avp.software` with Let's Encrypt TLS.
-- SvelteKit app scaffolded at `apps/web` with adapter-node.
-- On-disk schema types committed.
+`slug:` semantics are "replace the filename." `index.md` has no
+filename-as-URL-segment to replace — its segment comes from the parent
+directory. Setting `slug` on an `index.md` is therefore semantically
+incoherent and the loader emits a `LoadError`, not a warning. Users who want
+a different URL should either rename the file or restructure.
 
-## What's next (immediate)
+## Drafts
 
-1. Fixture space at `apps/web/fixtures/example-space/` covering the schema's
-   interesting cases (nested folders, `index.md`, slug overrides, drafts,
-   external nav, redirects).
-2. Space loader: pure function, takes a directory path, returns a `Space`.
-   Tested against the fixture before any route uses it.
-3. Watcher + incremental updates against the same `Space` interface.
-4. Minimal catch-all route that renders pages through the loader.
-5. SQLite cache layer behind the loader (transparent to routes).
-6. Replace nginx in the Compose file.
+Drafts are `draft: true` in frontmatter, **not** a directory.
 
-Don't get ahead of this list. SQLite before the loader works against pure
-filesystem is the wrong order.
+`Space.pages` includes drafts. Each `Page` carries `frontmatter.draft`.
+Consumers filter:
 
-## What NOT to do without asking
+- Nav builder skips drafts when constructing the public nav.
+- Page handler returns 404 for drafts on public routes.
+- Future preview/admin routes can render drafts because they're in the
+  index.
 
-- Add a dependency. State the case first; "X uses it" isn't enough.
-- Touch `docker-compose.yml`, `Caddyfile`, or anything outside `apps/web` until
-  the app is ready to replace the nginx placeholder.
-- Push to the remote. Commits are reviewed locally first.
-- Add UI styling, themes, or component libraries. Themes are a v0.2 concern
-  with their own architecture; don't pre-commit to one.
-- Introduce auth, multi-user concepts, or any database table for user data.
-  v0.1 is single-space, single-operator.
+This is the "loader produces; consumers decide" rule applied to drafts.
 
-## When in doubt
+## Manifest schema decisions
 
-Smaller PRs. Pure functions over framework integration. Filesystem over
-database. Ask before adding scope.
+### `kind` is inferred, not required
+
+For nav entries: `path = "..."` implies `kind = "page"`, `url = "..."`
+implies `kind = "external"`. Authors *may* write `kind` explicitly; the
+loader accepts it but does not require it. Inference is unambiguous because
+`path` and `url` are mutually exclusive.
+
+If a future entry kind is added that can't be disambiguated by field
+presence, that's when `kind` becomes required for that variant — not
+before.
+
+### Non-markdown files in the content tree
+
+Out of scope for the loader. A separate static handler serves them. The
+loader does not index assets, does not rewrite asset URLs, does not validate
+references.
+
+## `LoadWarning` codes
+
+Every code in the enum must have a defined trigger. Currently:
+
+- `nav_target_missing` — manifest nav references a path that doesn't exist
+  in the filesystem.
+- `reserved_name_in_content` — manifest references a path containing a
+  reserved segment (e.g., a nav entry pointing into `_drafts/`). The
+  top-level reserved-prefix skip is silent; this warning is specifically
+  for *active* references into reserved space.
+
+If a code can't be triggered by any code path, it gets removed from the
+enum. Unreachable codes are bugs.
+
+## `updated` frontmatter field
+
+Theme-facing metadata for v0.1. The loader does nothing special with it —
+sort keys fall back from `date` to filesystem `mtime` if absent. Themes may
+display it. RSS/sitemap concerns aren't in v0.1 scope; revisit when feeds
+ship.
+
+## Build order — current sprint
+
+1. Fixture space at `apps/web/fixtures/example-space/` covering the
+   schema's interesting cases.
+2. Loader as a pure function, tested against the fixture.
+3. Watcher and incremental updates, layered on the loader.
+4. SQLite cache behind the loader interface.
+5. Replace the nginx placeholder with the SvelteKit app.
+
+The nginx placeholder stays until the loader actually works against pure
+filesystem. We are not racing to delete it.
+
+## Roadmap shape
+
+- v0.1: single-space link-in-bio + simple sites.
+- v0.2: plugins, themes ecosystem, custom domains.
+- v0.3: Tauri desktop app with local-disk sync.
+- v0.4: multi-space, better-auth, CRDT-based collaboration.
+
+Anything not in the current version is not a v0.1 design constraint.
+Resist the urge to "leave room for" v0.4 in v0.1 code — the redirects table
+reservation is the only speculative concession, and it's a five-line table.
+
+## Scope guards
+
+If a proposed change involves any of the following, push back hard or say
+no:
+
+- Adding a service to the Compose file.
+- Adding a build-time dependency that isn't already in `package.json`.
+- Putting content logic in a `+page.ts` (must be `.server.ts`).
+- Writing through the cache without going through `apply()`.
+- Modifying `amber.toml` from code.
+- Introducing a UI component library, an ORM, or a CSS framework.
+- Adding a CI service before there's a release to gate.
+- Designing for v0.2+ features in v0.1 code paths.
+
+If the change is genuinely needed and breaks one of these, the rule gets
+revised here first, then the change lands. Not the other way around.
