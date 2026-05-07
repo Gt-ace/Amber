@@ -1,0 +1,3 @@
+# Parses cleanly as TOML, but the required `amber_version` key is absent.
+[site]
+title = "Versionless"

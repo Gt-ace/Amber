@@ -1,0 +1,5 @@
+# Deliberately broken TOML. The dangling bracket and unclosed string are the
+# things smol-toml chokes on; either by itself is enough.
+amber_version = "0.1
+[site
+title = "missing closing brackets"
