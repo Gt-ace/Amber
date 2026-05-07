@@ -84,7 +84,7 @@ export function load(spacePath: string): { space: Space; warnings: LoadWarning[]
 	return { space, warnings };
 }
 
-function readManifest(root: string): AmberManifest {
+export function readManifest(root: string): AmberManifest {
 	const path = join(root, 'amber.toml');
 	let raw: string;
 	try {
@@ -155,6 +155,31 @@ function loadPage(
 	byRelative: Map<string, Page>,
 	warnings: LoadWarning[]
 ): void {
+	const { page, warning } = buildPage(root, filePath);
+	if (warning) warnings.push(warning);
+
+	if (pages.has(page.url)) {
+		warnings.push({
+			code: 'duplicate_url',
+			message: `Two pages resolve to ${page.url}; keeping the first.`,
+			source: page.relativePath
+		});
+		return;
+	}
+	pages.set(page.url, page);
+	byRelative.set(page.relativePath, page);
+}
+
+/**
+ * Read and parse a single markdown file into a `Page`. Pure-ish (touches the
+ * filesystem to read the file and stat it) but stateless — no maps, no
+ * cross-page concerns. The optional warning is `frontmatter_parse_error` only;
+ * `duplicate_url` is a cross-page concern and lives at the call site.
+ */
+export function buildPage(
+	root: string,
+	filePath: string
+): { page: Page; warning?: LoadWarning } {
 	const rel = relative(root, filePath).split(sep).join(posix.sep);
 	const raw = readFileSync(filePath, 'utf8');
 	const stat = statSync(filePath);
@@ -162,17 +187,7 @@ function loadPage(
 
 	const { frontmatter, extra, body, parseError } = splitFrontmatter(raw);
 
-	if (parseError) {
-		warnings.push({
-			code: 'frontmatter_parse_error',
-			message: `Frontmatter failed to parse: ${parseError}`,
-			source: rel
-		});
-		// Include the page with empty frontmatter so the rest of the space builds.
-	}
-
 	const url = deriveUrl(rel, frontmatter.slug);
-
 	const page: Page = {
 		filePath,
 		relativePath: rel,
@@ -184,19 +199,20 @@ function loadPage(
 		contentHash
 	};
 
-	if (pages.has(url)) {
-		warnings.push({
-			code: 'duplicate_url',
-			message: `Two pages resolve to ${url}; keeping the first.`,
-			source: rel
-		});
-		return;
+	if (parseError) {
+		return {
+			page,
+			warning: {
+				code: 'frontmatter_parse_error',
+				message: `Frontmatter failed to parse: ${parseError}`,
+				source: rel
+			}
+		};
 	}
-	pages.set(url, page);
-	byRelative.set(rel, page);
+	return { page };
 }
 
-function splitFrontmatter(raw: string): {
+export function splitFrontmatter(raw: string): {
 	frontmatter: PageFrontmatter;
 	extra: Record<string, unknown>;
 	body: string;
@@ -243,7 +259,7 @@ function splitFrontmatter(raw: string): {
 	return { frontmatter, extra, body };
 }
 
-function deriveUrl(relativePath: string, slug: string | undefined): string {
+export function deriveUrl(relativePath: string, slug: string | undefined): string {
 	const isIndex = basename(relativePath) === 'index.md';
 	if (isIndex && slug !== undefined) {
 		throw new LoadError(
@@ -264,7 +280,7 @@ function deriveUrl(relativePath: string, slug: string | undefined): string {
 	return '/' + parent.split(sep).join(posix.sep) + '/' + segment;
 }
 
-function resolveNav(
+export function resolveNav(
 	entries: NavEntry[],
 	byRelative: Map<string, Page>,
 	warnings: LoadWarning[]
@@ -327,11 +343,11 @@ function pathContainsReservedSegment(path: string): boolean {
 	return segments.some((s) => s.startsWith('_') || s.startsWith('.') || RESERVED_TOP_LEVEL.has(s));
 }
 
-function normalizeRelativePath(p: string): string {
+export function normalizeRelativePath(p: string): string {
 	return p.split(/[\\/]/).filter(Boolean).join(posix.sep);
 }
 
-function normalizeUrl(u: string): string {
+export function normalizeUrl(u: string): string {
 	let s = u.trim();
 	if (!s.startsWith('/')) s = '/' + s;
 	if (s.length > 1 && s.endsWith('/')) s = s.slice(0, -1);
