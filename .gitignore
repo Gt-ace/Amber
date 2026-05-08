@@ -5,3 +5,4 @@ data/
 .DS_Store
 docs/
 spaces/*/.amber/
+apps/web/fixtures/*/.amber/

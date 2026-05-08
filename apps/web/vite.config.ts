@@ -5,6 +5,7 @@ export default defineConfig({
 	plugins: [sveltekit()],
 	test: {
 		expect: { requireAssertions: true },
+		globalSetup: ['./vitest.setup.ts'],
 		projects: [
 			{
 				extends: './vite.config.ts',
