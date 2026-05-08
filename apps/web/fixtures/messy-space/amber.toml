@@ -1,0 +1,6 @@
+amber_version = "0.1"
+
+[site]
+title = "Messy Space"
+description = "Fixture exercising loader robustness against messy real-world inputs."
+language = "en"

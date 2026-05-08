@@ -113,6 +113,7 @@ export function readManifest(root: string): AmberManifest {
 	return parsed as AmberManifest;
 }
 
+// TODO: symlinks aren't validated — revisit when a real use case appears.
 function walkContent(
 	root: string,
 	dir: string,
@@ -181,7 +182,10 @@ export function buildPage(
 	filePath: string
 ): { page: Page; warning?: LoadWarning } {
 	const rel = relative(root, filePath).split(sep).join(posix.sep);
-	const raw = readFileSync(filePath, 'utf8');
+	const rawFromDisk = readFileSync(filePath, 'utf8');
+	// Strip a leading UTF-8 BOM so the same logical file produces the same
+	// hash, frontmatter, and body whether or not it was saved with one.
+	const raw = rawFromDisk.charCodeAt(0) === 0xfeff ? rawFromDisk.slice(1) : rawFromDisk;
 	const stat = statSync(filePath);
 	const contentHash = createHash('sha256').update(raw).digest('hex');
 
@@ -221,10 +225,15 @@ export function splitFrontmatter(raw: string): {
 	// A leading `---` line opens the YAML block; a `---` (or `...`) line closes it.
 	const match = /^---\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)\r?\n?/.exec(raw);
 	if (!match) {
-		return { frontmatter: {}, extra: {}, body: raw };
+		// No frontmatter is fine — return the raw text as the body, with line
+		// endings normalized so cached HTML is deterministic across platforms.
+		return { frontmatter: {}, extra: {}, body: raw.replace(/\r\n/g, '\n') };
 	}
-	const yamlBlock = match[1];
-	const body = raw.slice(match[0].length);
+	// Normalize CRLF→LF in both the YAML block and the body. Most YAML parsers
+	// tolerate CRLF, but normalizing here keeps downstream hashing/rendering
+	// deterministic regardless of how the file was authored.
+	const yamlBlock = match[1].replace(/\r\n/g, '\n');
+	const body = raw.slice(match[0].length).replace(/\r\n/g, '\n');
 	let parsed: unknown;
 	try {
 		parsed = parseYaml(yamlBlock);
