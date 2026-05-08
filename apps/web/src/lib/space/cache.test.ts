@@ -213,6 +213,10 @@ describe('SpaceCache.vacuum', () => {
 
 	beforeEach(() => {
 		dir = copyFixture();
+		// The committed fixture's `.amber/cache.db` may carry leftover render
+		// rows from development; wipe `.amber/` so each vacuum test starts
+		// against an empty `renders` table.
+		rmSync(join(dir, '.amber'), { recursive: true, force: true });
 	});
 
 	afterEach(() => {

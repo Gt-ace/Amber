@@ -225,6 +225,11 @@ describe('Space.vacuumRenderCache', () => {
 
 	beforeEach(() => {
 		dir = copyFixture();
+		// The committed fixture's `.amber/cache.db` may carry leftover render
+		// rows from development runs; wipe `.amber/` so the test seeds its
+		// own renders against an empty table (and `INSERT ... ON CONFLICT DO
+		// NOTHING` doesn't silently skip our seeded rows).
+		rmSync(join(dir, '.amber'), { recursive: true, force: true });
 	});
 
 	afterEach(() => {

@@ -42,7 +42,10 @@ export const load: PageServerLoad = ({ params }) => {
 			html,
 			isDraft: page.frontmatter.draft === true
 		},
-		nav: space.nav,
+		// `site` is read by `<svelte:head>` for the `<title>` suffix. The
+		// nav/site chrome lives in the layout (see `+layout.server.ts`); this
+		// is a redundant convenience for the page-specific head block, not a
+		// data duplication of the layout's responsibility.
 		site: space.manifest.site ?? null,
 		// `siteUrl` powers absolute og:url and rel=canonical. Null when
 		// `PUBLIC_SITE_URL` is unset; the component falls back to the page
