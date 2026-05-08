@@ -15,6 +15,7 @@ import { Database } from 'bun:sqlite';
 import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { readManifest, resolveNav, normalizeUrl } from './load.ts';
+import { logger } from '$lib/server/logger';
 import {
 	RESERVED_TOP_LEVEL,
 	isReservedPath,
@@ -23,6 +24,8 @@ import {
 	type Page,
 	type Space
 } from '$lib/types/schema';
+
+const log = logger.child({ subsystem: 'cache' });
 
 const SCHEMA_VERSION = '2';
 
@@ -227,7 +230,7 @@ export class SpaceCache {
 		} catch (err) {
 			// Cache write failures must not take down the running process —
 			// the in-memory index is still the truth.
-			console.warn('[amber] cache write failed:', err);
+			log.warn({ err }, 'cache write failed');
 		}
 	}
 
@@ -249,7 +252,7 @@ export class SpaceCache {
 					page.contentHash
 				);
 		} catch (err) {
-			console.warn('[amber] cache upsertPage failed:', err);
+			log.warn({ err }, 'cache upsertPage failed');
 		}
 	}
 
@@ -258,7 +261,7 @@ export class SpaceCache {
 		try {
 			this.db.prepare('DELETE FROM pages WHERE rel = ?').run(rel);
 		} catch (err) {
-			console.warn('[amber] cache deletePage failed:', err);
+			log.warn({ err }, 'cache deletePage failed');
 		}
 	}
 
@@ -282,7 +285,7 @@ export class SpaceCache {
 			});
 			tx();
 		} catch (err) {
-			console.warn('[amber] cache replacePageWarnings failed:', err);
+			log.warn({ err }, 'cache replacePageWarnings failed');
 		}
 	}
 
@@ -299,7 +302,7 @@ export class SpaceCache {
 				.get(contentHash) as { html: string } | null;
 			return row ? row.html : null;
 		} catch (err) {
-			console.warn('[amber] cache getRender failed:', err);
+			log.warn({ err }, 'cache getRender failed');
 			return null;
 		}
 	}
@@ -321,7 +324,7 @@ export class SpaceCache {
 				)
 				.run(contentHash, html, Date.now());
 		} catch (err) {
-			console.warn('[amber] cache putRender failed:', err);
+			log.warn({ err }, 'cache putRender failed');
 		}
 	}
 
@@ -331,7 +334,7 @@ export class SpaceCache {
 			const mtime = statSync(join(spaceRoot, 'amber.toml')).mtimeMs;
 			this.setMeta('manifest_mtime', String(mtime));
 		} catch (err) {
-			console.warn('[amber] cache updateManifestMtime failed:', err);
+			log.warn({ err }, 'cache updateManifestMtime failed');
 		}
 	}
 }

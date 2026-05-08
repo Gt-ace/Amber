@@ -13,8 +13,11 @@
 
 import chokidar, { type FSWatcher } from 'chokidar';
 import { relative, sep } from 'node:path';
+import { logger } from '$lib/server/logger';
 import { RESERVED_TOP_LEVEL } from '$lib/types/schema';
 import type { FsEvent, Space } from './space.ts';
+
+const log = logger.child({ subsystem: 'watcher' });
 
 const DEBOUNCE_MS = 50;
 
@@ -139,9 +142,10 @@ export class SpaceWatcher {
 			const delta = this.space.apply(event);
 			this.onEvent?.(event, delta);
 		} catch (err) {
-			// Surface to stderr; the in-memory index has not been corrupted
-			// because apply() mutations are local to the affected slice.
-			console.warn('[amber] apply() threw on', event, err);
+			// Surface as a structured warning; the in-memory index has not
+			// been corrupted because apply() mutations are local to the
+			// affected slice.
+			log.warn({ err, event }, 'apply() threw');
 		}
 	}
 }
