@@ -15,6 +15,7 @@ import { error } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { getSpace } from '$lib/server/space';
 import { getOrRenderHtml } from '$lib/render/cache';
+import { readSiteUrl } from '../sitemap.xml/+server';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ params }) => {
@@ -42,6 +43,10 @@ export const load: PageServerLoad = ({ params }) => {
 			isDraft: page.frontmatter.draft === true
 		},
 		nav: space.nav,
-		site: space.manifest.site ?? null
+		site: space.manifest.site ?? null,
+		// `siteUrl` powers absolute og:url and rel=canonical. Null when
+		// `PUBLIC_SITE_URL` is unset; the component falls back to the page
+		// path alone in that case.
+		siteUrl: readSiteUrl()
 	};
 };

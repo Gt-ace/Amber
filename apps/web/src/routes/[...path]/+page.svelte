@@ -2,6 +2,12 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	// Resolve absolute or relative URL for canonical / og:url. When
+	// `PUBLIC_SITE_URL` is set, prefix it; otherwise fall back to the
+	// page path alone — better than emitting an obviously-wrong placeholder.
+	const ogUrl = data.siteUrl ? data.siteUrl + data.page.url : data.page.url;
+	const ogTitle = data.page.frontmatter.title ?? data.site?.title ?? '';
 </script>
 
 <svelte:head>
@@ -13,6 +19,15 @@
 	{#if data.page.frontmatter.description}
 		<meta name="description" content={data.page.frontmatter.description} />
 	{/if}
+	{#if ogTitle}
+		<meta property="og:title" content={ogTitle} />
+	{/if}
+	{#if data.page.frontmatter.description}
+		<meta property="og:description" content={data.page.frontmatter.description} />
+	{/if}
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content={ogUrl} />
+	<link rel="canonical" href={ogUrl} />
 </svelte:head>
 
 <header>
