@@ -1,3 +1,8 @@
 amber.avp.software {
-  reverse_proxy web:3000
+	reverse_proxy web:3000
+}
+
+jellyfin.avp.software {
+	reverse_proxy 172.18.0.1:8096
+	encode gzip
 }
