@@ -16,7 +16,10 @@
 
 import type { RequestHandler } from './$types';
 import { getSpace } from '$lib/server/space';
+import { logger } from '$lib/server/logger';
 import type { Page } from '$lib/types/schema';
+
+const log = logger.child({ subsystem: 'sitemap' });
 
 export const GET: RequestHandler = () => {
 	const space = getSpace();
@@ -43,13 +46,13 @@ export function readSiteUrl(): string | null {
 /**
  * Same as `readSiteUrl()`, but logs a one-line warning when the env var is
  * unset. Used by the request-time handlers; tests of `readSiteUrl()` itself
- * stay quiet. (Task 1 will swap `console.warn` for the structured logger.)
+ * stay quiet.
  */
 export function readSiteUrlOrWarn(): string | null {
 	const value = readSiteUrl();
 	if (value === null) {
-		console.warn(
-			'[amber] PUBLIC_SITE_URL is not set; sitemap.xml will use relative URLs. ' +
+		log.warn(
+			'PUBLIC_SITE_URL is not set; sitemap.xml will use relative URLs. ' +
 				'Set PUBLIC_SITE_URL=https://your-site.example to emit absolute URLs.'
 		);
 	}
