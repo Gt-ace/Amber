@@ -16,16 +16,14 @@ WORKDIR /app
 
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends wget \
-	&& rm -rf /var/lib/apt/lists/* \
-	&& groupadd -g 1000 amber \
-	&& useradd -u 1000 -g 1000 -m -s /usr/sbin/nologin amber
+	&& rm -rf /var/lib/apt/lists/*
 
-COPY --chown=amber:amber package.json bun.lock ./
+COPY --chown=bun:bun package.json bun.lock ./
 RUN bun install --production --frozen-lockfile \
-	&& chown -R amber:amber node_modules
-COPY --from=build --chown=amber:amber /app/build ./build
+	&& chown -R bun:bun node_modules
+COPY --from=build --chown=bun:bun /app/build ./build
 
-USER amber
+USER bun
 
 ENV NODE_ENV=production \
 	PORT=3000 \
