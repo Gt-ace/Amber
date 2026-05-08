@@ -17,6 +17,9 @@
 
 import { Space } from '$lib/space/space';
 import { SpaceWatcher } from '$lib/space/watcher';
+import { logger } from './logger';
+
+const log = logger.child({ subsystem: 'server' });
 
 let cached: Space | null = null;
 let shutdownRegistered = false;
@@ -32,31 +35,34 @@ export function getSpace(): Space {
 		);
 	}
 
+	log.info({ path }, 'space singleton init');
 	const { space, warnings } = Space.load(path);
 	if (warnings.length) {
 		for (const w of warnings) {
-			console.warn(`[amber] load warning [${w.code}] ${w.source ?? ''} — ${w.message}`);
+			log.warn({ code: w.code, source: w.source }, w.message);
 		}
 	}
 
 	const watcher = new SpaceWatcher(space);
+	log.info({ root: space.root }, 'watcher started');
 	// Don't await ready() — the initial index is already populated by load().
 	// The watcher only matters for subsequent edits.
 
 	if (!shutdownRegistered) {
 		shutdownRegistered = true;
-		const shutdown = async () => {
+		const shutdown = async (signal: string) => {
+			log.info({ signal }, 'shutdown signal received');
 			try {
 				await watcher.close();
 			} catch (err) {
-				console.warn('[amber] watcher close failed:', err);
+				log.warn({ err }, 'watcher close failed');
 			}
 			space.close();
 		};
 		// `once` keeps Vite HMR re-evaluations from stacking duplicate
 		// handlers across module reloads.
-		process.once('SIGTERM', shutdown);
-		process.once('SIGINT', shutdown);
+		process.once('SIGTERM', () => shutdown('SIGTERM'));
+		process.once('SIGINT', () => shutdown('SIGINT'));
 	}
 
 	cached = space;

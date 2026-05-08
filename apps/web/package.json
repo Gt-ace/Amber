@@ -28,6 +28,7 @@
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.17.0",
 		"globals": "^17.4.0",
+		"pino-pretty": "^11.3.0",
 		"playwright": "^1.59.1",
 		"prettier": "^3.8.1",
 		"prettier-plugin-svelte": "^3.5.1",
@@ -42,6 +43,7 @@
 	"dependencies": {
 		"chokidar": "^5.0.0",
 		"markdown-it": "^14.1.1",
+		"pino": "^9.5.0",
 		"smol-toml": "^1.6.1",
 		"yaml": "^2.8.4"
 	}
