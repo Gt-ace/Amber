@@ -19,12 +19,19 @@ body bytes, so the cache key is too.
 
 ## Cache invalidation
 
-There isn't any. Content hash *is* the key, so a body change produces a
-new key and the old row is orphaned. Orphans are cheap (a few hundred
-bytes each, on a single user's machine), and we don't ship eviction or a
-vacuum step this sprint. If a space accumulates enough render orphans to
-matter, deleting `.amber/cache.db` is always safe — the next cold start
-rebuilds it.
+Content hash *is* the key, so a body change produces a new key and the
+old row is orphaned. Orphans accumulate in the `renders` table whenever a
+`Page.body` changes. To bound growth, `Space.load()` calls
+`space.vacuumRenderCache()` at the end of cold start (and on the
+hydration path): it computes the set of currently-active body hashes
+across `space.pages` and deletes any `renders` row whose `content_hash`
+isn't in that set. The number of removed rows is logged at info level.
+
+Restart-to-vacuum is the policy. There is no scheduled job, no
+admin-triggered vacuum, no per-event cleanup inside `apply()` — the
+orphan rate per event is tiny, and rescanning every page body for each
+event would dominate the apply cost. Deleting `.amber/cache.db` remains
+safe at any time; the next cold start rebuilds it.
 
 ## Sanitization
 

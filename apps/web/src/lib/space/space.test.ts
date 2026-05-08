@@ -5,6 +5,8 @@ import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { Space } from './space.ts';
+import { SpaceCache } from './cache.ts';
+import { bodyHash } from '$lib/render/cache';
 
 const FIXTURE = fileURLToPath(new URL('../../../fixtures/example-space/', import.meta.url));
 
@@ -214,5 +216,59 @@ describe('Space.apply()', () => {
 		// We check that the *warnings* array identity holds since consumers
 		// are likeliest to keep that handle around.
 		expect(navRef).not.toBe(undefined);
+	});
+});
+
+describe('Space.vacuumRenderCache', () => {
+	let dir: string;
+
+	beforeEach(() => {
+		dir = copyFixture();
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	test('cold load drops orphan render rows whose hash matches no page body', () => {
+		// Seed three orphan render rows directly via SpaceCache, then close
+		// it so Space.load() can take ownership of the connection.
+		const seed = new SpaceCache(dir);
+		seed.putRender('orphan-one', '<p>old one</p>');
+		seed.putRender('orphan-two', '<p>old two</p>');
+		seed.putRender('orphan-three', '<p>old three</p>');
+		expect(seed.getRender('orphan-one')).toBe('<p>old one</p>');
+		seed.close();
+
+		const { space } = Space.load(dir);
+		// Re-open the cache through the Space — orphans must be gone after
+		// load() ran vacuum.
+		expect(space.getCachedRender('orphan-one')).toBeNull();
+		expect(space.getCachedRender('orphan-two')).toBeNull();
+		expect(space.getCachedRender('orphan-three')).toBeNull();
+		space.close();
+	});
+
+	test('cold load preserves render rows whose hash matches a current page body', () => {
+		// First load to populate page index, capture a real body hash.
+		const first = Space.load(dir);
+		const aboutPage = first.space.pages.get('/about')!;
+		const aboutHash = bodyHash(aboutPage.body);
+		// Seed a row matching the current /about body and one orphan row.
+		first.space.putCachedRender(aboutHash, '<p>about html</p>');
+		first.space.putCachedRender('definitely-orphan', '<p>orphan</p>');
+		first.space.close();
+
+		// Second cold load (cache hydrates; vacuum still runs).
+		const { space } = Space.load(dir);
+		expect(space.getCachedRender(aboutHash)).toBe('<p>about html</p>');
+		expect(space.getCachedRender('definitely-orphan')).toBeNull();
+		space.close();
+	});
+
+	test('returns 0 when the cache is off', () => {
+		const { space } = Space.load(dir, { cache: false });
+		expect(space.vacuumRenderCache()).toBe(0);
+		space.close();
 	});
 });

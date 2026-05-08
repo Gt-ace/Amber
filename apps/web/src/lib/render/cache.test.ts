@@ -103,14 +103,17 @@ describe('getOrRenderHtml', () => {
 
 	test('cache survives Space.close()/reopen — render persists across processes', () => {
 		const first = Space.load(dir);
-		const page = fakePage({ body: '# Persisted\n' });
-		const html1 = getOrRenderHtml(first.space, page);
+		// Use a real page from the fixture so its body hash survives the
+		// vacuum step that runs at the end of Space.load().
+		const realPage = first.space.pages.get('/about')!;
+		const html1 = getOrRenderHtml(first.space, realPage);
 		first.space.close();
 
 		// Reopen. The renders row was committed to SQLite; second open finds it.
 		const second = Space.load(dir);
 		const putSpy = vi.spyOn(second.space, 'putCachedRender');
-		const html2 = getOrRenderHtml(second.space, page);
+		const reloadedPage = second.space.pages.get('/about')!;
+		const html2 = getOrRenderHtml(second.space, reloadedPage);
 		expect(html2).toBe(html1);
 		expect(putSpy).not.toHaveBeenCalled();
 		second.space.close();

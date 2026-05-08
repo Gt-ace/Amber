@@ -28,6 +28,7 @@ import {
 	LoadError
 } from './load.ts';
 import { SpaceCache } from './cache.ts';
+import { bodyHash } from '$lib/render/cache';
 import type {
 	AmberManifest,
 	LoadWarning,
@@ -135,6 +136,12 @@ export class Space implements SpaceData {
 		const hydrated = cache.tryHydrate(spacePath);
 		if (hydrated) {
 			const space = new Space(hydrated.space, cache);
+			// Hydration skips the writeAll path, but render orphans can still
+			// have accumulated across previous runs — vacuum opportunistically.
+			const removed = space.vacuumRenderCache();
+			if (removed > 0) {
+				console.log(`[amber] vacuumed ${removed} orphan renders`);
+			}
 			return { space, warnings: space.warnings };
 		}
 
@@ -149,6 +156,12 @@ export class Space implements SpaceData {
 			redirects: space.redirects,
 			warnings: space.warnings
 		});
+		// After a cold load, drop any render rows whose body hash isn't
+		// referenced by a current page. Bounded by page count; cheap.
+		const removed = space.vacuumRenderCache();
+		if (removed > 0) {
+			console.log(`[amber] vacuumed ${removed} orphan renders`);
+		}
 		return { space, warnings: space.warnings };
 	}
 
@@ -217,6 +230,24 @@ export class Space implements SpaceData {
 	/** Persist a rendered HTML string under its content hash. No-op when the cache is off. */
 	putCachedRender(contentHash: string, html: string): void {
 		this.cache?.putRender(contentHash, html);
+	}
+
+	/**
+	 * Drop any rows from the render cache that no longer correspond to a
+	 * live `Page.body`. Returns the number of rows deleted; 0 when the
+	 * cache is off.
+	 *
+	 * Called once per cold start from `Space.load()`. Not wired into
+	 * `apply()` — orphan churn from a single event is tiny, and per-event
+	 * rescans of every page body would dominate the apply cost.
+	 */
+	vacuumRenderCache(): number {
+		if (!this.cache) return 0;
+		const active = new Set<string>();
+		for (const page of this.pages.values()) {
+			active.add(bodyHash(page.body));
+		}
+		return this.cache.vacuum(active);
 	}
 
 	// ─── apply helpers ────────────────────────────────────────────────────
