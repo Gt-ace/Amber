@@ -12,7 +12,7 @@
  */
 
 import { Database } from 'bun:sqlite';
-import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { readManifest, resolveNav, normalizeUrl } from './load.ts';
 import {
@@ -34,9 +34,49 @@ export class SpaceCache {
 		const dir = join(spaceRoot, '.amber');
 		this.dbPath = join(dir, 'cache.db');
 		mkdirSync(dir, { recursive: true });
-		this.db = new Database(this.dbPath, { create: true });
-		this.db.exec('PRAGMA journal_mode = WAL');
-		this.ensureSchema();
+		this.db = this.openWithRecovery();
+	}
+
+	/**
+	 * Open the SQLite database, recovering from on-disk corruption.
+	 *
+	 * A `cache.db` file that isn't a valid SQLite database (e.g. truncated by
+	 * a crash, or replaced with junk content) will fail at open time, on the
+	 * `PRAGMA journal_mode = WAL` write, or inside `ensureSchema()` — depending
+	 * on how broken it is. The cache is regenerable by definition (filesystem
+	 * is truth), so any of those failures is treated identically: log a
+	 * warning, wipe the on-disk file plus its WAL/SHM siblings, and retry the
+	 * open exactly once. A second failure is a real bug and is rethrown.
+	 *
+	 * Recovery is scoped narrowly to SQLite-level errors during open/schema.
+	 * Anything else (e.g. an `mkdirSync` EACCES) propagates unchanged.
+	 */
+	private openWithRecovery(): Database {
+		try {
+			const db = new Database(this.dbPath, { create: true });
+			db.exec('PRAGMA journal_mode = WAL');
+			this.db = db;
+			this.ensureSchema();
+			return db;
+		} catch (err) {
+			console.warn(`[amber] cache corrupt at ${this.dbPath}, rebuilding:`, err);
+			this.wipeDbFiles();
+			const db = new Database(this.dbPath, { create: true });
+			db.exec('PRAGMA journal_mode = WAL');
+			this.db = db;
+			this.ensureSchema();
+			return db;
+		}
+	}
+
+	private wipeDbFiles(): void {
+		for (const path of [this.dbPath, this.dbPath + '-wal', this.dbPath + '-shm']) {
+			try {
+				unlinkSync(path);
+			} catch {
+				// File may not exist (especially the WAL/SHM siblings); ignore.
+			}
+		}
 	}
 
 	close(): void {
