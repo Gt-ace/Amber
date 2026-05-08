@@ -358,7 +358,7 @@ export class SpaceCache {
 			tx();
 			return deleted;
 		} catch (err) {
-			console.warn('[amber] cache vacuum failed:', err);
+			log.warn({ err }, 'cache vacuum failed');
 			return 0;
 		}
 	}

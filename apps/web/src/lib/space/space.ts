@@ -29,6 +29,7 @@ import {
 } from './load.ts';
 import { SpaceCache } from './cache.ts';
 import { bodyHash } from '$lib/render/cache';
+import { logger } from '$lib/server/logger';
 import type {
 	AmberManifest,
 	LoadWarning,
@@ -36,6 +37,8 @@ import type {
 	ResolvedNavEntry,
 	Space as SpaceData
 } from '$lib/types/schema';
+
+const log = logger.child({ subsystem: 'space' });
 
 export type FsEvent =
 	| { type: 'add'; path: string }
@@ -140,7 +143,7 @@ export class Space implements SpaceData {
 			// have accumulated across previous runs — vacuum opportunistically.
 			const removed = space.vacuumRenderCache();
 			if (removed > 0) {
-				console.log(`[amber] vacuumed ${removed} orphan renders`);
+				log.info({ removed }, 'vacuumed orphan renders');
 			}
 			return { space, warnings: space.warnings };
 		}
