@@ -178,6 +178,13 @@ ship.
 4. SQLite cache behind the loader interface.
 5. Markdown→HTML render pipeline with body-hash render cache.
 6. SvelteKit page handler + Space singleton replacing the nginx placeholder.
+7. v0.1 hardening sprint: structured logging (pino, single subsystem-tagged
+   logger in `lib/server/logger.ts`); sitemap.xml/robots.txt/og:* meta tags
+   driven from the live Space (drafts filtered at the consumer); shared
+   layout + Amber-chrome 404 page (`+layout.server.ts`, `+error.svelte`,
+   optional `/404` page from the space); render-cache vacuum on cold load;
+   loader robustness against BOM/CRLF/unicode/empty/long-line/no-frontmatter
+   inputs; corrupt-cache-file recovery. No new top-level deps beyond pino.
 
 The first real (non-fixture) Amber space lives at `spaces/avp-software/` —
 the landing page Amber serves about itself. Future build-order work picks

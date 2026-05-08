@@ -67,3 +67,25 @@ the cache. Deleting `.amber/cache.db` while the server is running is
 always safe; the next cold start rebuilds it. Cache writes inside `apply()`
 are wrapped in a transaction and best-effort: a failure logs a warning and
 leaves the in-memory index untouched.
+
+A corrupt `cache.db` (e.g. truncated by a crash, or replaced with junk)
+is detected at open time, the file plus its `-wal`/`-shm` siblings are
+unlinked, a warning is logged on the `cache` subsystem, and the open is
+retried once. A second failure rethrows — that's a real bug, not a
+recoverable disk artifact.
+
+`Space.load()` also runs `vacuumRenderCache()` once at the end of cold
+start, dropping any rows from the `renders` table whose body hash doesn't
+correspond to a current `Page.body`. The vacuum is opportunistic
+cleanup, not invalidation: deleting `.amber/cache.db` is still always
+safe, the rebuild is just no longer the only way to bound orphan growth.
+
+## Logging
+
+All subsystems (`space`, `watcher`, `cache`, `render`, `server`) emit
+structured JSON via the singleton `pino` logger at
+`lib/server/logger.ts`. Each subsystem owns a `logger.child({ subsystem })`
+tag; the page handler attaches a per-request child with a `request_id`
+through `hooks.server.ts`. There are no bare `console.*` calls in the
+content/render/route paths; production tooling can rely on the JSON
+shape.
