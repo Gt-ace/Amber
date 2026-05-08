@@ -328,6 +328,41 @@ export class SpaceCache {
 		}
 	}
 
+	/**
+	 * Delete every row from `renders` whose `content_hash` is not in
+	 * `activeHashes`. Returns the number of rows deleted.
+	 *
+	 * Vacuum is opportunistic cleanup, not invalidation: the filesystem
+	 * is still the source of truth, and dropping orphaned render rows
+	 * cannot lose user data. Renders are bounded by the number of
+	 * distinct page bodies, so a row-by-row scan inside a transaction is
+	 * fine.
+	 */
+	vacuum(activeHashes: Set<string>): number {
+		try {
+			const rows = this.db.prepare('SELECT content_hash FROM renders').all() as Array<{
+				content_hash: string;
+			}>;
+			const orphans = rows
+				.map((r) => r.content_hash)
+				.filter((h) => !activeHashes.has(h));
+			if (orphans.length === 0) return 0;
+			let deleted = 0;
+			const stmt = this.db.prepare('DELETE FROM renders WHERE content_hash = ?');
+			const tx = this.db.transaction(() => {
+				for (const h of orphans) {
+					const result = stmt.run(h);
+					deleted += Number(result.changes ?? 0);
+				}
+			});
+			tx();
+			return deleted;
+		} catch (err) {
+			console.warn('[amber] cache vacuum failed:', err);
+			return 0;
+		}
+	}
+
 	/** Update the cached manifest mtime after a manifest_change event. */
 	updateManifestMtime(spaceRoot: string): void {
 		try {

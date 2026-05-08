@@ -207,3 +207,62 @@ describe('SpaceCache hydration', () => {
 		second.space.close();
 	});
 });
+
+describe('SpaceCache.vacuum', () => {
+	let dir: string;
+
+	beforeEach(() => {
+		dir = copyFixture();
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	test('empty active set deletes every render row', () => {
+		const cache = new SpaceCache(dir);
+		cache.putRender('aaa', '<p>a</p>');
+		cache.putRender('bbb', '<p>b</p>');
+		cache.putRender('ccc', '<p>c</p>');
+
+		const removed = cache.vacuum(new Set());
+		expect(removed).toBe(3);
+		expect(cache.getRender('aaa')).toBeNull();
+		expect(cache.getRender('bbb')).toBeNull();
+		expect(cache.getRender('ccc')).toBeNull();
+		cache.close();
+	});
+
+	test('full active set deletes nothing', () => {
+		const cache = new SpaceCache(dir);
+		cache.putRender('aaa', '<p>a</p>');
+		cache.putRender('bbb', '<p>b</p>');
+
+		const removed = cache.vacuum(new Set(['aaa', 'bbb']));
+		expect(removed).toBe(0);
+		expect(cache.getRender('aaa')).toBe('<p>a</p>');
+		expect(cache.getRender('bbb')).toBe('<p>b</p>');
+		cache.close();
+	});
+
+	test('partial overlap deletes the orphaned subset', () => {
+		const cache = new SpaceCache(dir);
+		cache.putRender('keep1', '<p>k1</p>');
+		cache.putRender('keep2', '<p>k2</p>');
+		cache.putRender('orphan', '<p>o</p>');
+
+		const removed = cache.vacuum(new Set(['keep1', 'keep2']));
+		expect(removed).toBe(1);
+		expect(cache.getRender('keep1')).toBe('<p>k1</p>');
+		expect(cache.getRender('keep2')).toBe('<p>k2</p>');
+		expect(cache.getRender('orphan')).toBeNull();
+		cache.close();
+	});
+
+	test('vacuum on an empty renders table is a no-op', () => {
+		const cache = new SpaceCache(dir);
+		expect(cache.vacuum(new Set())).toBe(0);
+		expect(cache.vacuum(new Set(['anything']))).toBe(0);
+		cache.close();
+	});
+});
