@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'no
 import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { Database } from 'bun:sqlite';
 import { Space } from './space.ts';
 import { SpaceCache } from './cache.ts';
 import { bodyHash } from '$lib/render/cache';
@@ -270,5 +271,80 @@ describe('Space.vacuumRenderCache', () => {
 		const { space } = Space.load(dir, { cache: false });
 		expect(space.vacuumRenderCache()).toBe(0);
 		space.close();
+	});
+});
+
+describe('Space.load() cache resilience', () => {
+	let dir: string;
+
+	beforeEach(() => {
+		dir = copyFixture();
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	test('stale schema_version in an existing cache.db is wiped and rebuilt at the current version', () => {
+		// Simulate a deploy scenario: a previous version of Amber wrote a
+		// cache.db, then an Amber upgrade bumped SCHEMA_VERSION. The next cold
+		// start must wipe the old cache and rebuild from the filesystem rather
+		// than hydrating bogus rows from a prior schema.
+		const cache = new SpaceCache(dir);
+		const dbPath = join(dir, '.amber', 'cache.db');
+		// Release the SpaceCache handle so we can poke the file directly
+		// without lock contention.
+		cache.close();
+
+		const raw = new Database(dbPath);
+		raw.exec("UPDATE meta SET value = '0' WHERE key = 'schema_version'");
+		raw.exec(
+			"INSERT INTO pages(rel, url, frontmatter, extra, body, mtime, content_hash) " +
+				"VALUES ('fake.md', '/fake', '{}', '{}', 'fake body', 1, 'fakehash')"
+		);
+		raw.close();
+
+		const result = Space.load(dir);
+		// Real fixture pages are present, the fake one isn't.
+		expect(result.space.pages.has('/fake')).toBe(false);
+		expect(result.space.pages.has('/about')).toBe(true);
+		expect(result.space.pages.size).toBe(8);
+		result.space.close();
+
+		// Reopen the cache directly and assert schema_version is current.
+		const verify = new Database(join(dir, '.amber', 'cache.db'));
+		const row = verify
+			.prepare("SELECT value FROM meta WHERE key = 'schema_version'")
+			.get() as { value: string } | null;
+		verify.close();
+		expect(row?.value).toBe('2');
+	});
+
+	test('corrupt cache.db is detected, wiped, and rebuilt', () => {
+		// Simulate the disaster path: a non-SQLite junk file at cache.db (a
+		// truncation, a replaced file, a half-flushed write).
+		const amberDir = join(dir, '.amber');
+		execSync(`mkdir -p "${amberDir}"`, { shell: '/bin/sh' });
+		const dbPath = join(amberDir, 'cache.db');
+		// Remove WAL/SHM siblings the fixture might carry; we want a single
+		// junk file at cache.db with no helper artifacts.
+		rmSync(dbPath + '-wal', { force: true });
+		rmSync(dbPath + '-shm', { force: true });
+		writeFileSync(dbPath, 'this is not a sqlite database');
+
+		const result = Space.load(dir);
+		expect(result.space.pages.has('/about')).toBe(true);
+		expect(result.space.pages.size).toBe(8);
+		result.space.close();
+
+		// The junk file must have been replaced with a real SQLite database.
+		// Open it directly — if recovery worked, this succeeds and the
+		// schema_version row is set to the current value.
+		const verify = new Database(dbPath);
+		const row = verify
+			.prepare("SELECT value FROM meta WHERE key = 'schema_version'")
+			.get() as { value: string } | null;
+		verify.close();
+		expect(row?.value).toBe('2');
 	});
 });
