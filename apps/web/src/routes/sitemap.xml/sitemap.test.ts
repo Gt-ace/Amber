@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { Space } from '$lib/space/space';
-import { buildSitemapXml, readSiteUrl, readSiteUrlOrWarn } from './+server.ts';
+import { buildSitemapXml, readSiteUrl, readSiteUrlOrWarn } from '$lib/server/sitemap';
 
 const FIXTURE = fileURLToPath(new URL('../../../fixtures/example-space/', import.meta.url));
 

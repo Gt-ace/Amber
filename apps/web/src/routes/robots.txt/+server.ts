@@ -6,7 +6,7 @@
  */
 
 import type { RequestHandler } from './$types';
-import { readSiteUrl } from '../sitemap.xml/+server';
+import { readSiteUrl } from '$lib/server/sitemap';
 
 export const GET: RequestHandler = () => {
 	const siteUrl = readSiteUrl();

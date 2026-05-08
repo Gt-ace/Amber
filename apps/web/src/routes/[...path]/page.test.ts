@@ -18,7 +18,7 @@ const FIXTURE = fileURLToPath(new URL('../../../fixtures/example-space/', import
 
 let pageLoad: typeof import('./+page.server.ts').load;
 let layoutLoad: typeof import('../+layout.server.ts').load;
-let filterDraftsFromNav: typeof import('../+layout.server.ts').filterDraftsFromNav;
+let _filterDraftsFromNav: typeof import('../+layout.server.ts')._filterDraftsFromNav;
 
 beforeAll(async () => {
 	process.env.AMBER_SPACE_PATH = FIXTURE.replace(/\/$/, '');
@@ -27,7 +27,7 @@ beforeAll(async () => {
 	const layoutMod = await import('../+layout.server.ts');
 	pageLoad = pageMod.load;
 	layoutLoad = layoutMod.load;
-	filterDraftsFromNav = layoutMod.filterDraftsFromNav;
+	_filterDraftsFromNav = layoutMod._filterDraftsFromNav;
 });
 
 afterAll(async () => {
@@ -102,7 +102,7 @@ describe('root +layout.server load', () => {
 	});
 });
 
-describe('filterDraftsFromNav', () => {
+describe('_filterDraftsFromNav', () => {
 	test('drops page entries marked draft, keeps externals and groups', () => {
 		const fakePage = (draft: boolean) => ({
 			filePath: '/abs/x.md',
@@ -127,7 +127,7 @@ describe('filterDraftsFromNav', () => {
 				]
 			}
 		];
-		const out = filterDraftsFromNav(input);
+		const out = _filterDraftsFromNav(input);
 		expect(out.length).toBe(3); // /live, external, group
 		expect(out[0].label).toBe('Live');
 		expect(out[1].label).toBe('External');

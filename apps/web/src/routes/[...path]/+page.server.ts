@@ -15,7 +15,7 @@ import { error } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { getSpace } from '$lib/server/space';
 import { getOrRenderHtml } from '$lib/render/cache';
-import { readSiteUrl } from '../sitemap.xml/+server';
+import { readSiteUrl } from '$lib/server/sitemap';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ params }) => {

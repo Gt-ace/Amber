@@ -6,8 +6,8 @@
 	// Resolve absolute or relative URL for canonical / og:url. When
 	// `PUBLIC_SITE_URL` is set, prefix it; otherwise fall back to the
 	// page path alone — better than emitting an obviously-wrong placeholder.
-	const ogUrl = data.siteUrl ? data.siteUrl + data.page.url : data.page.url;
-	const ogTitle = data.page.frontmatter.title ?? data.site?.title ?? '';
+	const ogUrl = $derived(data.siteUrl ? data.siteUrl + data.page.url : data.page.url);
+	const ogTitle = $derived(data.page.frontmatter.title ?? data.site?.title ?? '');
 </script>
 
 <svelte:head>

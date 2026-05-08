@@ -25,7 +25,7 @@ import type { LayoutServerLoad } from './$types';
  * intent — an empty group surfaces as a label with no items, which the layout
  * happens to render harmlessly).
  */
-export function filterDraftsFromNav(entries: ResolvedNavEntry[]): ResolvedNavEntry[] {
+export function _filterDraftsFromNav(entries: ResolvedNavEntry[]): ResolvedNavEntry[] {
 	const out: ResolvedNavEntry[] = [];
 	for (const entry of entries) {
 		if (entry.kind === 'page') {
@@ -38,7 +38,7 @@ export function filterDraftsFromNav(entries: ResolvedNavEntry[]): ResolvedNavEnt
 			out.push({
 				kind: 'group',
 				label: entry.label,
-				children: filterDraftsFromNav(entry.children)
+				children: _filterDraftsFromNav(entry.children)
 			});
 		}
 	}
@@ -48,7 +48,7 @@ export function filterDraftsFromNav(entries: ResolvedNavEntry[]): ResolvedNavEnt
 export const load: LayoutServerLoad = () => {
 	const space = getSpace();
 
-	const nav = filterDraftsFromNav(space.nav);
+	const nav = _filterDraftsFromNav(space.nav);
 	const site = space.manifest.site ?? null;
 
 	// Optional `/404` page. Drafts are excluded — surprising behavior to
