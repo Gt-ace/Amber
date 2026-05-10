@@ -11,7 +11,7 @@
  *     publishing, without leaking through to production.
  */
 
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { getSpace } from '$lib/server/space';
 import { getOrRenderHtml } from '$lib/render/cache';
@@ -27,6 +27,17 @@ export const load: PageServerLoad = ({ params }) => {
 	// "/" for the root.
 	const raw = params.path ?? '';
 	const url = raw === '' ? '/' : '/' + raw.replace(/\/+$/, '');
+
+	// Redirect check runs before the page lookup so old URLs win even if a new
+	// page happens to have a colliding URL — the loader already prefers the
+	// live page when there's a collision (see `Space.load`'s eviction step),
+	// so reaching this branch implies the source URL is genuinely abandoned.
+	// Single-hop only: the target may itself be a redirect, but we don't
+	// chase chains here.
+	const target = space.redirects.get(url);
+	if (target !== undefined && target !== url) {
+		redirect(308, target);
+	}
 
 	const page = space.pages.get(url);
 	if (!page) error(404, `No page at ${url}`);

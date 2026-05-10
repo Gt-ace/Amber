@@ -38,6 +38,9 @@ import {
 	type ResolvedNavEntry,
 	type Space
 } from '$lib/types/schema';
+import { logger } from '$lib/server/logger';
+
+const redirectsLog = logger.child({ subsystem: 'redirects' });
 
 export class LoadError extends Error {
 	constructor(
@@ -58,7 +61,8 @@ const FRONTMATTER_KEYS: ReadonlySet<keyof PageFrontmatter> = new Set([
 	'updated',
 	'author',
 	'tags',
-	'layout'
+	'layout',
+	'redirect_from'
 ]);
 
 /** Frontmatter keys whose values are interpreted as ISO 8601 dates. */
@@ -115,9 +119,59 @@ export function load(spacePath: string): { space: Space; warnings: LoadWarning[]
 			redirects.set(normalizeUrl(from), normalizeUrl(to));
 		}
 	}
+	mergeFrontmatterRedirects(pages, redirects, 'manifest');
 
 	const space: Space = { root, manifest, pages, nav, redirects, warnings };
 	return { space, warnings };
+}
+
+/**
+ * Walk every page's `redirect_from` frontmatter and merge entries into the
+ * redirects map. Conflicts (a source already present from an earlier source —
+ * the manifest, another page, or persisted auto-renames) are last-write-wins
+ * and logged for visibility. No `LoadWarning` is emitted because the schema's
+ * code set doesn't include a frontmatter-redirect-conflict variant; adding a
+ * code is out of scope here.
+ *
+ * Per-page validation: if `redirect_from` exists but isn't a `string[]`, log
+ * once for that page and skip its redirects entirely. Individual entries that
+ * aren't non-empty strings are skipped silently. The page itself is unaffected
+ * — only the redirects it contributed are dropped.
+ *
+ * The `prior` argument names the source already in the map at call time, used
+ * only for log messages: "manifest" when called with manifest entries
+ * pre-seeded, "manifest+auto-rename" when called from the cache hot path with
+ * manifest + persisted auto-renames pre-seeded.
+ */
+export function mergeFrontmatterRedirects(
+	pages: Map<string, Page>,
+	redirects: Map<string, string>,
+	prior: string
+): void {
+	for (const page of pages.values()) {
+		const sources = page.frontmatter.redirect_from;
+		if (sources === undefined) continue;
+		if (!Array.isArray(sources) || !sources.every((entry) => typeof entry === 'string')) {
+			redirectsLog.warn(
+				{ page: page.relativePath, value: sources },
+				`redirect_from on ${page.relativePath} is not a string array; skipping its redirects`
+			);
+			continue;
+		}
+		for (const rawFrom of sources) {
+			if (rawFrom.trim() === '') continue;
+			const from = normalizeUrl(rawFrom);
+			const to = page.url;
+			const existing = redirects.get(from);
+			if (existing !== undefined && existing !== to) {
+				redirectsLog.warn(
+					{ from, prior_target: existing, new_target: to, page: page.relativePath },
+					`redirect_from conflict: ${from} previously mapped (via ${prior} or earlier page) to ${existing}; ${page.relativePath} now overrides it to ${to}`
+				);
+			}
+			redirects.set(from, to);
+		}
+	}
 }
 
 export function readManifest(root: string): AmberManifest {

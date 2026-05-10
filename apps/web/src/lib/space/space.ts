@@ -150,8 +150,12 @@ export class Space implements SpaceData {
 
 		const result = pureLoad(spacePath);
 		const space = new Space(result.space, cache);
-		// Persist a fresh cache reflecting the in-memory truth.
-		cache.writeAll({
+		// Persist a fresh cache reflecting the in-memory truth. `writeAll`
+		// also detects body-hash-stable renames against the previous snapshot
+		// and returns the live auto-rename redirect set (with stale entries
+		// already evicted) — merge them into the in-memory redirects map so
+		// the rename takes effect on this same load.
+		const autoRedirects = cache.writeAll({
 			root: space.root,
 			manifest: space.manifest,
 			pages: space.pages,
@@ -159,6 +163,15 @@ export class Space implements SpaceData {
 			redirects: space.redirects,
 			warnings: space.warnings
 		});
+		// Order: manifest + frontmatter were merged in pureLoad. Auto-renames
+		// layer on top but skip any source URL that is already a live page or
+		// already explicitly redirected by manifest / frontmatter — explicit
+		// user intent beats inference.
+		for (const [from, to] of autoRedirects) {
+			if (space.pages.has(from)) continue;
+			if (space.redirects.has(from)) continue;
+			space.redirects.set(from, to);
+		}
 		// After a cold load, drop any render rows whose body hash isn't
 		// referenced by a current page. Bounded by page count; cheap.
 		const removed = space.vacuumRenderCache();

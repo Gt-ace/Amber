@@ -71,6 +71,25 @@ describe('catch-all +page.server load', () => {
 		expect(result.page.url).toBe('/about');
 		expect(result.page.isDraft).toBe(false);
 	});
+
+	test('issues a 308 for a URL present in space.redirects', async () => {
+		// The example-space fixture's amber.toml maps `/old-portfolio` →
+		// `/projects` in its `[redirects]` table. Hitting that URL must
+		// raise SvelteKit's `Redirect` (status 308) before the page lookup.
+		const serverSpace = await import('$lib/server/space');
+		const sp = serverSpace.getSpace();
+		expect(sp.redirects.get('/old-portfolio')).toBe('/projects');
+
+		try {
+			pageLoad(stubEvent({ path: 'old-portfolio' }));
+			throw new Error('expected pageLoad to throw a redirect');
+		} catch (e) {
+			// SvelteKit's Redirect shape: { status, location }
+			const r = e as { status?: number; location?: string };
+			expect(r.status).toBe(308);
+			expect(r.location).toBe('/projects');
+		}
+	});
 });
 
 describe('root +layout.server load', () => {

@@ -151,6 +151,15 @@ export interface PageFrontmatter {
      * vocabulary; "page" and "post" are the only conventional values.
      */
     layout?: string;
+
+    /**
+     * Old URLs that should redirect to this page. Each entry is a space-relative
+     * URL; the loader merges these into `Space.redirects` so route handlers can
+     * issue 308s. Authors who move a page list its previous URL here; the entry
+     * is also created automatically when the loader detects a body-hash-stable
+     * rename (see auto-rename detection in the cache layer).
+     */
+    redirect_from?: string[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

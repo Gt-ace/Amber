@@ -14,7 +14,13 @@
 import { Database } from 'bun:sqlite';
 import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
-import { readManifest, resolveNav, normalizeUrl } from './load.ts';
+import { createHash } from 'node:crypto';
+import {
+	readManifest,
+	resolveNav,
+	normalizeUrl,
+	mergeFrontmatterRedirects
+} from './load.ts';
 import { logger } from '$lib/server/logger';
 import {
 	RESERVED_TOP_LEVEL,
@@ -27,7 +33,19 @@ import {
 
 const log = logger.child({ subsystem: 'cache' });
 
-const SCHEMA_VERSION = '2';
+const SCHEMA_VERSION = '3';
+
+/**
+ * Hash of a page body alone (sha256, hex). Mirrors `bodyHash` in
+ * `$lib/render/cache` — duplicated here to avoid a circular import chain
+ * (`render/cache` imports `space/space` which imports `space/cache`). Both
+ * call sites must produce the same digest for the same input; if one drifts,
+ * rename detection breaks silently. Same algorithm, same encoding, no
+ * normalization beyond what `buildPage` already does to the file body.
+ */
+function bodyHash(body: string): string {
+	return createHash('sha256').update(body).digest('hex');
+}
 
 export class SpaceCache {
 	private db: Database;
@@ -115,6 +133,22 @@ export class SpaceCache {
 				html TEXT NOT NULL,
 				created_at INTEGER NOT NULL
 			);
+			-- Snapshot of the previous load's page identities, used to detect
+			-- body-hash-stable renames between loads. Rewritten wholesale on
+			-- every cold-load writeAll.
+			CREATE TABLE IF NOT EXISTS page_snapshot (
+				rel TEXT PRIMARY KEY,
+				url TEXT NOT NULL,
+				body_hash TEXT NOT NULL
+			);
+			-- Persisted auto-rename redirects. The cache is the persistence
+			-- layer for these because the filesystem alone can't reconstruct
+			-- "what was this URL last time?". Accumulates across loads; entries
+			-- are evicted only when a real page reclaims the source URL.
+			CREATE TABLE IF NOT EXISTS auto_redirects (
+				from_url TEXT PRIMARY KEY,
+				to_url TEXT NOT NULL
+			);
 		`);
 		const stored = this.getMeta('schema_version');
 		if (stored == null) {
@@ -123,7 +157,7 @@ export class SpaceCache {
 			// Silently wipe — the cache is regenerable, so an old schema is
 			// not a data-loss event.
 			this.db.exec(
-				'DELETE FROM meta; DELETE FROM pages; DELETE FROM warnings; DELETE FROM renders'
+				'DELETE FROM meta; DELETE FROM pages; DELETE FROM warnings; DELETE FROM renders; DELETE FROM page_snapshot; DELETE FROM auto_redirects'
 			);
 			this.setMeta('schema_version', SCHEMA_VERSION);
 		}
@@ -206,6 +240,24 @@ export class SpaceCache {
 				redirects.set(normalizeUrl(from), normalizeUrl(to));
 			}
 		}
+		// Order must mirror the cold path in `Space.load`: manifest +
+		// frontmatter are explicit author intent and beat the body-hash
+		// inference, so auto-renames only fill the gaps.
+		//
+		//   Effective precedence: frontmatter > manifest > auto-rename
+		//
+		// Skip an auto-rename row when (a) a real page now lives at the
+		// source URL — the live page always wins — or (b) the source is
+		// already claimed by manifest `[redirects]`. Frontmatter merges
+		// after, so frontmatter still overrides auto-rename either way.
+		for (const row of this.db
+			.prepare('SELECT from_url, to_url FROM auto_redirects')
+			.all() as Array<{ from_url: string; to_url: string }>) {
+			if (pages.has(row.from_url)) continue;
+			if (redirects.has(row.from_url)) continue;
+			redirects.set(row.from_url, row.to_url);
+		}
+		mergeFrontmatterRedirects(pages, redirects, 'manifest+auto-rename');
 
 		const cachedWarnings = this.db
 			.prepare('SELECT code, source, message FROM warnings')
@@ -233,12 +285,37 @@ export class SpaceCache {
 	 * Replace cache contents with the current Space state. Used after a cold
 	 * load fell through to `load()`, and also as the "rewrite-all" path when
 	 * we don't know what changed (cheap because Spaces are small).
+	 *
+	 * Side effect: detects body-hash-stable renames against the previous
+	 * snapshot (see `detectAutoRenames` for the heuristic) and persists them
+	 * to `auto_redirects`. Returns the freshly inserted pairs (the union of
+	 * pre-existing rows and just-detected renames, minus any whose source URL
+	 * is reclaimed by a current page) so the caller can merge them into the
+	 * live `Space.redirects` without re-querying the database.
+	 *
+	 * Body hashes are already computed for every Page (via `bodyHash` on
+	 * `page.body`) — filesystem is truth, body hashes are already cheap, no
+	 * new author burden, no git dependency. Frontmatter changes don't break
+	 * the heuristic because the hash is body-only.
 	 */
-	writeAll(space: Space): void {
+	writeAll(space: Space): Map<string, string> {
+		const newAutoRedirects = new Map<string, string>();
 		const tx = this.db.transaction(() => {
-			this.db.exec('DELETE FROM pages; DELETE FROM warnings');
+			// Snapshot-based rename detection runs *before* we overwrite the
+			// pages table. The cache is the persistence layer for auto-rename
+			// redirects: filesystem alone can't tell us "this URL existed
+			// last time and points at the same body that lives elsewhere now."
+			const prior = this.db
+				.prepare('SELECT rel, url, body_hash FROM page_snapshot')
+				.all() as Array<{ rel: string; url: string; body_hash: string }>;
+			const detected = detectAutoRenames(prior, space.pages);
+
+			this.db.exec('DELETE FROM pages; DELETE FROM warnings; DELETE FROM page_snapshot');
 			const insertPage = this.db.prepare(
 				'INSERT INTO pages(rel, url, frontmatter, extra, body, mtime, content_hash) VALUES (?, ?, ?, ?, ?, ?, ?)'
+			);
+			const insertSnapshot = this.db.prepare(
+				'INSERT INTO page_snapshot(rel, url, body_hash) VALUES (?, ?, ?)'
 			);
 			for (const page of space.pages.values()) {
 				insertPage.run(
@@ -250,6 +327,7 @@ export class SpaceCache {
 					page.mtime,
 					page.contentHash
 				);
+				insertSnapshot.run(page.relativePath, page.url, bodyHash(page.body));
 			}
 			const insertWarning = this.db.prepare(
 				'INSERT INTO warnings(code, source, message) VALUES (?, ?, ?)'
@@ -262,6 +340,32 @@ export class SpaceCache {
 					insertWarning.run(w.code, w.source ?? null, w.message);
 				}
 			}
+
+			// Upsert detected renames into auto_redirects.
+			const upsertAuto = this.db.prepare(
+				'INSERT INTO auto_redirects(from_url, to_url) VALUES (?, ?) ' +
+					'ON CONFLICT(from_url) DO UPDATE SET to_url = excluded.to_url'
+			);
+			for (const [from, to] of detected) {
+				upsertAuto.run(from, to);
+			}
+			// Evict any auto_redirects whose source URL is now claimed by a
+			// real page (the live page wins). Run after the upsert so a brand-
+			// new rename pointing at a URL that happens to also be a live page
+			// is treated consistently with old rows.
+			const deleteClaimed = this.db.prepare('DELETE FROM auto_redirects WHERE from_url = ?');
+			for (const url of space.pages.keys()) {
+				deleteClaimed.run(url);
+			}
+
+			// Snapshot the surviving auto_redirects so the caller can merge
+			// them into the live Space.redirects map without a second query.
+			for (const row of this.db
+				.prepare('SELECT from_url, to_url FROM auto_redirects')
+				.all() as Array<{ from_url: string; to_url: string }>) {
+				newAutoRedirects.set(row.from_url, row.to_url);
+			}
+
 			const manifestMtime = statSync(join(space.root, 'amber.toml')).mtimeMs;
 			this.setMeta('manifest_mtime', String(manifestMtime));
 		});
@@ -272,6 +376,7 @@ export class SpaceCache {
 			// the in-memory index is still the truth.
 			log.warn({ err }, 'cache write failed');
 		}
+		return newAutoRedirects;
 	}
 
 	/** Upsert a single page row. Used by `apply()` for add/change events. */
@@ -485,4 +590,75 @@ function relativePosix(root: string, full: string): string {
 			? full.slice(root.length + 1)
 			: full;
 	return rel.split(/[\\/]/).join('/');
+}
+
+/**
+ * Compare a previous load's snapshot to the current page set. A previous page
+ * (rel A, url U_A, body_hash H) that no longer exists, paired with a current
+ * page sharing body_hash H but at a different rel/url, is treated as a rename:
+ * `U_A → current_url` becomes an auto-redirect.
+ *
+ * Decision rationale (documented on the inference site): body hashes are
+ * already computed for the render cache, the filesystem is truth, this adds
+ * no author burden and has no git dependency.
+ *
+ * Edge cases:
+ *   - Multiple current pages share the body hash with a disappeared one →
+ *     ambiguous. Skip the redirect for that hash and log the candidates.
+ *   - The previous URL is still live (a real page exists at U_A) → not a
+ *     rename, just an unrelated edit elsewhere; skipped.
+ *   - The matched current page's URL is the same as the previous URL → not a
+ *     rename; skipped.
+ */
+function detectAutoRenames(
+	prior: Array<{ rel: string; url: string; body_hash: string }>,
+	current: Map<string, Page>
+): Map<string, string> {
+	const out = new Map<string, string>();
+
+	// Index current pages by body_hash and by rel so we can cheaply ask
+	// "what bodies match?" and "is this rel still live?".
+	const currentByRel = new Map<string, Page>();
+	const currentByHash = new Map<string, Page[]>();
+	for (const page of current.values()) {
+		currentByRel.set(page.relativePath, page);
+		const h = bodyHash(page.body);
+		const list = currentByHash.get(h);
+		if (list) list.push(page);
+		else currentByHash.set(h, [page]);
+	}
+
+	for (const snap of prior) {
+		// If the previous rel is still live, the page didn't disappear; not a
+		// rename.
+		if (currentByRel.has(snap.rel)) continue;
+
+		// If a real page still occupies the previous URL, we don't want to
+		// shadow it with a redirect.
+		if (current.has(snap.url)) continue;
+
+		const candidates = currentByHash.get(snap.body_hash);
+		if (!candidates || candidates.length === 0) continue;
+
+		if (candidates.length > 1) {
+			log.info(
+				{
+					from_url: snap.url,
+					body_hash: snap.body_hash,
+					candidates: candidates.map((p) => p.relativePath)
+				},
+				`auto-rename ambiguous: previous ${snap.rel} (${snap.url}) matches multiple current pages by body hash; skipping`
+			);
+			continue;
+		}
+
+		const target = candidates[0];
+		// A current page with the same rel as the snapshot can't reach here
+		// (filtered above), but the rel may have been reused after a
+		// content-stable rename — guard against pointing a URL at itself.
+		if (target.url === snap.url) continue;
+		out.set(snap.url, target.url);
+	}
+
+	return out;
 }

@@ -322,7 +322,7 @@ describe('Space.load() cache resilience', () => {
 			.prepare("SELECT value FROM meta WHERE key = 'schema_version'")
 			.get() as { value: string } | null;
 		verify.close();
-		expect(row?.value).toBe('2');
+		expect(row?.value).toBe('3');
 	});
 
 	test('corrupt cache.db is detected, wiped, and rebuilt', () => {
@@ -350,6 +350,6 @@ describe('Space.load() cache resilience', () => {
 			.prepare("SELECT value FROM meta WHERE key = 'schema_version'")
 			.get() as { value: string } | null;
 		verify.close();
-		expect(row?.value).toBe('2');
+		expect(row?.value).toBe('3');
 	});
 });

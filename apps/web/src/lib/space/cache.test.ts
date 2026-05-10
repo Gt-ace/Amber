@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { fileURLToPath } from 'node:url';
-import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+	chmodSync,
+	existsSync,
+	mkdtempSync,
+	renameSync,
+	rmSync,
+	unlinkSync,
+	writeFileSync
+} from 'node:fs';
 import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -268,5 +276,130 @@ describe('SpaceCache.vacuum', () => {
 		expect(cache.vacuum(new Set())).toBe(0);
 		expect(cache.vacuum(new Set(['anything']))).toBe(0);
 		cache.close();
+	});
+});
+
+/**
+ * Auto-rename detection. Each test starts from a minimal hand-built space so
+ * the fixture's existing pages don't perturb the body-hash matching.
+ */
+describe('SpaceCache auto-rename detection', () => {
+	let dir: string;
+
+	beforeEach(() => {
+		dir = mkdtempSync(join(tmpdir(), 'amber-rename-'));
+		writeFileSync(join(dir, 'amber.toml'), `amber_version = "0.1"\n`);
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	test('renaming a file produces a redirect from the old URL to the new one', () => {
+		// First load with `old.md`.
+		writeFileSync(join(dir, 'old.md'), '---\ntitle: Same\n---\n\nidentical body content here.');
+		const first = Space.load(dir);
+		expect(first.space.pages.has('/old')).toBe(true);
+		expect(first.space.redirects.has('/old')).toBe(false);
+		first.space.close();
+
+		// Rename on disk: same body, different filename → different URL.
+		renameSync(join(dir, 'old.md'), join(dir, 'new.md'));
+
+		// Cold load #2 — cache hydration must fall through (fsFiles set
+		// changed: `old.md` gone, `new.md` appeared), then writeAll detects
+		// the rename via body hash.
+		const second = Space.load(dir);
+		expect(second.space.pages.has('/new')).toBe(true);
+		expect(second.space.pages.has('/old')).toBe(false);
+		expect(second.space.redirects.get('/old')).toBe('/new');
+		second.space.close();
+
+		// And the auto-rename persists across a third load (exercising the
+		// hot/hydrate path which reads `auto_redirects`).
+		const third = Space.load(dir);
+		expect(third.space.redirects.get('/old')).toBe('/new');
+		third.space.close();
+	});
+
+	test('ambiguous rename (two current pages share the body) produces no redirect', () => {
+		writeFileSync(join(dir, 'orig.md'), '---\ntitle: A\n---\n\nthe shared body.');
+		const first = Space.load(dir);
+		first.space.close();
+
+		// Two new files with identical body to the deleted one. The heuristic
+		// can't pick a winner; it must skip rather than guess.
+		unlinkSync(join(dir, 'orig.md'));
+		writeFileSync(join(dir, 'a.md'), '---\ntitle: A\n---\n\nthe shared body.');
+		writeFileSync(join(dir, 'b.md'), '---\ntitle: B\n---\n\nthe shared body.');
+
+		const second = Space.load(dir);
+		expect(second.space.redirects.has('/orig')).toBe(false);
+		second.space.close();
+	});
+
+	test('a real page reclaiming a redirect source URL evicts the redirect', () => {
+		// Set up: rename from.md → to.md, producing /from → /to redirect.
+		writeFileSync(join(dir, 'from.md'), '---\n---\n\nbody one.');
+		Space.load(dir).space.close();
+		renameSync(join(dir, 'from.md'), join(dir, 'to.md'));
+		const second = Space.load(dir);
+		expect(second.space.redirects.get('/from')).toBe('/to');
+		second.space.close();
+
+		// Now create a real page at /from. The redirect should be evicted on
+		// the next load — the live page wins.
+		writeFileSync(join(dir, 'from.md'), '---\n---\n\nbrand new body.');
+		const third = Space.load(dir);
+		expect(third.space.pages.has('/from')).toBe(true);
+		expect(third.space.redirects.has('/from')).toBe(false);
+		third.space.close();
+	});
+
+	test('manifest [redirects] beats persisted auto-rename (cold and hot paths)', () => {
+		// Build up a stale auto-rename: rename old.md → kept.md to populate
+		// auto_redirects with `/old → /kept`.
+		writeFileSync(join(dir, 'old.md'), '---\n---\n\nshared body content');
+		Space.load(dir).space.close();
+		renameSync(join(dir, 'old.md'), join(dir, 'kept.md'));
+		const second = Space.load(dir);
+		expect(second.space.redirects.get('/old')).toBe('/kept');
+		second.space.close();
+
+		// Now declare a manifest redirect for the same source URL pointing
+		// elsewhere. Cold path: amber.toml mtime changed → fall-through to
+		// fresh load + writeAll.
+		writeFileSync(
+			join(dir, 'amber.toml'),
+			`amber_version = "0.1"\n[redirects]\n"/old" = "/manifest-target"\n`
+		);
+		const third = Space.load(dir);
+		expect(third.space.redirects.get('/old')).toBe('/manifest-target');
+		third.space.close();
+
+		// Fourth load: nothing changed on disk → hot/hydrate path exercises
+		// the same precedence rule.
+		const fourth = Space.load(dir);
+		expect(fourth.space.redirects.get('/old')).toBe('/manifest-target');
+		fourth.space.close();
+	});
+
+	test('frontmatter redirect_from beats inferred auto-rename', () => {
+		// Rename triggers an auto-redirect, but a separate page also lists
+		// the same source URL in `redirect_from`. The explicit author intent
+		// wins because frontmatter merges *after* auto-rename in Space.load.
+		writeFileSync(join(dir, 'old.md'), '---\n---\n\nshared body content');
+		Space.load(dir).space.close();
+
+		renameSync(join(dir, 'old.md'), join(dir, 'auto-target.md'));
+		writeFileSync(
+			join(dir, 'explicit.md'),
+			'---\nredirect_from:\n  - /old\n---\n\ndifferent body'
+		);
+		const result = Space.load(dir);
+		// The redirect points at the page that explicitly claimed it, not
+		// the body-hash-matched one.
+		expect(result.space.redirects.get('/old')).toBe('/explicit');
+		result.space.close();
 	});
 });
