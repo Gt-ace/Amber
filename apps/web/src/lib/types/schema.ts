@@ -133,10 +133,14 @@ export interface PageFrontmatter {
     draft?: boolean;
 
     /**
-     * Authoring date. ISO 8601 string on disk; parsed to Date in memory.
-     * Used for sorting, RSS, displayed metadata.
+     * Authoring date. ISO 8601 string both on disk and in memory.
+     * YAML-native date values (e.g. `date: 2025-03-14`) are coerced to ISO
+     * strings during loading; invalid values are dropped with a
+     * `frontmatter_parse_error` warning. Used for sorting, RSS, displayed
+     * metadata.
      */
     date?: string;
+    /** Last-updated date. Same convention as `date`. */
     updated?: string;
 
     author?: string;

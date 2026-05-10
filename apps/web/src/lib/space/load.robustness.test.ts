@@ -99,10 +99,9 @@ describe('messy-space', () => {
 		expect(page.frontmatter.description).toBe(
 			'This is a multiline\nblock scalar description\nspanning three lines.\n'
 		);
-		// ISO date is preserved (smol/yaml's choice — we don't coerce it). The
-		// loader's contract on `date` is "whatever YAML produced" — string or
-		// Date, depending on the parser. Just assert it's defined and non-empty.
-		expect(page.frontmatter.date).toBeDefined();
+		// `date` is normalized to an ISO 8601 string regardless of how YAML
+		// surfaced it (string or Date). See coerceDate() in load.ts.
+		expect(page.frontmatter.date).toBe('2025-03-14');
 		// Nested object is not a known frontmatter key → goes into extra.
 		expect(page.extra.meta).toEqual({
 			author_handle: '@mira',

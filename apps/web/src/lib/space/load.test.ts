@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
-import { load, LoadError } from './load.ts';
+import { load, LoadError, splitFrontmatter, coerceDate } from './load.ts';
 
 const FIXTURE = fileURLToPath(new URL('../../../fixtures/example-space/', import.meta.url));
 const INVALID = (name: string): string =>
@@ -181,5 +181,129 @@ describe('load() — LoadError cases', () => {
 			expect(e.source).toBe('folder/index.md');
 			expect(e.message).toMatch(/slug.*index\.md.*incoherent/);
 		}
+	});
+});
+
+describe('coerceDate()', () => {
+	test('valid ISO date string passes through (trimmed)', () => {
+		expect(coerceDate('2026-05-10')).toEqual({ value: '2026-05-10' });
+		expect(coerceDate('  2026-05-10  ')).toEqual({ value: '2026-05-10' });
+		expect(coerceDate('2026-05-10T12:34:56Z')).toEqual({ value: '2026-05-10T12:34:56Z' });
+	});
+
+	test('YAML-native Date object becomes an ISO string', () => {
+		const d = new Date('2026-05-10T00:00:00Z');
+		const r = coerceDate(d);
+		expect(r).toEqual({ value: '2026-05-10T00:00:00.000Z' });
+	});
+
+	test('Invalid Date object is rejected', () => {
+		const d = new Date('not-a-date');
+		const r = coerceDate(d);
+		expect('error' in r).toBe(true);
+	});
+
+	test('invalid string date is rejected', () => {
+		const r = coerceDate('not-a-date');
+		expect('error' in r).toBe(true);
+	});
+
+	test('empty string is rejected', () => {
+		const r = coerceDate('');
+		expect('error' in r).toBe(true);
+		const r2 = coerceDate('   ');
+		expect('error' in r2).toBe(true);
+	});
+
+	test('integer is rejected', () => {
+		const r = coerceDate(12345);
+		expect('error' in r).toBe(true);
+	});
+
+	test('boolean and arrays are rejected', () => {
+		expect('error' in coerceDate(true)).toBe(true);
+		expect('error' in coerceDate(['2026-05-10'])).toBe(true);
+		expect('error' in coerceDate({})).toBe(true);
+	});
+});
+
+describe('splitFrontmatter() — `date`/`updated` validation', () => {
+	test('valid ISO date string is preserved on the typed frontmatter', () => {
+		const { frontmatter, fieldErrors } = splitFrontmatter(
+			'---\ndate: "2026-05-10"\n---\nbody\n'
+		);
+		expect(frontmatter.date).toBe('2026-05-10');
+		expect(fieldErrors).toEqual([]);
+	});
+
+	test('YAML-native bare date is normalized to a string (no warning)', () => {
+		// The default `yaml` parser returns this as a string; this test pins
+		// down that behavior. If the parser ever switches to returning a Date,
+		// `coerceDate` still produces a string and the test still passes.
+		const { frontmatter, fieldErrors } = splitFrontmatter(
+			'---\ndate: 2026-05-10\n---\nbody\n'
+		);
+		expect(typeof frontmatter.date).toBe('string');
+		expect(frontmatter.date).toMatch(/^2026-05-10/);
+		expect(fieldErrors).toEqual([]);
+	});
+
+	test('missing date is undefined and produces no warning', () => {
+		const { frontmatter, fieldErrors } = splitFrontmatter('---\ntitle: hi\n---\nbody\n');
+		expect(frontmatter.date).toBeUndefined();
+		expect(fieldErrors).toEqual([]);
+	});
+
+	test('invalid string date is dropped and reported in fieldErrors', () => {
+		const { frontmatter, fieldErrors } = splitFrontmatter(
+			'---\ndate: not-a-date\n---\nbody\n'
+		);
+		expect(frontmatter.date).toBeUndefined();
+		expect(fieldErrors).toHaveLength(1);
+		expect(fieldErrors[0]).toMatch(/`date`/);
+	});
+
+	test('empty string date is dropped and reported', () => {
+		const { frontmatter, fieldErrors } = splitFrontmatter(
+			'---\ndate: ""\n---\nbody\n'
+		);
+		expect(frontmatter.date).toBeUndefined();
+		expect(fieldErrors).toHaveLength(1);
+		expect(fieldErrors[0]).toMatch(/empty/);
+	});
+
+	test('integer date is dropped and reported', () => {
+		const { frontmatter, fieldErrors } = splitFrontmatter(
+			'---\ndate: 12345\n---\nbody\n'
+		);
+		expect(frontmatter.date).toBeUndefined();
+		expect(fieldErrors).toHaveLength(1);
+		expect(fieldErrors[0]).toMatch(/`date`/);
+	});
+
+	test('invalid `updated` is treated the same as invalid `date`', () => {
+		const { frontmatter, fieldErrors } = splitFrontmatter(
+			'---\nupdated: not-a-date\n---\nbody\n'
+		);
+		expect(frontmatter.updated).toBeUndefined();
+		expect(fieldErrors).toHaveLength(1);
+		expect(fieldErrors[0]).toMatch(/`updated`/);
+	});
+
+	test('an invalid date does not break other frontmatter fields', () => {
+		const { frontmatter, fieldErrors } = splitFrontmatter(
+			'---\ntitle: Hello\ndate: not-a-date\ntags: [a, b]\n---\nbody\n'
+		);
+		expect(frontmatter.title).toBe('Hello');
+		expect(frontmatter.tags).toEqual(['a', 'b']);
+		expect(frontmatter.date).toBeUndefined();
+		expect(fieldErrors).toHaveLength(1);
+	});
+
+	test('both `date` and `updated` invalid → two field errors', () => {
+		const { fieldErrors } = splitFrontmatter(
+			'---\ndate: 12345\nupdated: not-a-date\n---\nbody\n'
+		);
+		expect(fieldErrors).toHaveLength(2);
 	});
 });

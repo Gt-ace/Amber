@@ -61,6 +61,42 @@ const FRONTMATTER_KEYS: ReadonlySet<keyof PageFrontmatter> = new Set([
 	'layout'
 ]);
 
+/** Frontmatter keys whose values are interpreted as ISO 8601 dates. */
+const DATE_FIELDS: readonly (keyof PageFrontmatter)[] = ['date', 'updated'];
+
+/**
+ * Coerce a frontmatter date value to an ISO 8601 string.
+ *
+ * Convention: `date` (and `updated`) are ISO 8601 strings everywhere. Authors
+ * may write either `date: 2026-05-10` (YAML-native, parsed by some YAML
+ * configurations as a Date object) or `date: "2026-05-10"` (quoted string).
+ * Both are accepted; the loader normalizes to a string in memory so consumers
+ * (themes, sort keys, RSS) see a single shape.
+ *
+ * Returns `{ value: string }` for accepted inputs, `{ error: string }` for
+ * invalid ones. The caller surfaces invalid values as a
+ * `frontmatter_parse_error` warning and drops the field from the frontmatter
+ * (treats it as undefined). Missing values never reach this function.
+ */
+export function coerceDate(input: unknown): { value: string } | { error: string } {
+	if (input instanceof Date) {
+		const t = input.getTime();
+		if (Number.isNaN(t)) return { error: 'date is an Invalid Date' };
+		return { value: input.toISOString() };
+	}
+	if (typeof input === 'string') {
+		const trimmed = input.trim();
+		if (trimmed === '') return { error: 'date is an empty string' };
+		if (!Number.isFinite(Date.parse(trimmed))) {
+			return { error: `date is not a valid ISO 8601 string: ${JSON.stringify(input)}` };
+		}
+		return { value: trimmed };
+	}
+	return {
+		error: `date must be an ISO 8601 string or YAML date, got ${typeof input}: ${JSON.stringify(input)}`
+	};
+}
+
 export function load(spacePath: string): { space: Space; warnings: LoadWarning[] } {
 	const root = resolve(spacePath);
 	const warnings: LoadWarning[] = [];
@@ -174,8 +210,10 @@ function loadPage(
 /**
  * Read and parse a single markdown file into a `Page`. Pure-ish (touches the
  * filesystem to read the file and stat it) but stateless — no maps, no
- * cross-page concerns. The optional warning is `frontmatter_parse_error` only;
- * `duplicate_url` is a cross-page concern and lives at the call site.
+ * cross-page concerns. The optional warning is `frontmatter_parse_error` only
+ * (block-level parse failure or per-field validation failures combined into
+ * one message); `duplicate_url` is a cross-page concern and lives at the
+ * call site.
  */
 export function buildPage(
 	root: string,
@@ -189,7 +227,7 @@ export function buildPage(
 	const stat = statSync(filePath);
 	const contentHash = createHash('sha256').update(raw).digest('hex');
 
-	const { frontmatter, extra, body, parseError } = splitFrontmatter(raw);
+	const { frontmatter, extra, body, parseError, fieldErrors } = splitFrontmatter(raw);
 
 	const url = deriveUrl(rel, frontmatter.slug);
 	const page: Page = {
@@ -203,12 +241,19 @@ export function buildPage(
 		contentHash
 	};
 
-	if (parseError) {
+	// Combine block-level parse error and per-field validation errors into a
+	// single warning so callers (Space.apply, the warning index) can keep
+	// their "one warning per page" assumption. Each problem appears as its
+	// own sentence in the message.
+	const messages: string[] = [];
+	if (parseError) messages.push(`Frontmatter failed to parse: ${parseError}`);
+	for (const fieldError of fieldErrors) messages.push(fieldError);
+	if (messages.length > 0) {
 		return {
 			page,
 			warning: {
 				code: 'frontmatter_parse_error',
-				message: `Frontmatter failed to parse: ${parseError}`,
+				message: messages.join(' '),
 				source: rel
 			}
 		};
@@ -221,13 +266,20 @@ export function splitFrontmatter(raw: string): {
 	extra: Record<string, unknown>;
 	body: string;
 	parseError?: string;
+	/** Per-field validation messages (e.g. invalid `date`). One entry per failed field. */
+	fieldErrors: string[];
 } {
 	// A leading `---` line opens the YAML block; a `---` (or `...`) line closes it.
 	const match = /^---\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)\r?\n?/.exec(raw);
 	if (!match) {
 		// No frontmatter is fine — return the raw text as the body, with line
 		// endings normalized so cached HTML is deterministic across platforms.
-		return { frontmatter: {}, extra: {}, body: raw.replace(/\r\n/g, '\n') };
+		return {
+			frontmatter: {},
+			extra: {},
+			body: raw.replace(/\r\n/g, '\n'),
+			fieldErrors: []
+		};
 	}
 	// Normalize CRLF→LF in both the YAML block and the body. Most YAML parsers
 	// tolerate CRLF, but normalizing here keeps downstream hashing/rendering
@@ -242,30 +294,45 @@ export function splitFrontmatter(raw: string): {
 			frontmatter: {},
 			extra: {},
 			body,
-			parseError: err instanceof Error ? err.message : String(err)
+			parseError: err instanceof Error ? err.message : String(err),
+			fieldErrors: []
 		};
 	}
 	if (parsed == null) {
-		return { frontmatter: {}, extra: {}, body };
+		return { frontmatter: {}, extra: {}, body, fieldErrors: [] };
 	}
 	if (typeof parsed !== 'object' || Array.isArray(parsed)) {
 		return {
 			frontmatter: {},
 			extra: {},
 			body,
-			parseError: 'frontmatter must be a YAML mapping'
+			parseError: 'frontmatter must be a YAML mapping',
+			fieldErrors: []
 		};
 	}
 	const frontmatter: PageFrontmatter = {};
 	const extra: Record<string, unknown> = {};
+	const fieldErrors: string[] = [];
 	for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
 		if (FRONTMATTER_KEYS.has(k as keyof PageFrontmatter)) {
-			(frontmatter as Record<string, unknown>)[k] = v;
+			// Date fields get coerced to ISO 8601 strings. Invalid values are
+			// dropped (treated as undefined) and surfaced as warnings; the rest
+			// of the page still loads.
+			if (DATE_FIELDS.includes(k as keyof PageFrontmatter) && v !== undefined && v !== null) {
+				const result = coerceDate(v);
+				if ('error' in result) {
+					fieldErrors.push(`Invalid \`${k}\` frontmatter: ${result.error}`);
+					continue;
+				}
+				(frontmatter as Record<string, unknown>)[k] = result.value;
+			} else {
+				(frontmatter as Record<string, unknown>)[k] = v;
+			}
 		} else {
 			extra[k] = v;
 		}
 	}
-	return { frontmatter, extra, body };
+	return { frontmatter, extra, body, fieldErrors };
 }
 
 export function deriveUrl(relativePath: string, slug: string | undefined): string {
