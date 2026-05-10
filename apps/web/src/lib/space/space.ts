@@ -33,8 +33,8 @@ import { logger } from '$lib/server/logger';
 import type {
 	AmberManifest,
 	LoadWarning,
+	NavEntry,
 	Page,
-	ResolvedNavEntry,
 	Space as SpaceData
 } from '$lib/types/schema';
 
@@ -50,7 +50,7 @@ export class Space implements SpaceData {
 	readonly root: string;
 	manifest: AmberManifest;
 	readonly pages: Map<string, Page>;
-	nav: ResolvedNavEntry[];
+	nav: NavEntry[];
 	redirects: Map<string, string>;
 	readonly warnings: LoadWarning[];
 
@@ -361,9 +361,10 @@ export class Space implements SpaceData {
 	}
 
 	private reconcileNav(): void {
-		const navWarnings: LoadWarning[] = [];
-		this.nav = this.manifest.nav ? resolveNav(this.manifest.nav, this.pagesByRel, navWarnings) : [];
-		this.navWarnings = navWarnings;
+		// v0.2 nav resolution is pure validation — no warnings emitted, no
+		// page index consulted. Malformed entries are logged inside resolveNav.
+		this.nav = this.manifest.nav ? resolveNav(this.manifest.nav) : [];
+		this.navWarnings = [];
 	}
 
 	private recomputeWarnings(): void {

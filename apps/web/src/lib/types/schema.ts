@@ -27,8 +27,11 @@ export interface AmberManifest {
     site?: SiteConfig;
 
     /**
-     * Ordered nav. Entries pointing at missing files are dropped with a warning
-     * at load time; the manifest on disk is never silently rewritten.
+     * Ordered nav. A flat list of `{ label, href }` links. `href` is whatever
+     * the author wrote — internal path or external URL — the loader does not
+     * resolve it against the page index. Malformed entries (missing required
+     * fields, wrong types) are skipped at load time with a structured log;
+     * the manifest on disk is never rewritten.
      */
     nav?: NavEntry[];
 
@@ -67,30 +70,15 @@ export interface SiteConfig {
 }
 
 /**
- * A nav entry is either a leaf (points at a page) or a group (has children).
- * We use a discriminated union rather than optional fields so the loader
- * can't accidentally treat a malformed entry as both.
+ * A nav entry is a `{ label, href }` link. Both fields are required strings.
+ * `href` is opaque to the loader: an internal path like `/about` or an
+ * external URL like `https://example.com` are equally valid — themes render
+ * the link verbatim. Extra keys on a `[[nav]]` entry are ignored, leaving
+ * room for forward-compatible additions without a schema bump.
  */
-export type NavEntry = NavLeaf | NavGroup | NavExternal;
-
-export interface NavLeaf {
-    kind: "page";
-    /** Space-relative path to the markdown file, e.g. "about.md" or "posts/hello/index.md". */
-    path: string;
-    /** Display label. If absent, falls back to the page's frontmatter `title`. */
-    label?: string;
-}
-
-export interface NavGroup {
-    kind: "group";
+export interface NavEntry {
     label: string;
-    children: NavEntry[];
-}
-
-export interface NavExternal {
-    kind: "external";
-    label: string;
-    url: string;
+    href: string;
 }
 
 export interface ThemeConfig {
@@ -183,11 +171,12 @@ export interface Space {
     pages: Map<string, Page>;
 
     /**
-     * Reconciled nav. Same shape as manifest.nav but with missing entries
-     * dropped and unlisted files appended (or hidden — see loader policy).
-     * Leaves carry a resolved URL so themes don't re-derive it.
+     * Validated nav. Same shape as `manifest.nav`: malformed entries are
+     * dropped at load time (with a structured log), valid entries pass
+     * through unchanged. No resolution happens — `href` is whatever the
+     * author wrote.
      */
-    nav: ResolvedNavEntry[];
+    nav: NavEntry[];
 
     /** Compiled redirects map. Keys and values normalized (leading slash, no trailing). */
     redirects: Map<string, string>;
@@ -225,13 +214,21 @@ export interface Page {
     contentHash: string;
 }
 
-export type ResolvedNavEntry =
-    | { kind: "page"; label: string; url: string; page: Page }
-    | { kind: "group"; label: string; children: ResolvedNavEntry[] }
-    | { kind: "external"; label: string; url: string };
-
 export interface LoadWarning {
-    /** Machine-readable code so we can suppress specific classes in tests. */
+    /**
+     * Machine-readable code so we can suppress specific classes in tests.
+     *
+     * Reserved-but-unfired in v0.2 (declared so that landing the relevant
+     * feature later doesn't require a schema bump, mirroring `redirect_loop`):
+     *   - `manifest_nav_missing_target`: the v0.1 nav schema validated nav
+     *     entries against the page index. The v0.2 schema is `{ label, href }`
+     *     — `href` is opaque, so this code has no trigger today.
+     *   - `reserved_name_in_content`: same story; v0.1 manifests could
+     *     reference into reserved space via `path = "_drafts/..."`. The v0.2
+     *     `href` field carries no path semantics for the loader.
+     *   - `redirect_loop`: redirects aren't resolved yet (see CLAUDE.md →
+     *     "LoadWarning codes").
+     */
     code:
     | "manifest_nav_missing_target"
     | "frontmatter_parse_error"

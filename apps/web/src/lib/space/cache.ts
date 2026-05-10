@@ -206,7 +206,6 @@ export class SpaceCache {
 		if (rows.length !== fsFiles.size) return null;
 
 		const pages = new Map<string, Page>();
-		const pagesByRel = new Map<string, Page>();
 		for (const row of rows) {
 			const fsEntry = fsFiles.get(row.rel);
 			if (!fsEntry) return null;
@@ -217,7 +216,6 @@ export class SpaceCache {
 			// cache rather than silently shadowing.
 			if (pages.has(page.url)) return null;
 			pages.set(page.url, page);
-			pagesByRel.set(page.relativePath, page);
 		}
 
 		// Manifest: re-read from disk (cheap, and avoids round-tripping TOML
@@ -229,11 +227,11 @@ export class SpaceCache {
 			return null;
 		}
 
-		// Re-resolve nav and redirects from the parsed manifest + cached pages.
-		// Nav warnings are recomputed live; only per-page warnings come out of
-		// the cache.
-		const navWarnings: LoadWarning[] = [];
-		const nav = manifest.nav ? resolveNav(manifest.nav, pagesByRel, navWarnings) : [];
+		// Re-validate nav from the parsed manifest. v0.2 nav is `{ label, href }` —
+		// no resolution against the page index, no warnings emitted; malformed
+		// entries are logged inside resolveNav. Only per-page warnings come out
+		// of the cache.
+		const nav = manifest.nav ? resolveNav(manifest.nav) : [];
 		const redirects = new Map<string, string>();
 		if (manifest.redirects) {
 			for (const [from, to] of Object.entries(manifest.redirects)) {
@@ -268,7 +266,7 @@ export class SpaceCache {
 			message: r.message
 		}));
 
-		const warnings = [...pageWarnings, ...navWarnings];
+		const warnings = pageWarnings;
 
 		const space: Space = {
 			root: spaceRoot,

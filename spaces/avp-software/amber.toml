@@ -5,5 +5,5 @@ title = "Amber"
 description = "A self-hostable personal canvas."
 
 [[nav]]
-path = "index.md"
 label = "Home"
+href = "/"

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
-import { load, LoadError, splitFrontmatter, coerceDate } from './load.ts';
+import { load, LoadError, splitFrontmatter, coerceDate, resolveNav } from './load.ts';
 
 const FIXTURE = fileURLToPath(new URL('../../../fixtures/example-space/', import.meta.url));
 const INVALID = (name: string): string =>
@@ -85,37 +85,24 @@ describe('load(spacePath)', () => {
 			expect(p.filePath.endsWith(p.relativePath)).toBe(true);
 		}
 
-		// Reconciled nav: missing + reserved entries dropped, order preserved.
-		expect(space.nav).toHaveLength(5);
-		expect(space.nav[0]).toMatchObject({ kind: 'page', label: 'About', url: '/about' });
-		expect(space.nav[1]).toMatchObject({ kind: 'page', label: 'Projects', url: '/projects' });
-		expect(space.nav[2]).toMatchObject({ kind: 'page', label: 'Say hi', url: '/say-hi' });
-		expect(space.nav[3]).toMatchObject({
-			kind: 'page',
-			label: 'On tea',
-			url: '/notes/2025-09-on-tea'
-		});
-		expect(space.nav[4]).toEqual({
-			kind: 'external',
-			label: 'Mastodon',
-			url: 'https://merveilles.town/@mira'
-		});
-		// Resolved leaves carry the actual Page object so themes don't re-derive.
-		if (space.nav[0].kind === 'page') {
-			expect(space.nav[0].page).toBe(space.pages.get('/about'));
-		}
+		// Validated nav: flat {label, href}, malformed entries dropped.
+		// Fixture has 5 valid entries and one malformed (missing `href`).
+		expect(space.nav).toEqual([
+			{ label: 'About', href: '/about' },
+			{ label: 'Projects', href: '/projects' },
+			{ label: 'On tea', href: '/notes/2025-09-on-tea' },
+			{ label: 'Mastodon', href: 'https://merveilles.town/@mira' },
+			{ label: 'Say hi', href: '/say-hi' }
+		]);
 
 		// Redirects compiled into a Map, normalized form.
 		expect(space.redirects.get('/old-portfolio')).toBe('/projects');
 		expect(space.redirects.get('/blog')).toBe('/notes');
 
-		// Warnings: exactly the two the fixture is designed to trigger.
-		const codes = warnings.map((w) => w.code).sort();
-		expect(codes).toEqual(['manifest_nav_missing_target', 'reserved_name_in_content']);
-		const missing = warnings.find((w) => w.code === 'manifest_nav_missing_target')!;
-		expect(missing.source).toBe('talks.md');
-		const reserved = warnings.find((w) => w.code === 'reserved_name_in_content')!;
-		expect(reserved.source).toBe('_drafts/scratch.md');
+		// v0.2 nav resolution emits no LoadWarnings — malformed entries are
+		// logged and skipped. The fixture has no other warning triggers, so
+		// the warnings array is empty.
+		expect(warnings).toEqual([]);
 
 		// space.warnings mirrors the returned warnings array.
 		expect(space.warnings).toEqual(warnings);
@@ -305,5 +292,66 @@ describe('splitFrontmatter() — `date`/`updated` validation', () => {
 			'---\ndate: 12345\nupdated: not-a-date\n---\nbody\n'
 		);
 		expect(fieldErrors).toHaveLength(2);
+	});
+});
+
+describe('resolveNav (v0.2 [[nav]] schema)', () => {
+	test('passes valid {label, href} entries through unchanged', () => {
+		const out = resolveNav([
+			{ label: 'Home', href: '/' },
+			{ label: 'Notes', href: '/notes' },
+			{ label: 'Mastodon', href: 'https://example.social/@me' }
+		]);
+		expect(out).toEqual([
+			{ label: 'Home', href: '/' },
+			{ label: 'Notes', href: '/notes' },
+			{ label: 'Mastodon', href: 'https://example.social/@me' }
+		]);
+	});
+
+	test('returns an empty array when there is no [nav] table', () => {
+		// `manifest.nav` is undefined when the [nav] table is absent. The
+		// loader's `manifest.nav ? resolveNav(...) : []` short-circuits in
+		// that case; a defensive direct call should still behave.
+		expect(resolveNav(undefined)).toEqual([]);
+	});
+
+	test('skips entries missing required keys (label, href)', () => {
+		const out = resolveNav([
+			{ label: 'Good', href: '/good' },
+			{ label: 'No href' }, // missing href → skipped
+			{ href: '/no-label' }, // missing label → skipped
+			{ label: 'Also good', href: '/also' }
+		]);
+		expect(out).toEqual([
+			{ label: 'Good', href: '/good' },
+			{ label: 'Also good', href: '/also' }
+		]);
+	});
+
+	test('skips entries with non-string label or href', () => {
+		const out = resolveNav([
+			{ label: 'OK', href: '/ok' },
+			{ label: 42, href: '/bad-label' }, // wrong-type label → skipped
+			{ label: 'Bad href', href: ['/array'] } // wrong-type href → skipped
+		]);
+		expect(out).toEqual([{ label: 'OK', href: '/ok' }]);
+	});
+
+	test('ignores extra keys on a valid entry (forward-compat)', () => {
+		const out = resolveNav([
+			{ label: 'Home', href: '/', kind: 'page', icon: 'house', extra: { x: 1 } }
+		]);
+		expect(out).toEqual([{ label: 'Home', href: '/' }]);
+	});
+
+	test('skips non-table entries (strings, arrays, null) without throwing', () => {
+		const out = resolveNav([
+			'not-a-table',
+			null,
+			['array', 'entry'],
+			{ label: 'Survivor', href: '/s' }
+		]);
+		expect(out).toEqual([{ label: 'Survivor', href: '/s' }]);
 	});
 });

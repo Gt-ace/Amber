@@ -7,48 +7,36 @@ url = "https://mirahalden.example"
 author = "Mira Halden"
 language = "en"
 
-# Nav order is intentionally non-alphabetical: `projects` appears before
-# `hello` (p > h) — proves the manifest wins over filesystem ordering.
+# Nav is a flat list of {label, href}. `href` is opaque to the loader —
+# internal paths and external URLs both pass through unchanged. Order is
+# whatever the author writes; the loader doesn't sort.
 
 [[nav]]
-kind = "page"
-path = "about.md"
 label = "About"
+href = "/about"
 
 [[nav]]
-kind = "page"
-path = "projects/index.md"
 label = "Projects"
+href = "/projects"
 
 [[nav]]
-kind = "page"
-path = "hello.md"
-label = "Say hi"
-
-# `kind` omitted: presence of `path` infers kind = "page".
-[[nav]]
-path = "notes/2025-09-on-tea.md"
 label = "On tea"
+href = "/notes/2025-09-on-tea"
 
 [[nav]]
-kind = "page"
-path = "talks.md"
-label = "Talks"
-# `talks.md` does not exist on disk → manifest_nav_missing_target warning.
-
-[[nav]]
-kind = "page"
-path = "_drafts/scratch.md"
-label = "Scratch"
-# Reference into reserved space → reserved_name_in_content warning.
-# The target file exists; the warning is about the *reference*, not a
-# missing file. Reserved-prefix paths are silently skipped by content
-# discovery, but emit a warning when the manifest references them.
-
-# `kind` omitted: presence of `url` infers kind = "external".
-[[nav]]
-url = "https://merveilles.town/@mira"
 label = "Mastodon"
+href = "https://merveilles.town/@mira"
+
+# Forward-compat: extra keys on a nav entry are ignored.
+[[nav]]
+label = "Say hi"
+href = "/say-hi"
+note = "extra keys are ignored"
+
+# Malformed entry: missing `href`. Loader skips it with a structured log
+# line and continues with the rest of the table.
+[[nav]]
+label = "Talks"
 
 [redirects]
 "/old-portfolio" = "/projects"

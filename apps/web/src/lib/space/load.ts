@@ -27,6 +27,7 @@ import { createHash } from 'node:crypto';
 import { parse as parseToml } from 'smol-toml';
 import { parse as parseYaml } from 'yaml';
 
+import { logger } from '$lib/server/logger';
 import {
 	RESERVED_TOP_LEVEL,
 	isReservedPath,
@@ -35,12 +36,11 @@ import {
 	type NavEntry,
 	type Page,
 	type PageFrontmatter,
-	type ResolvedNavEntry,
 	type Space
 } from '$lib/types/schema';
-import { logger } from '$lib/server/logger';
 
 const redirectsLog = logger.child({ subsystem: 'redirects' });
+const log = logger.child({ subsystem: 'loader' });
 
 export class LoadError extends Error {
 	constructor(
@@ -111,7 +111,7 @@ export function load(spacePath: string): { space: Space; warnings: LoadWarning[]
 	const pagesByRelativePath = new Map<string, Page>();
 	walkContent(root, root, pages, pagesByRelativePath, warnings);
 
-	const nav = manifest.nav ? resolveNav(manifest.nav, pagesByRelativePath, warnings) : [];
+	const nav = manifest.nav ? resolveNav(manifest.nav) : [];
 
 	const redirects = new Map<string, string>();
 	if (manifest.redirects) {
@@ -410,67 +410,46 @@ export function deriveUrl(relativePath: string, slug: string | undefined): strin
 	return '/' + parent.split(sep).join(posix.sep) + '/' + segment;
 }
 
-export function resolveNav(
-	entries: NavEntry[],
-	byRelative: Map<string, Page>,
-	warnings: LoadWarning[]
-): ResolvedNavEntry[] {
-	const out: ResolvedNavEntry[] = [];
-	for (const entry of entries) {
-		const kind = inferKind(entry);
-		if (kind === 'page') {
-			const e = entry as { kind?: 'page'; path: string; label?: string };
-			const path = e.path;
-			if (pathContainsReservedSegment(path)) {
-				warnings.push({
-					code: 'reserved_name_in_content',
-					message: `Manifest nav references a path inside reserved space: ${path}`,
-					source: path
-				});
-				continue;
-			}
-			const page = byRelative.get(normalizeRelativePath(path));
-			if (!page) {
-				warnings.push({
-					code: 'manifest_nav_missing_target',
-					message: `Manifest nav references a missing page: ${path}`,
-					source: path
-				});
-				continue;
-			}
-			out.push({
-				kind: 'page',
-				label: e.label ?? page.frontmatter.title ?? page.url,
-				url: page.url,
-				page
-			});
-		} else if (kind === 'external') {
-			const e = entry as { kind?: 'external'; label: string; url: string };
-			out.push({ kind: 'external', label: e.label, url: e.url });
-		} else if (kind === 'group') {
-			const e = entry as { kind: 'group'; label: string; children: NavEntry[] };
-			out.push({
-				kind: 'group',
-				label: e.label,
-				children: resolveNav(e.children, byRelative, warnings)
-			});
+/**
+ * Validate a manifest's `[[nav]]` table into a flat list of `{ label, href }`
+ * links. Both fields are required strings; missing or wrong-type entries are
+ * skipped with a structured log line and the rest pass through. `href` is not
+ * resolved against the page index — themes render whatever the author wrote.
+ *
+ * Extra keys on a `[[nav]]` table are silently ignored, leaving room for
+ * forward-compatible additions without a schema bump.
+ *
+ * No `LoadWarning` is emitted: none of the existing codes match a v0.2 nav
+ * shape error, and adding a new code for a single-line skip is not worth
+ * the schema churn. The log line is the user-visible signal.
+ */
+export function resolveNav(entries: unknown): NavEntry[] {
+	if (!Array.isArray(entries)) return [];
+	const out: NavEntry[] = [];
+	for (let i = 0; i < entries.length; i++) {
+		const raw = entries[i];
+		if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+			log.warn({ index: i, entry: raw }, 'skipping malformed nav entry: not a table');
+			continue;
 		}
+		const e = raw as Record<string, unknown>;
+		if (typeof e.label !== 'string') {
+			log.warn(
+				{ index: i, entry: raw },
+				'skipping nav entry: missing or non-string `label`'
+			);
+			continue;
+		}
+		if (typeof e.href !== 'string') {
+			log.warn(
+				{ index: i, label: e.label, entry: raw },
+				'skipping nav entry: missing or non-string `href`'
+			);
+			continue;
+		}
+		out.push({ label: e.label, href: e.href });
 	}
 	return out;
-}
-
-function inferKind(entry: NavEntry): 'page' | 'external' | 'group' {
-	const e = entry as unknown as Record<string, unknown>;
-	if (typeof e.kind === 'string') return e.kind as 'page' | 'external' | 'group';
-	if (typeof e.path === 'string') return 'page';
-	if (typeof e.url === 'string') return 'external';
-	if (Array.isArray(e.children)) return 'group';
-	throw new LoadError(`nav entry has no kind and is not inferrable: ${JSON.stringify(entry)}`);
-}
-
-function pathContainsReservedSegment(path: string): boolean {
-	const segments = path.split(/[\\/]/).filter(Boolean);
-	return segments.some((s) => s.startsWith('_') || s.startsWith('.') || RESERVED_TOP_LEVEL.has(s));
 }
 
 export function normalizeRelativePath(p: string): string {

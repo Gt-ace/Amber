@@ -18,7 +18,6 @@ const FIXTURE = fileURLToPath(new URL('../../../fixtures/example-space/', import
 
 let pageLoad: typeof import('./+page.server.ts').load;
 let layoutLoad: typeof import('../+layout.server.ts').load;
-let _filterDraftsFromNav: typeof import('../+layout.server.ts')._filterDraftsFromNav;
 
 beforeAll(async () => {
 	process.env.AMBER_SPACE_PATH = FIXTURE.replace(/\/$/, '');
@@ -27,7 +26,6 @@ beforeAll(async () => {
 	const layoutMod = await import('../+layout.server.ts');
 	pageLoad = pageMod.load;
 	layoutLoad = layoutMod.load;
-	_filterDraftsFromNav = layoutMod._filterDraftsFromNav;
 });
 
 afterAll(async () => {
@@ -93,9 +91,9 @@ describe('catch-all +page.server load', () => {
 });
 
 describe('root +layout.server load', () => {
-	test('returns nav + site, with drafts filtered out', () => {
+	test('returns nav + site as flat {label, href} entries', () => {
 		const result = layoutLoad(stubLayoutEvent()) as {
-			nav: Array<{ kind: string; label: string; url?: string }>;
+			nav: Array<{ label: string; href: string }>;
 			site: { title?: string } | null;
 			notFoundHtml: string | null;
 		};
@@ -103,56 +101,17 @@ describe('root +layout.server load', () => {
 		// Site comes through.
 		expect(result.site?.title).toBe('Mira Halden');
 
-		// Nav has entries (the fixture defines several).
+		// Nav has entries (the fixture defines several valid ones plus one
+		// malformed entry that the loader skips). Each entry is a flat
+		// {label, href} object — no `kind`, no resolved `page` reference.
 		expect(result.nav.length).toBeGreaterThan(0);
-
-		// No nav entry resolves to a draft Page. The example-space fixture
-		// has no draft in nav at present — this assertion guards future
-		// fixture changes (and is the contract the layout promises).
 		for (const entry of result.nav) {
-			if (entry.kind === 'page') {
-				const e = entry as unknown as { page: { frontmatter: { draft?: boolean } } };
-				expect(e.page.frontmatter.draft).not.toBe(true);
-			}
+			expect(typeof entry.label).toBe('string');
+			expect(typeof entry.href).toBe('string');
+			expect(Object.keys(entry).sort()).toEqual(['href', 'label']);
 		}
 
 		// `notFoundHtml` is null because the fixture has no `404.md`.
 		expect(result.notFoundHtml).toBeNull();
-	});
-});
-
-describe('_filterDraftsFromNav', () => {
-	test('drops page entries marked draft, keeps externals and groups', () => {
-		const fakePage = (draft: boolean) => ({
-			filePath: '/abs/x.md',
-			url: '/x',
-			relativePath: 'x.md',
-			frontmatter: { draft },
-			extra: {},
-			body: '',
-			mtime: 0,
-			contentHash: ''
-		});
-		const input: import('$lib/types/schema').ResolvedNavEntry[] = [
-			{ kind: 'page', label: 'Live', url: '/live', page: fakePage(false) },
-			{ kind: 'page', label: 'Hidden', url: '/hidden', page: fakePage(true) },
-			{ kind: 'external', label: 'External', url: 'https://example.com' },
-			{
-				kind: 'group',
-				label: 'Group',
-				children: [
-					{ kind: 'page', label: 'C1', url: '/c1', page: fakePage(false) },
-					{ kind: 'page', label: 'C2', url: '/c2', page: fakePage(true) }
-				]
-			}
-		];
-		const out = _filterDraftsFromNav(input);
-		expect(out.length).toBe(3); // /live, external, group
-		expect(out[0].label).toBe('Live');
-		expect(out[1].label).toBe('External');
-		expect(out[2].kind).toBe('group');
-		// Group's draft child is filtered out.
-		const group = out[2] as Extract<(typeof out)[number], { kind: 'group' }>;
-		expect(group.children.map((c) => c.label)).toEqual(['C1']);
 	});
 });

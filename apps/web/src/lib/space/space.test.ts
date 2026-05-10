@@ -29,12 +29,21 @@ describe('Space.load()', () => {
 		expect(space.manifest.amber_version).toBe('0.1');
 		expect(space.pages.size).toBe(8);
 
-		// Warnings: the same two the fixture is designed to trigger.
-		const codes = warnings.map((w) => w.code).sort();
-		expect(codes).toEqual(['manifest_nav_missing_target', 'reserved_name_in_content']);
+		// v0.2 nav is opaque to the loader, so the fixture triggers no
+		// LoadWarnings (malformed entries are logged + skipped, not surfaced).
+		expect(warnings).toEqual([]);
 
 		// `space.warnings` is the same live array the second tuple element points at.
 		expect(space.warnings).toBe(warnings);
+
+		// Validated nav: 5 valid entries (the malformed "Talks" is dropped).
+		expect(space.nav.map((e) => e.label)).toEqual([
+			'About',
+			'Projects',
+			'On tea',
+			'Mastodon',
+			'Say hi'
+		]);
 
 		space.close();
 	});
@@ -72,27 +81,16 @@ describe('Space.apply()', () => {
 		expect(delta).toEqual([]);
 	});
 
-	test('add: invalidates a manifest_nav_missing_target warning when the missing file appears', () => {
-		// Fixture has `talks.md` referenced in manifest but not on disk.
-		const before = space.warnings.find(
-			(w) => w.code === 'manifest_nav_missing_target' && w.source === 'talks.md'
-		);
-		expect(before).toBeDefined();
-
+	test('add: does not affect the validated nav (v0.2 nav is opaque to the page index)', () => {
+		// v0.1 used to drop a `manifest_nav_missing_target` warning when the
+		// referenced file finally appeared. v0.2 nav is `{label, href}` —
+		// `href` is not resolved against pages — so adding a page never
+		// changes the nav array.
+		const navBefore = [...space.nav];
 		writeFileSync(join(dir, 'talks.md'), '---\ntitle: Talks\n---\n\nUpcoming.');
-		const delta = space.apply({ type: 'add', path: 'talks.md' });
-
-		// Warning gone from cumulative; not a negative entry in the delta.
-		expect(
-			space.warnings.find(
-				(w) => w.code === 'manifest_nav_missing_target' && w.source === 'talks.md'
-			)
-		).toBeUndefined();
-		expect(delta.some((w) => w.code === 'manifest_nav_missing_target')).toBe(false);
-
-		// Nav now contains the Talks entry.
-		const labels = space.nav.flatMap((e) => (e.kind === 'page' ? [e.label] : []));
-		expect(labels).toContain('Talks');
+		space.apply({ type: 'add', path: 'talks.md' });
+		expect(space.nav).toEqual(navBefore);
+		expect(space.warnings).toEqual([]);
 	});
 
 	test('change: re-parses the page in place', () => {
@@ -110,12 +108,9 @@ describe('Space.apply()', () => {
 
 		expect(space.pages.has('/about')).toBe(false);
 		expect(space.pages.has('/about-me')).toBe(true);
-		// Manifest still references about.md → still a valid entry → no missing warning.
-		expect(
-			space.warnings.find(
-				(w) => w.code === 'manifest_nav_missing_target' && w.source === 'about.md'
-			)
-		).toBeUndefined();
+		// Manifest nav has `href = "/about"` but v0.2 nav doesn't resolve
+		// against the page index — the entry stays put regardless.
+		expect(space.nav.find((e) => e.href === '/about')).toBeDefined();
 	});
 
 	test('change: malformed frontmatter emits warning; fixing it clears the warning', () => {
@@ -135,25 +130,16 @@ describe('Space.apply()', () => {
 		).toBe(false);
 	});
 
-	test('unlink: removes the page; nav loses it; missing warning appears for manifest references', () => {
+	test('unlink: removes the page; nav is unaffected (v0.2 hrefs are opaque)', () => {
 		unlinkSync(join(dir, 'about.md'));
 		const delta = space.apply({ type: 'unlink', path: 'about.md' });
 
 		expect(space.pages.has('/about')).toBe(false);
-		// `about.md` is referenced by the manifest's nav, so a fresh
-		// missing-target warning should appear in both the delta and the
-		// cumulative array.
-		expect(
-			delta.some((w) => w.code === 'manifest_nav_missing_target' && w.source === 'about.md')
-		).toBe(true);
-		expect(
-			space.warnings.some(
-				(w) => w.code === 'manifest_nav_missing_target' && w.source === 'about.md'
-			)
-		).toBe(true);
-
-		// Nav no longer surfaces the About entry.
-		expect(space.nav.find((e) => e.kind === 'page' && e.url === '/about')).toBeUndefined();
+		// v0.2 nav is `{label, href}` — the loader does not validate `href`
+		// against the page index, so unlinking `about.md` does not change
+		// `space.nav`. The author is responsible for keeping nav in sync.
+		expect(space.nav.find((e) => e.href === '/about')).toBeDefined();
+		expect(delta).toEqual([]);
 	});
 
 	test('unlink: of a non-indexed page is a no-op', () => {
@@ -170,27 +156,26 @@ describe('Space.apply()', () => {
 
 		space.apply({ type: 'manifest_change' });
 
-		const sayHi = space.nav.find((e) => e.kind === 'page' && e.url === '/say-hi');
+		const sayHi = space.nav.find((e) => e.href === '/say-hi');
 		expect(sayHi).toBeDefined();
-		expect((sayHi as { label: string }).label).toBe('Say hello');
+		expect(sayHi?.label).toBe('Say hello');
 	});
 
-	test('manifest_change: removing a missing nav entry clears its warning', () => {
+	test('manifest_change: fixing a malformed nav entry adds it to the validated nav', () => {
+		// The fixture's last `[[nav]]` table has `label = "Talks"` but no
+		// `href`, so it's skipped at load time. Add an `href` and the entry
+		// should appear in `space.nav` after the manifest reload.
 		const original = readFileSync(join(dir, 'amber.toml'), 'utf8');
-		// Drop the talks.md nav entry that was triggering the missing-target warning.
 		const updated = original.replace(
-			/\[\[nav\]\]\nkind = "page"\npath = "talks\.md"\nlabel = "Talks"\n# `talks\.md` does not exist on disk → manifest_nav_missing_target warning\.\n\n/,
-			''
+			'[[nav]]\nlabel = "Talks"',
+			'[[nav]]\nlabel = "Talks"\nhref = "/talks"'
 		);
 		expect(updated).not.toBe(original);
 		writeFileSync(join(dir, 'amber.toml'), updated);
 
 		space.apply({ type: 'manifest_change' });
-		expect(
-			space.warnings.find(
-				(w) => w.code === 'manifest_nav_missing_target' && w.source === 'talks.md'
-			)
-		).toBeUndefined();
+		const talks = space.nav.find((e) => e.label === 'Talks');
+		expect(talks).toEqual({ label: 'Talks', href: '/talks' });
 	});
 
 	test('manifest_change: redirects are recomputed', () => {
