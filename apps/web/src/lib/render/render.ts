@@ -14,6 +14,12 @@
  *   - `typographer: false` — no smart quotes, no ellipsis transforms. Output
  *     stays a deterministic function of input bytes; locale-dependent
  *     transforms would couple cache hits to environment.
+ *   - `breaks: true` — single newlines inside paragraphs render as `<br>`.
+ *     The convention authors should follow is "don't soft-wrap inside
+ *     paragraphs": one logical paragraph is one long line. With this flag,
+ *     a hand-typed line break is intentional and shows up as a break;
+ *     accidental editor-driven wrapping becomes visible immediately and
+ *     gets fixed at the source rather than papered over by the renderer.
  *
  * Plugins (footnotes, anchors, syntax highlighting) deliberately not added
  * here — that's a later sprint.
@@ -24,7 +30,8 @@ import MarkdownIt from 'markdown-it';
 const md = new MarkdownIt({
 	html: false,
 	linkify: true,
-	typographer: false
+	typographer: false,
+	breaks: true
 });
 
 export function render(markdown: string): string {

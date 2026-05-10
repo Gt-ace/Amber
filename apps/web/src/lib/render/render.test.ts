@@ -71,6 +71,26 @@ describe('render(markdown)', () => {
 		expect(html).not.toContain('&hellip;');
 	});
 
+	test('breaks:true — single newlines inside a paragraph become <br>', () => {
+		// With `breaks: true`, a single newline inside a paragraph renders as
+		// `<br>`. The convention for authors is "don't soft-wrap inside
+		// paragraphs" — one logical paragraph is one long line — so any line
+		// break in the source is intentional and shows up as one in the output.
+		const html = render('line one\nline two\n');
+		expect(html).toContain('line one');
+		expect(html).toContain('line two');
+		expect(html).toMatch(/line one\s*<br>\s*\nline two/);
+	});
+
+	test('breaks:true — blank line still produces separate paragraphs', () => {
+		// A blank line is the paragraph separator regardless of the breaks
+		// option; we shouldn't get `<br>` between paragraphs.
+		const html = render('para one\n\npara two\n');
+		expect(html).toContain('<p>para one</p>');
+		expect(html).toContain('<p>para two</p>');
+		expect(html).not.toContain('<br>');
+	});
+
 	test('is deterministic — same input produces identical output', () => {
 		const md = '# Hello\n\nA paragraph with [a link](/x) and `code`.\n';
 		const a = render(md);
