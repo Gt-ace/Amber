@@ -22,8 +22,9 @@ This is a project i'm building in the student project house in St. Gallen. Ideat
 ## Contact
 
 Email me at [avanpetegem@proton.me]
+Portfolio: [portfolio.avp.software](https://portfolio.avp.software)
 
 ## Meme
 
-[Meme](https://imgflip.com/s/meme/Waiting-Skeleton.jpg)
+![Waiting Skeleton](https://imgflip.com/s/meme/Waiting-Skeleton.jpg)
 
