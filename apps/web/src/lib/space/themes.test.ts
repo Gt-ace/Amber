@@ -66,7 +66,8 @@ describe('discoverThemes', () => {
 	test('a theme missing a template file is skipped (logged, not thrown)', () => {
 		const root = scratchSpace();
 		try {
-			const { 'page.html': _omit, ...partial } = FULL_THEME_FILES;
+			const partial: Record<string, string> = { ...FULL_THEME_FILES };
+			delete partial['page.html'];
 			writeTheme(root, 'broken', partial);
 			writeTheme(root, 'amber-default', FULL_THEME_FILES);
 			const themes = discoverThemes(root, log);
