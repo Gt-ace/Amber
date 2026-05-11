@@ -1,4 +1,5 @@
 amber_version = "0.1"
+theme = "amber-default"
 
 [site]
 title = "Amber"
