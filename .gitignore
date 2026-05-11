@@ -7,3 +7,5 @@ docs/
 spaces/*/.amber/
 apps/web/fixtures/*/.amber/
 notes.md
+.claude/
+credentials.txt
