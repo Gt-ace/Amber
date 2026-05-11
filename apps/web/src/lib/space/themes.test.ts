@@ -23,7 +23,7 @@ const FULL_THEME_FILES = {
 	'theme.toml':
 		'name = "Pretty"\nversion = "1.0"\n[theme_color]\nlight = "#fff"\ndark = "#000"\n[footer]\nlabel = "Source"\nhref = "https://example.com"\n',
 	'theme.css': ':root { --x: 1 }',
-	'chrome.html': '<header></header><main><!--amber:content--></main>',
+	'chrome.html': '<header></header><!--amber:content--><footer></footer>',
 	'page.html': '<article>{{{html}}}</article>',
 	'error.html': '<p>{{status}}</p>'
 };

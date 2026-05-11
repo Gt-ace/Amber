@@ -45,8 +45,7 @@ afterAll(async () => {
 const stubEvent = (params: Record<string, string>) =>
 	({ params }) as unknown as Parameters<typeof pageLoad>[0];
 
-const stubLayoutEvent = () =>
-	({ params: {} }) as unknown as Parameters<typeof layoutLoad>[0];
+const stubLayoutEvent = () => ({ params: {} }) as unknown as Parameters<typeof layoutLoad>[0];
 
 describe('catch-all +page.server load', () => {
 	test('throws 404 for an unknown URL', () => {
@@ -135,11 +134,14 @@ describe('root +layout.server load', () => {
 			themeCssHref: string | null;
 			themeColor: { light?: string; dark?: string } | null;
 		};
-		// Chrome split around the content slot: <header>…<main> | </main>…<footer>
+		// Chrome split around the content slot: <header>…</header> | <footer>…</footer>.
+		// `<main>` is *not* in either half — the layout owns it and wraps the page
+		// in it between the two halves, so each half stays a balanced fragment.
 		expect(result.chromeBefore).toContain('<header');
-		expect(result.chromeBefore).toContain('<main>');
-		expect(result.chromeAfter).toContain('</main>');
+		expect(result.chromeBefore).toContain('</header>');
 		expect(result.chromeAfter).toContain('<footer');
+		expect(result.chromeBefore).not.toContain('<main');
+		expect(result.chromeAfter).not.toContain('<main');
 		expect(result.chromeBefore + result.chromeAfter).not.toContain('amber:content');
 		// The fixture resolves to the built-in theme (no usable themes/ dir):
 		// no stylesheet link, no theme-color.

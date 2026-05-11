@@ -41,6 +41,13 @@ export function escapeHtml(value: string): string {
  * write produces this exact string by accident. `+layout.server.ts` renders
  * the chrome template (which contains this marker verbatim, once) and splits
  * the result on it into `chromeBefore` / `chromeAfter`.
+ *
+ * It must sit between balanced top-level elements in `chrome.html` (the
+ * amber-default chrome puts it between `</header>` and `<footer>`), never
+ * inside one — both halves are `{@html}`-ed separately in `+layout.svelte`, so
+ * each has to be a well-formed fragment or hydration desyncs. The page content
+ * itself is wrapped in a `<main>` that the layout emits between the halves; the
+ * chrome template does not provide it.
  */
 export const CONTENT_SLOT = '<!--amber:content-->';
 

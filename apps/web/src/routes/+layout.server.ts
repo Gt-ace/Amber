@@ -4,8 +4,12 @@
  * Produces the page chrome by rendering the active theme's `chrome.html`
  * template (site title, nav, footer slot — none of which vary per page) and
  * splitting it at the `CONTENT_SLOT` marker into `chromeBefore` / `chromeAfter`,
- * which `+layout.svelte` `{@html}`s around `{@render children()}`. So the
- * chrome persists across client-side navigation and only the content swaps.
+ * which `+layout.svelte` `{@html}`s on either side of the `<main>` it wraps
+ * `{@render children()}` in. So the chrome persists across client-side
+ * navigation and only the content swaps. The marker sits between balanced
+ * top-level elements in `chrome.html` (`</header>` … `<footer>`), so each half
+ * is a well-formed fragment — `{@html}` of an unbalanced fragment (e.g. a
+ * dangling `<main>`) reparses on hydration and reparents the content.
  *
  * Chrome is read from disk and re-rendered each request but *not* SQLite-cached:
  * its inputs are constant per run and the output is a few hundred bytes — a

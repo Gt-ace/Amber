@@ -10,8 +10,10 @@
  * Its templates use the same Mustache-subset contract the discovered themes do
  * (see `lib/render/template.ts`), so the route renders it through exactly the
  * same code path. The chrome's content slot is `CONTENT_SLOT` (the literal
- * HTML comment `<!--amber:content-->`) — the layout splits the rendered chrome
- * there.
+ * HTML comment `<!--amber:content-->`) sitting between `</header>` and
+ * `<footer>` — the layout splits the rendered chrome there and wraps the page
+ * in its own `<main>` between the two halves (see `+layout.svelte`), so each
+ * half stays a balanced fragment.
  *
  * `readTemplate(theme, kind)` returns these strings when `theme.path === ''`.
  */
@@ -23,7 +25,7 @@ export const BUILTIN_TEMPLATES: Record<'chrome' | 'page' | 'error', string> = {
 {{#site_title}}<a href="/" class="site-title">{{site_title}}</a>{{/site_title}}
 {{#has_nav}}<nav class="site-nav" aria-label="Primary"><ul>{{#nav}}<li><a href="{{href}}">{{label}}</a></li>{{/nav}}</ul></nav>{{/has_nav}}
 </header>
-<main>${CONTENT_SLOT}</main>
+${CONTENT_SLOT}
 <footer class="site-footer"><span>{{site_title_or_default}}</span>{{#footer_href}}<a href="{{footer_href}}">{{footer_label}}</a>{{/footer_href}}</footer>
 `,
 	page: `{{#is_draft}}<p class="draft-banner" role="status">Draft — visible in development only. This page returns 404 in production.</p>{{/is_draft}}
