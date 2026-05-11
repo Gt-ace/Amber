@@ -20,7 +20,8 @@ function writeTheme(root: string, name: string, files: Record<string, string>): 
 }
 
 const FULL_THEME_FILES = {
-	'theme.toml': 'name = "Pretty"\nversion = "1.0"\n[theme_color]\nlight = "#fff"\ndark = "#000"\n[footer]\nlabel = "Source"\nhref = "https://example.com"\n',
+	'theme.toml':
+		'name = "Pretty"\nversion = "1.0"\n[theme_color]\nlight = "#fff"\ndark = "#000"\n[footer]\nlabel = "Source"\nhref = "https://example.com"\n',
 	'theme.css': ':root { --x: 1 }',
 	'chrome.html': '<header></header><main><!--amber:content--></main>',
 	'page.html': '<article>{{{html}}}</article>',

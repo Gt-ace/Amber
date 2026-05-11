@@ -77,7 +77,11 @@ export function discoverThemes(root: string, log: Logger): Map<string, Theme> {
 			}
 		} catch (err) {
 			log.warn(
-				{ theme: name, err: err instanceof Error ? err.message : String(err), required: Object.values(TEMPLATE_FILES) },
+				{
+					theme: name,
+					err: err instanceof Error ? err.message : String(err),
+					required: Object.values(TEMPLATE_FILES)
+				},
 				`skipping theme "${name}": a required template file is missing`
 			);
 			continue;
