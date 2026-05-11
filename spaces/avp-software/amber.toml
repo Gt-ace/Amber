@@ -7,3 +7,11 @@ description = "A self-hostable personal canvas."
 [[nav]]
 label = "Home"
 href = "/"
+
+[[nav]]
+label = "About"
+href = "/about"
+
+[[nav]]
+label = "Source"
+href = "https://github.com/Gt-ace/Amber"

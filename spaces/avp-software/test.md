@@ -1,6 +1,8 @@
 ---
 title: About
 description: About this site and the person running it.
+date: 2026-04-22
+slug: about
 ---
 
 This is a personal site running on [Amber](https://github.com/Gt-ace/Amber).
