@@ -86,6 +86,51 @@ export interface ThemeConfig {
     options?: Record<string, unknown>;
 }
 
+/**
+ * Parsed `theme.toml`. Every field optional — a theme directory with just an
+ * empty `theme.toml` is valid metadata-wise. (Template defaults are *not* a
+ * thing in v0.2: a theme missing any of the three template files is skipped at
+ * discovery — see `discoverThemes`.) Keys are TOML-native snake_case, matching
+ * the rest of the manifest surface (`amber_version`, `redirect_from`).
+ */
+export interface ThemeManifest {
+    /** Display name. Defaults to the directory name. */
+    name?: string;
+    version?: string;
+    author?: string;
+    /**
+     * `theme-color` meta values. The theme declares them here instead of route
+     * code duplicating `--amber-bg` light/dark (SPIKE_NOTES). Rendered into
+     * `<meta name="theme-color">` by the layout.
+     */
+    theme_color?: { light?: string; dark?: string };
+    /**
+     * Footer slot. The chrome template renders `{{footer_label}}` linking to
+     * `{{footer_href}}`. The spike hardcoded "Source → GitHub" here; this is
+     * the configurable slot SPIKE_NOTES called for.
+     */
+    footer?: { label?: string; href?: string };
+}
+
+/**
+ * A discovered, usable theme. "Usable" means `theme.toml` parsed and all three
+ * template files (`chrome.html`, `page.html`, `error.html`) exist on disk;
+ * incomplete theme directories are skipped at discovery with a structured log.
+ *
+ * Template *contents* are not held here — they're read from disk at request
+ * time via `readTemplate(theme, kind)` (which special-cases the built-in
+ * theme, whose `path` is `''` and whose templates are in-app constants).
+ */
+export interface Theme {
+    /** Directory name under `<space>/themes/`. The identity `amber.toml`'s `theme = "..."` matches against. */
+    name: string;
+    /** Absolute path to the theme directory. `''` for the in-app `BUILTIN_THEME` (no disk dir). */
+    path: string;
+    /** URL prefix for this theme's static assets, e.g. `/themes/amber-default`. `''` for the built-in theme (its templates emit no stylesheet `<link>`). */
+    assetBase: string;
+    manifest: ThemeManifest;
+}
+
 export interface PluginConfig {
     enabled?: boolean;
     options?: Record<string, unknown>;
@@ -183,6 +228,23 @@ export interface Space {
 
     /** Warnings surfaced during load — missing nav targets, malformed frontmatter, etc. */
     warnings: LoadWarning[];
+
+    /**
+     * All usable themes discovered under `<root>/themes/`, keyed by directory
+     * name. Empty if the space has no `themes/` directory. Fixed at load —
+     * `themes/` is a reserved name and isn't watched; restart to pick up theme
+     * changes.
+     */
+    themes: Map<string, Theme>;
+
+    /**
+     * The active theme: `amber.toml`'s `theme` (string or `{ name }`), defaulted
+     * to `"amber-default"`, resolved against `themes`. Falls back to the in-app
+     * `BUILTIN_THEME` when neither the configured name nor `amber-default` is a
+     * usable discovered theme (logged). Never null — consumers always have a
+     * theme to render with.
+     */
+    theme: Theme;
 }
 
 export interface Page {

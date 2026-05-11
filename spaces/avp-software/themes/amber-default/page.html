@@ -1,0 +1,12 @@
+{{#is_draft}}<p class="draft-banner" role="status">
+	Draft — visible in development only. This page returns 404 in production.
+</p>{{/is_draft}}
+<article>
+	{{#has_header}}<header class="article-header">
+		{{#title}}<h1 class="article-title">{{title}}</h1>{{/title}}
+		{{#date_display}}<p class="article-date">
+			<time datetime="{{date_iso}}">{{date_display}}</time>
+		</p>{{/date_display}}
+	</header>{{/has_header}}
+	<div class="article-body">{{{html}}}</div>
+</article>

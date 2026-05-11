@@ -45,8 +45,7 @@ afterAll(async () => {
 const stubEvent = (params: Record<string, string>) =>
 	({ params }) as unknown as Parameters<typeof pageLoad>[0];
 
-const stubLayoutEvent = () =>
-	({ params: {} }) as unknown as Parameters<typeof layoutLoad>[0];
+const stubLayoutEvent = () => ({ params: {} }) as unknown as Parameters<typeof layoutLoad>[0];
 
 describe('catch-all +page.server load', () => {
 	test('throws 404 for an unknown URL', () => {
@@ -88,6 +87,18 @@ describe('catch-all +page.server load', () => {
 			expect(r.location).toBe('/projects');
 		}
 	});
+
+	test('returns bodyHtml rendered through the active theme', () => {
+		const result = pageLoad(stubEvent({ path: 'about' })) as {
+			bodyHtml: string;
+			page: { html: string };
+		};
+		expect(typeof result.bodyHtml).toBe('string');
+		// The page template wraps the rendered markdown in <article>…<div class="article-body">…
+		expect(result.bodyHtml).toContain('<article>');
+		expect(result.bodyHtml).toContain('class="article-body"');
+		expect(result.bodyHtml).toContain(result.page.html);
+	});
 });
 
 describe('root +layout.server load', () => {
@@ -113,5 +124,28 @@ describe('root +layout.server load', () => {
 
 		// `notFoundHtml` is null because the fixture has no `404.md`.
 		expect(result.notFoundHtml).toBeNull();
+	});
+
+	test('exposes the chrome halves, error template, and theme head data', () => {
+		const result = layoutLoad(stubLayoutEvent()) as {
+			chromeBefore: string;
+			chromeAfter: string;
+			errorTemplate: string;
+			themeCssHref: string | null;
+			themeColor: { light?: string; dark?: string } | null;
+		};
+		// Chrome split around the content slot: <header>…</header> | <footer>…</footer>.
+		// `<main>` is *not* in either half — the layout owns it and wraps the page
+		// in it between the two halves, so each half stays a balanced fragment.
+		expect(result.chromeBefore).toContain('<header');
+		expect(result.chromeBefore).toContain('</header>');
+		expect(result.chromeAfter).toContain('<footer');
+		expect(result.chromeBefore).not.toContain('<main');
+		expect(result.chromeAfter).not.toContain('<main');
+		expect(result.chromeBefore + result.chromeAfter).not.toContain('amber:content');
+		// The fixture resolves to the built-in theme (no usable themes/ dir):
+		// no stylesheet link, no theme-color.
+		expect(result.themeCssHref).toBeNull();
+		expect(result.errorTemplate).toContain('{{status}}');
 	});
 });

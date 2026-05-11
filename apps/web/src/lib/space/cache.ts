@@ -30,6 +30,7 @@ import {
 	type Page,
 	type Space
 } from '$lib/types/schema';
+import { BUILTIN_THEME } from '$lib/theme/builtin';
 
 const log = logger.child({ subsystem: 'cache' });
 
@@ -268,13 +269,18 @@ export class SpaceCache {
 
 		const warnings = pageWarnings;
 
+		// `themes` and `theme` are placeholders here — `Space.load` re-discovers
+		// them immediately after hydration (the SQLite cache does not persist
+		// theme state). These values are never visible to callers.
 		const space: Space = {
 			root: spaceRoot,
 			manifest,
 			pages,
 			nav,
 			redirects,
-			warnings
+			warnings,
+			themes: new Map(),
+			theme: BUILTIN_THEME
 		};
 		return { space, warnings };
 	}

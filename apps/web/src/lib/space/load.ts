@@ -38,6 +38,7 @@ import {
 	type PageFrontmatter,
 	type Space
 } from '$lib/types/schema';
+import { discoverThemes, resolveActiveTheme } from './themes.ts';
 
 const redirectsLog = logger.child({ subsystem: 'redirects' });
 const log = logger.child({ subsystem: 'loader' });
@@ -121,7 +122,10 @@ export function load(spacePath: string): { space: Space; warnings: LoadWarning[]
 	}
 	mergeFrontmatterRedirects(pages, redirects, 'manifest');
 
-	const space: Space = { root, manifest, pages, nav, redirects, warnings };
+	const themes = discoverThemes(root, log);
+	const theme = resolveActiveTheme(themes, manifest, log);
+
+	const space: Space = { root, manifest, pages, nav, redirects, warnings, themes, theme };
 	return { space, warnings };
 }
 

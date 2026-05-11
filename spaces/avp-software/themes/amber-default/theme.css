@@ -1,21 +1,17 @@
 /*
- * ─────────────────────────────────────────────────────────────────────────
- * SPIKE — Amber theme exploration (v0.2 pre-Wave-2)
+ * amber-default — Amber's default theme.
  *
- * This is throwaway code. It hardcodes one theme directly into the app to
- * discover what a "theme" actually is before the Wave 2 theme system exists.
- * In Wave 2 this file becomes `themes/<name>/theme.css`, the markup in
- * `+layout.svelte` / `+page.svelte` becomes the theme's templates, and the
- * `--amber-*` custom properties below become the documented override surface.
+ * A quiet, warm, book-like reading surface. "Amber" as in resin — something
+ * personal, kept, unhurried. Old-style serif (system stack) for the prose; the
+ * same family, set small / uppercase / tracked, for the chrome.
  *
- * Design intent: a quiet, warm, book-like reading surface. "Amber" as in
- * resin — something personal, kept, unhurried. Old-style serif for the
- * prose; the same family, set small / uppercase / tracked, for the chrome.
- * Not a marketing site. Not a generic blog. A page you'd want to live in.
+ * Vanilla CSS, no build step. Every value a second theme would plausibly want
+ * to change is an `--amber-*` custom property on :root. Light + dark live in
+ * one file; the dark block remaps the eight colour tokens and nothing else.
  *
- * Vanilla CSS, no build step, no framework. Every value that a second theme
- * would plausibly want to change is a `--amber-*` variable on :root.
- * ─────────────────────────────────────────────────────────────────────────
+ * Pairs with chrome.html / page.html / error.html in this directory and the
+ * `theme_color` / `footer` slots in theme.toml. The `--amber-*` contract isn't
+ * formally documented yet — that gets pinned down when theme B lands (Wave 3).
  */
 
 :root {
