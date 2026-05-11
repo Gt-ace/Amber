@@ -45,6 +45,11 @@ export const GET: RequestHandler = ({ params }) => {
 	const name = params.name ?? '';
 	const file = params.file ?? '';
 	if (!name || !file) return NOT_FOUND();
+	// `name` is a single path segment. `.`/`..` or an embedded slash would let
+	// `themeRoot` resolve to or above `<spaceRoot>/themes/` — unreachable via
+	// SvelteKit's normalized routing, but cheap insurance: the `target` check
+	// below only verifies `target` is under `themeRoot`, not `themeRoot` itself.
+	if (name.includes('/') || name === '.' || name === '..') return NOT_FOUND();
 
 	const space = getSpace();
 	const themeRoot = resolve(space.root, 'themes', name);

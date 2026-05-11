@@ -62,8 +62,10 @@ export const load: PageServerLoad = ({ params }) => {
 	// Render the active theme's page template, reading it from disk at request
 	// time and caching the rendered output through the same render-cache table
 	// the markdown renderer uses (`getOrRenderHtml`). Key = sha256 over the
-	// template bytes + the substitution data (which already contains the
-	// body-hash-cached `html`), prefixed so it can't be confused with a bare
+	// template bytes + the substitution data, but with the (potentially large)
+	// rendered `html` swapped for its body hash — the hash is a faithful proxy
+	// for the HTML, so the key is just as discriminating while staying small
+	// to compute per request. Prefixed so it can't be confused with a bare
 	// body-hash row. Note: `vacuumRenderCache()` (cold-start only) clears these
 	// rows since their key isn't a current page body hash — cheap to refill.
 	const pageTpl = readTemplate(space.theme, 'page');
@@ -75,7 +77,9 @@ export const load: PageServerLoad = ({ params }) => {
 		date_display: dateDisplay,
 		html
 	};
-	const cacheKey = bodyHash('page-template\n' + pageTpl + '\n' + JSON.stringify(pageData));
+	const cacheKey = bodyHash(
+		'page-template\n' + pageTpl + '\n' + JSON.stringify({ ...pageData, html: bodyHash(html) })
+	);
 	let bodyHtml = space.getCachedRender(cacheKey);
 	if (bodyHtml === null) {
 		bodyHtml = renderTemplate(pageTpl, pageData);

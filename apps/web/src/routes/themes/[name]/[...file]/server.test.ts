@@ -50,4 +50,19 @@ describe('theme asset route', () => {
 		const res = await call('does-not-exist', 'theme.css');
 		expect(res.status).toBe(404);
 	});
+	// `name` is meant to be a single path segment. These can't arrive via
+	// SvelteKit's normalized routing, but the explicit guard makes the
+	// containment check below unconditionally sound.
+	test('404 when the theme name is "." (would resolve to themes/ itself)', async () => {
+		const res = await call('.', 'theme.css');
+		expect(res.status).toBe(404);
+	});
+	test('404 when the theme name is ".." (would escape themes/)', async () => {
+		const res = await call('..', 'amber.toml');
+		expect(res.status).toBe(404);
+	});
+	test('404 when the theme name contains a slash', async () => {
+		const res = await call('amber-default/fonts', 'x.woff2');
+		expect(res.status).toBe(404);
+	});
 });
