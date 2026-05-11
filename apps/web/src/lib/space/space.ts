@@ -27,6 +27,7 @@ import {
 	normalizeRelativePath,
 	LoadError
 } from './load.ts';
+import { discoverThemes, resolveActiveTheme } from './themes.ts';
 import { SpaceCache } from './cache.ts';
 import { bodyHash } from '$lib/render/cache';
 import { logger } from '$lib/server/logger';
@@ -35,6 +36,7 @@ import type {
 	LoadWarning,
 	NavEntry,
 	Page,
+	Theme,
 	Space as SpaceData
 } from '$lib/types/schema';
 
@@ -52,6 +54,8 @@ export class Space implements SpaceData {
 	readonly pages: Map<string, Page>;
 	nav: NavEntry[];
 	redirects: Map<string, string>;
+	readonly themes: Map<string, Theme>;
+	theme: Theme;
 	readonly warnings: LoadWarning[];
 
 	/** url → Page is the public view; rel → Page is the index for path-keyed events. */
@@ -84,6 +88,8 @@ export class Space implements SpaceData {
 		this.pages = initial.pages;
 		this.nav = initial.nav;
 		this.redirects = initial.redirects;
+		this.themes = initial.themes;
+		this.theme = initial.theme;
 		this.warnings = [];
 		this.cache = cache;
 
@@ -138,6 +144,14 @@ export class Space implements SpaceData {
 		const cache = new SpaceCache(spacePath);
 		const hydrated = cache.tryHydrate(spacePath);
 		if (hydrated) {
+			// The SQLite cache does not persist themes (they're small, fast to
+			// re-read, and `themes/` isn't watched) — discover them fresh.
+			hydrated.space.themes = discoverThemes(hydrated.space.root, log);
+			hydrated.space.theme = resolveActiveTheme(
+				hydrated.space.themes,
+				hydrated.space.manifest,
+				log
+			);
 			const space = new Space(hydrated.space, cache);
 			// Hydration skips the writeAll path, but render orphans can still
 			// have accumulated across previous runs — vacuum opportunistically.
@@ -161,7 +175,9 @@ export class Space implements SpaceData {
 			pages: space.pages,
 			nav: space.nav,
 			redirects: space.redirects,
-			warnings: space.warnings
+			warnings: space.warnings,
+			themes: space.themes,
+			theme: space.theme
 		});
 		// Order: manifest + frontmatter were merged in pureLoad. Auto-renames
 		// layer on top but skip any source URL that is already a live page or
@@ -294,6 +310,9 @@ export class Space implements SpaceData {
 	private applyManifestChange(): void {
 		// Re-read amber.toml and recompute redirects. Nav reconciles via
 		// `reconcileNav` after this returns.
+		// The active theme is fixed at startup — restart to pick up a changed
+		// `theme = "..."` (same policy as theme template/CSS edits). We do not
+		// re-resolve it here even though `amber.toml` may have changed it.
 		try {
 			this.manifest = readManifest(this.root);
 		} catch (err) {
