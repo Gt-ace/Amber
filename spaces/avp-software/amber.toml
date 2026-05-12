@@ -1,5 +1,5 @@
 amber_version = "0.2"
-theme = "amber-default"
+theme = "amber-editorial"
 
 [site]
 title = "Amber"
@@ -12,6 +12,10 @@ href = "/"
 [[nav]]
 label = "About"
 href = "/about"
+
+[[nav]]
+label = "Colophon"
+href = "/colophon"
 
 [[nav]]
 label = "Source"
