@@ -5,7 +5,13 @@ import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { Space } from '$lib/space/space';
-import { bodyHash, getOrRenderHtml } from './cache.ts';
+import {
+	bodyHash,
+	getOrRenderHtml,
+	templateHash,
+	pageRenderCacheKey,
+	partialRenderCacheKey
+} from './cache.ts';
 import type { Page } from '$lib/types/schema';
 
 const FIXTURE = fileURLToPath(new URL('../../../fixtures/example-space/', import.meta.url));
@@ -142,5 +148,76 @@ describe('bodyHash', () => {
 
 	test('differs across different inputs', () => {
 		expect(bodyHash('a')).not.toBe(bodyHash('b'));
+	});
+});
+
+describe('templateHash', () => {
+	test('sha256 of the source bytes — 64 hex chars, deterministic, input-sensitive', () => {
+		expect(templateHash('<article>{{{html}}}</article>')).toMatch(/^[0-9a-f]{64}$/);
+		expect(templateHash('a')).toBe(templateHash('a'));
+		expect(templateHash('a')).not.toBe(templateHash('b'));
+	});
+});
+
+describe('pageRenderCacheKey', () => {
+	const base = {
+		templateSource: '<article>{{{html}}}{{{index_html}}}</article>',
+		bodyHtml: '<p>hi</p>',
+		indexHtml: '',
+		data: { title: 'X' }
+	};
+
+	test('same inputs → same key', () => {
+		expect(pageRenderCacheKey(base)).toBe(pageRenderCacheKey({ ...base }));
+	});
+	test('changing the template source changes the key (cache invalidates on template edit)', () => {
+		expect(pageRenderCacheKey(base)).not.toBe(
+			pageRenderCacheKey({ ...base, templateSource: base.templateSource + '\n' })
+		);
+	});
+	test('changing the body HTML changes the key', () => {
+		expect(pageRenderCacheKey(base)).not.toBe(
+			pageRenderCacheKey({ ...base, bodyHtml: '<p>bye</p>' })
+		);
+	});
+	test('changing the auto-index HTML changes the key', () => {
+		expect(pageRenderCacheKey(base)).not.toBe(
+			pageRenderCacheKey({ ...base, indexHtml: '<ul></ul>' })
+		);
+	});
+	test('changing the substitution data changes the key', () => {
+		expect(pageRenderCacheKey(base)).not.toBe(
+			pageRenderCacheKey({ ...base, data: { title: 'Y' } })
+		);
+	});
+	test('returns a 64-hex-char digest', () => {
+		expect(pageRenderCacheKey(base)).toMatch(/^[0-9a-f]{64}$/);
+	});
+});
+
+describe('partialRenderCacheKey', () => {
+	const partial =
+		'<ul class="amber-auto-index">{{#index_entries}}<li>{{title}}</li>{{/index_entries}}</ul>';
+	const entries = [{ href: '/a', title: 'A', date: '2025-01-01', updated: null }];
+
+	test('same partial + same entries → same key', () => {
+		expect(partialRenderCacheKey(partial, entries)).toBe(
+			partialRenderCacheKey(partial, [
+				{ href: '/a', title: 'A', date: '2025-01-01', updated: null }
+			])
+		);
+	});
+	test('changing the partial source changes the key', () => {
+		expect(partialRenderCacheKey(partial, entries)).not.toBe(
+			partialRenderCacheKey(partial + ' ', entries)
+		);
+	});
+	test('changing the entries changes the key', () => {
+		expect(partialRenderCacheKey(partial, entries)).not.toBe(
+			partialRenderCacheKey(partial, [
+				...entries,
+				{ href: '/b', title: 'B', date: null, updated: null }
+			])
+		);
 	});
 });

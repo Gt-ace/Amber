@@ -99,6 +99,22 @@ describe('catch-all +page.server load', () => {
 		expect(result.bodyHtml).toContain('class="article-body"');
 		expect(result.bodyHtml).toContain(result.page.html);
 	});
+
+	test('renders an auto_index list for /projects (the fixture page that declares it)', () => {
+		const result = pageLoad(stubEvent({ path: 'projects' })) as { bodyHtml: string };
+		expect(result.bodyHtml).toContain('<ul class="amber-auto-index">');
+		expect(result.bodyHtml).toContain('href="/projects/amber"');
+		expect(result.bodyHtml).toContain('href="/projects/field-notes"');
+		// self-exclusion: the host page's own URL is not an entry. (Its nav link
+		// lives in chrome, which `bodyHtml` doesn't include — so this asserts the
+		// list, not the nav.)
+		expect(result.bodyHtml).not.toContain('href="/projects"');
+		// the host's own markdown body still renders, above the list
+		expect(result.bodyHtml).toContain('A short, current list.');
+		expect(result.bodyHtml.indexOf('A short, current list.')).toBeLessThan(
+			result.bodyHtml.indexOf('amber-auto-index')
+		);
+	});
 });
 
 describe('root +layout.server load', () => {

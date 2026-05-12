@@ -130,6 +130,28 @@ describe('Space.apply()', () => {
 		).toBe(false);
 	});
 
+	test('add/change: multiple warnings for the same source are tracked and cleared together', () => {
+		// A file with both an invalid date (→ frontmatter_parse_error) and an
+		// auto_index pointing at a non-existent directory (→ auto_index_path_missing)
+		// produces two warnings for the same source. When the file is fixed, both
+		// warnings must be cleared — exercising the Map<string, LoadWarning[]> path.
+		writeFileSync(
+			join(dir, 'features.md'),
+			'---\ndate: not-a-date\nauto_index:\n  path: this-dir-does-not-exist\n---\nbody\n'
+		);
+		space.apply({ type: 'add', path: 'features.md' });
+
+		const warningsForSource = space.warnings.filter((w) => w.source === 'features.md');
+		const codes = warningsForSource.map((w) => w.code).sort();
+		expect(codes).toEqual(['auto_index_path_missing', 'frontmatter_parse_error']);
+
+		// Fix the file — both warnings must be gone after the change event.
+		writeFileSync(join(dir, 'features.md'), '---\ntitle: Features\n---\nbody\n');
+		space.apply({ type: 'change', path: 'features.md' });
+
+		expect(space.warnings.filter((w) => w.source === 'features.md')).toEqual([]);
+	});
+
 	test('unlink: removes the page; nav is unaffected (v0.2 hrefs are opaque)', () => {
 		unlinkSync(join(dir, 'about.md'));
 		const delta = space.apply({ type: 'unlink', path: 'about.md' });
@@ -289,7 +311,7 @@ describe('Space.load() cache resilience', () => {
 		const raw = new Database(dbPath);
 		raw.exec("UPDATE meta SET value = '0' WHERE key = 'schema_version'");
 		raw.exec(
-			"INSERT INTO pages(rel, url, frontmatter, extra, body, mtime, content_hash) " +
+			'INSERT INTO pages(rel, url, frontmatter, extra, body, mtime, content_hash) ' +
 				"VALUES ('fake.md', '/fake', '{}', '{}', 'fake body', 1, 'fakehash')"
 		);
 		raw.close();
@@ -303,9 +325,9 @@ describe('Space.load() cache resilience', () => {
 
 		// Reopen the cache directly and assert schema_version is current.
 		const verify = new Database(join(dir, '.amber', 'cache.db'));
-		const row = verify
-			.prepare("SELECT value FROM meta WHERE key = 'schema_version'")
-			.get() as { value: string } | null;
+		const row = verify.prepare("SELECT value FROM meta WHERE key = 'schema_version'").get() as {
+			value: string;
+		} | null;
 		verify.close();
 		expect(row?.value).toBe('3');
 	});
@@ -331,9 +353,9 @@ describe('Space.load() cache resilience', () => {
 		// Open it directly — if recovery worked, this succeeds and the
 		// schema_version row is set to the current value.
 		const verify = new Database(dbPath);
-		const row = verify
-			.prepare("SELECT value FROM meta WHERE key = 'schema_version'")
-			.get() as { value: string } | null;
+		const row = verify.prepare("SELECT value FROM meta WHERE key = 'schema_version'").get() as {
+			value: string;
+		} | null;
 		verify.close();
 		expect(row?.value).toBe('3');
 	});

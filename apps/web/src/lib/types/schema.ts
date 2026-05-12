@@ -140,6 +140,21 @@ export interface PluginConfig {
 // Frontmatter (per-page YAML)
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Sort order for an `auto_index` listing. */
+export type AutoIndexSort = "date desc" | "date asc" | "title asc";
+
+/**
+ * A validated, normalized `auto_index` directive as it lives on an in-memory
+ * `Page`. `path` is content-root-relative, posix-separated, no leading or
+ * trailing slash. `sort` is always present (defaults to `"date desc"`).
+ * `limit`, when present, is a positive integer; absent means no limit.
+ */
+export interface AutoIndexDirective {
+    path: string;
+    sort: AutoIndexSort;
+    limit?: number;
+}
+
 /**
  * Frontmatter is parsed from the YAML block at the top of each markdown file.
  * All fields are optional — a file with no frontmatter is valid content.
@@ -175,6 +190,17 @@ export interface PageFrontmatter {
     date?: string;
     /** Last-updated date. Same convention as `date`. */
     updated?: string;
+
+    /**
+     * Auto-index directive (Wave 3 P1). When present, the page renders the
+     * theme's `partials/index.html` listing the markdown pages under `path`
+     * (relative to the content root), below the page's own rendered body.
+     * The loader validates and normalizes this on read — an in-memory `Page`
+     * either carries a fully-normalized `AutoIndexDirective` (with `sort`
+     * defaulted) or no `auto_index` at all (an invalid directive is dropped
+     * with an `auto_index_*` LoadWarning; the page still renders).
+     */
+    auto_index?: AutoIndexDirective;
 
     author?: string;
     tags?: string[];
@@ -212,7 +238,7 @@ export interface Space {
     root: string; // absolute path on disk
     manifest: AmberManifest;
 
-    /** All non-draft pages, keyed by URL path (leading slash, no trailing slash, "/" for root). */
+    /** All pages (drafts included — consumers filter), keyed by URL path (leading slash, no trailing slash, "/" for root). */
     pages: Map<string, Page>;
 
     /**
@@ -290,13 +316,23 @@ export interface LoadWarning {
      *     `href` field carries no path semantics for the loader.
      *   - `redirect_loop`: redirects aren't resolved yet (see CLAUDE.md →
      *     "LoadWarning codes").
+     *
+     * `auto_index_*` (Wave 3 P1): a page's `auto_index` frontmatter is
+     * malformed — `path` missing / not a string / not a directory under the
+     * content root (`auto_index_path_missing`); `sort` not one of the allowed
+     * values (`auto_index_invalid_sort`); `limit` not a positive integer
+     * (`auto_index_invalid_limit`). Each warning drops the directive; the page
+     * still renders, just without the index.
      */
     code:
     | "manifest_nav_missing_target"
     | "frontmatter_parse_error"
     | "duplicate_url"
     | "reserved_name_in_content"
-    | "redirect_loop";
+    | "redirect_loop"
+    | "auto_index_path_missing"
+    | "auto_index_invalid_sort"
+    | "auto_index_invalid_limit";
     message: string;
     /** Space-relative path or manifest pointer, where applicable. */
     source?: string;

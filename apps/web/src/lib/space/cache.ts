@@ -15,12 +15,7 @@ import { Database } from 'bun:sqlite';
 import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import {
-	readManifest,
-	resolveNav,
-	normalizeUrl,
-	mergeFrontmatterRedirects
-} from './load.ts';
+import { readManifest, resolveNav, normalizeUrl, mergeFrontmatterRedirects } from './load.ts';
 import { logger } from '$lib/server/logger';
 import {
 	RESERVED_TOP_LEVEL,
@@ -33,6 +28,17 @@ import {
 import { BUILTIN_THEME } from '$lib/theme/builtin';
 
 const log = logger.child({ subsystem: 'cache' });
+
+/** Warning codes that are scoped to a single page and persisted in the cache. */
+const PERSISTED_PAGE_WARNING_CODES: ReadonlySet<LoadWarning['code']> = new Set<LoadWarning['code']>(
+	[
+		'frontmatter_parse_error',
+		'duplicate_url',
+		'auto_index_path_missing',
+		'auto_index_invalid_sort',
+		'auto_index_invalid_limit'
+	]
+);
 
 const SCHEMA_VERSION = '3';
 
@@ -340,7 +346,7 @@ export class SpaceCache {
 				// Nav warnings are recomputed on hydrate; persisting only the
 				// per-page warnings keeps the cache decoupled from manifest
 				// drift.
-				if (w.code === 'frontmatter_parse_error' || w.code === 'duplicate_url') {
+				if (PERSISTED_PAGE_WARNING_CODES.has(w.code)) {
 					insertWarning.run(w.code, w.source ?? null, w.message);
 				}
 			}
@@ -415,8 +421,8 @@ export class SpaceCache {
 	}
 
 	/**
-	 * Replace the persisted per-page warnings (frontmatter_parse_error,
-	 * duplicate_url) with the supplied set. Nav-derived warnings stay in
+	 * Replace the persisted per-page warnings (codes in PERSISTED_PAGE_WARNING_CODES)
+	 * with the supplied set. Nav-derived warnings stay in
 	 * memory and aren't persisted.
 	 */
 	replacePageWarnings(warnings: LoadWarning[]): void {
@@ -427,7 +433,7 @@ export class SpaceCache {
 					'INSERT INTO warnings(code, source, message) VALUES (?, ?, ?)'
 				);
 				for (const w of warnings) {
-					if (w.code === 'frontmatter_parse_error' || w.code === 'duplicate_url') {
+					if (PERSISTED_PAGE_WARNING_CODES.has(w.code)) {
 						stmt.run(w.code, w.source ?? null, w.message);
 					}
 				}
@@ -492,9 +498,7 @@ export class SpaceCache {
 			const rows = this.db.prepare('SELECT content_hash FROM renders').all() as Array<{
 				content_hash: string;
 			}>;
-			const orphans = rows
-				.map((r) => r.content_hash)
-				.filter((h) => !activeHashes.has(h));
+			const orphans = rows.map((r) => r.content_hash).filter((h) => !activeHashes.has(h));
 			if (orphans.length === 0) return 0;
 			let deleted = 0;
 			const stmt = this.db.prepare('DELETE FROM renders WHERE content_hash = ?');

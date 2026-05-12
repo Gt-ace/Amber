@@ -2,8 +2,8 @@ import { describe, expect, test } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { discoverThemes, resolveActiveTheme, readTemplate } from './themes.ts';
-import { BUILTIN_THEME } from '$lib/theme/builtin';
+import { discoverThemes, resolveActiveTheme, readTemplate, readPartial } from './themes.ts';
+import { BUILTIN_THEME, BUILTIN_PARTIALS } from '$lib/theme/builtin';
 import type { AmberManifest } from '$lib/types/schema';
 import { logger } from '$lib/server/logger';
 
@@ -119,5 +119,36 @@ describe('resolveActiveTheme', () => {
 	test('no usable themes at all → BUILTIN_THEME', () => {
 		const m: AmberManifest = { amber_version: '0.2', theme: 'nope' };
 		expect(resolveActiveTheme(new Map(), m, log)).toBe(BUILTIN_THEME);
+	});
+});
+
+describe('readPartial', () => {
+	test('built-in theme → the built-in index partial', () => {
+		expect(readPartial(BUILTIN_THEME, 'index')).toBe(BUILTIN_PARTIALS.index);
+		expect(BUILTIN_PARTIALS.index).toContain('class="amber-auto-index"');
+		expect(BUILTIN_PARTIALS.index).toContain('{{#index_entries}}');
+	});
+
+	test('a discovered theme that ships partials/index.html → that file', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'amber-theme-partial-'));
+		mkdirSync(join(dir, 'partials'));
+		writeFileSync(
+			join(dir, 'partials', 'index.html'),
+			'<ol class="amber-auto-index">custom</ol>\n'
+		);
+		const theme = { name: 't', path: dir, assetBase: '/themes/t', manifest: {} };
+		expect(readPartial(theme, 'index')).toBe('<ol class="amber-auto-index">custom</ol>\n');
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	test('a discovered theme with no partials/index.html → falls back to the built-in', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'amber-theme-nopartial-'));
+		const theme = { name: 't', path: dir, assetBase: '/themes/t', manifest: {} };
+		expect(readPartial(theme, 'index')).toBe(BUILTIN_PARTIALS.index);
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	test('defaults the kind to "index"', () => {
+		expect(readPartial(BUILTIN_THEME)).toBe(BUILTIN_PARTIALS.index);
 	});
 });

@@ -61,8 +61,8 @@ export class Space implements SpaceData {
 	/** url → Page is the public view; rel → Page is the index for path-keyed events. */
 	private readonly pagesByRel: Map<string, Page>;
 
-	/** Per-page frontmatter_parse_error warnings, keyed by relative path. */
-	private readonly pageWarningByRel: Map<string, LoadWarning>;
+	/** Per-page warnings (frontmatter_parse_error, auto_index_*), keyed by relative path. */
+	private readonly pageWarningByRel: Map<string, LoadWarning[]>;
 
 	/**
 	 * duplicate_url warnings for pages that were *dropped* (the loser of a
@@ -106,7 +106,14 @@ export class Space implements SpaceData {
 		for (const w of initial.warnings) {
 			switch (w.code) {
 				case 'frontmatter_parse_error':
-					if (w.source) this.pageWarningByRel.set(w.source, w);
+				case 'auto_index_path_missing':
+				case 'auto_index_invalid_sort':
+				case 'auto_index_invalid_limit':
+					if (w.source) {
+						const arr = this.pageWarningByRel.get(w.source) ?? [];
+						arr.push(w);
+						this.pageWarningByRel.set(w.source, arr);
+					}
 					break;
 				case 'duplicate_url':
 					if (w.source) this.dupeWarningByRel.set(w.source, w);
@@ -344,7 +351,7 @@ export class Space implements SpaceData {
 			this.applyUnlink(rel);
 			return;
 		}
-		const { page, warning } = result;
+		const { page, warnings: pageWarnings } = result;
 
 		// If a page existed under this relativePath already (a `change`),
 		// retire its old URL slot first.
@@ -374,8 +381,8 @@ export class Space implements SpaceData {
 			this.pagesByRel.set(rel, page);
 		}
 
-		if (warning) {
-			this.pageWarningByRel.set(rel, warning);
+		if (pageWarnings.length > 0) {
+			this.pageWarningByRel.set(rel, pageWarnings);
 		}
 	}
 
@@ -391,7 +398,7 @@ export class Space implements SpaceData {
 		// Stable order: per-page warnings sorted by relativePath, then dupe
 		// warnings, then nav warnings (in resolution order).
 		const pageRels = [...this.pageWarningByRel.keys()].sort();
-		for (const rel of pageRels) this.warnings.push(this.pageWarningByRel.get(rel)!);
+		for (const rel of pageRels) this.warnings.push(...this.pageWarningByRel.get(rel)!);
 		const dupeRels = [...this.dupeWarningByRel.keys()].sort();
 		for (const rel of dupeRels) this.warnings.push(this.dupeWarningByRel.get(rel)!);
 		for (const w of this.navWarnings) this.warnings.push(w);

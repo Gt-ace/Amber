@@ -1,6 +1,8 @@
 ---
 title: Projects
 layout: page
+auto_index:
+  path: projects
 ---
 
 A short, current list. Older work lives in a flat file somewhere; ask if you

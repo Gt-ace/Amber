@@ -32,9 +32,26 @@ ${CONTENT_SLOT}
 <article>
 {{#has_header}}<header class="article-header">{{#title}}<h1 class="article-title">{{title}}</h1>{{/title}}{{#date_display}}<p class="article-date"><time datetime="{{date_iso}}">{{date_display}}</time></p>{{/date_display}}</header>{{/has_header}}
 <div class="article-body">{{{html}}}</div>
+{{{index_html}}}
 </article>
 `,
 	error: `{{#is_404}}{{#has_body}}{{{body}}}{{/has_body}}{{^has_body}}<h1>Page not found</h1><p>The page you were looking for doesn't exist.</p><p><a href="/">Back to home</a></p>{{/has_body}}{{/is_404}}{{^is_404}}<h1>{{status}}</h1><p>{{message}}</p><p><a href="/">Back to home</a></p>{{/is_404}}
+`
+};
+
+/**
+ * Built-in theme partials — the fallback used when the active theme ships no
+ * `partials/<name>.html`. Right now there's one: the `auto_index` list partial
+ * (Wave 3 P1). Class prefix `amber-` so a theme's CSS can style it without
+ * needing to override the markup. Deliberately minimal — matches the snippet
+ * in docs/p1.md.
+ */
+export const BUILTIN_PARTIALS: Record<'index', string> = {
+	index: `<ul class="amber-auto-index">
+{{#index_entries}}
+  <li><a href="{{href}}">{{title}}</a>{{#date}} <time datetime="{{date}}">{{date}}</time>{{/date}}</li>
+{{/index_entries}}
+</ul>
 `
 };
 

@@ -1,7 +1,9 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, beforeEach, afterEach } from 'vitest';
 import { fileURLToPath } from 'node:url';
-import { readFileSync } from 'node:fs';
-import { load, LoadError, splitFrontmatter, coerceDate, resolveNav } from './load.ts';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { load, LoadError, splitFrontmatter, coerceDate, resolveNav, buildPage } from './load.ts';
 
 const FIXTURE = fileURLToPath(new URL('../../../fixtures/example-space/', import.meta.url));
 const INVALID = (name: string): string =>
@@ -43,6 +45,9 @@ describe('load(spacePath)', () => {
 		// Nested folder-with-index
 		const fieldNotes = space.pages.get('/projects/field-notes')!;
 		expect(fieldNotes.relativePath).toBe('projects/field-notes/index.md');
+
+		// auto_index on projects/index.md is parsed and normalized (sort defaulted)
+		expect(projects.frontmatter.auto_index).toEqual({ path: 'projects', sort: 'date desc' });
 
 		// slug: replaces filename segment, not parents
 		const sayHi = space.pages.get('/say-hi')!;
@@ -216,9 +221,7 @@ describe('coerceDate()', () => {
 
 describe('splitFrontmatter() — `date`/`updated` validation', () => {
 	test('valid ISO date string is preserved on the typed frontmatter', () => {
-		const { frontmatter, fieldErrors } = splitFrontmatter(
-			'---\ndate: "2026-05-10"\n---\nbody\n'
-		);
+		const { frontmatter, fieldErrors } = splitFrontmatter('---\ndate: "2026-05-10"\n---\nbody\n');
 		expect(frontmatter.date).toBe('2026-05-10');
 		expect(fieldErrors).toEqual([]);
 	});
@@ -227,9 +230,7 @@ describe('splitFrontmatter() — `date`/`updated` validation', () => {
 		// The default `yaml` parser returns this as a string; this test pins
 		// down that behavior. If the parser ever switches to returning a Date,
 		// `coerceDate` still produces a string and the test still passes.
-		const { frontmatter, fieldErrors } = splitFrontmatter(
-			'---\ndate: 2026-05-10\n---\nbody\n'
-		);
+		const { frontmatter, fieldErrors } = splitFrontmatter('---\ndate: 2026-05-10\n---\nbody\n');
 		expect(typeof frontmatter.date).toBe('string');
 		expect(frontmatter.date).toMatch(/^2026-05-10/);
 		expect(fieldErrors).toEqual([]);
@@ -242,36 +243,28 @@ describe('splitFrontmatter() — `date`/`updated` validation', () => {
 	});
 
 	test('invalid string date is dropped and reported in fieldErrors', () => {
-		const { frontmatter, fieldErrors } = splitFrontmatter(
-			'---\ndate: not-a-date\n---\nbody\n'
-		);
+		const { frontmatter, fieldErrors } = splitFrontmatter('---\ndate: not-a-date\n---\nbody\n');
 		expect(frontmatter.date).toBeUndefined();
 		expect(fieldErrors).toHaveLength(1);
 		expect(fieldErrors[0]).toMatch(/`date`/);
 	});
 
 	test('empty string date is dropped and reported', () => {
-		const { frontmatter, fieldErrors } = splitFrontmatter(
-			'---\ndate: ""\n---\nbody\n'
-		);
+		const { frontmatter, fieldErrors } = splitFrontmatter('---\ndate: ""\n---\nbody\n');
 		expect(frontmatter.date).toBeUndefined();
 		expect(fieldErrors).toHaveLength(1);
 		expect(fieldErrors[0]).toMatch(/empty/);
 	});
 
 	test('integer date is dropped and reported', () => {
-		const { frontmatter, fieldErrors } = splitFrontmatter(
-			'---\ndate: 12345\n---\nbody\n'
-		);
+		const { frontmatter, fieldErrors } = splitFrontmatter('---\ndate: 12345\n---\nbody\n');
 		expect(frontmatter.date).toBeUndefined();
 		expect(fieldErrors).toHaveLength(1);
 		expect(fieldErrors[0]).toMatch(/`date`/);
 	});
 
 	test('invalid `updated` is treated the same as invalid `date`', () => {
-		const { frontmatter, fieldErrors } = splitFrontmatter(
-			'---\nupdated: not-a-date\n---\nbody\n'
-		);
+		const { frontmatter, fieldErrors } = splitFrontmatter('---\nupdated: not-a-date\n---\nbody\n');
 		expect(frontmatter.updated).toBeUndefined();
 		expect(fieldErrors).toHaveLength(1);
 		expect(fieldErrors[0]).toMatch(/`updated`/);
@@ -288,9 +281,7 @@ describe('splitFrontmatter() — `date`/`updated` validation', () => {
 	});
 
 	test('both `date` and `updated` invalid → two field errors', () => {
-		const { fieldErrors } = splitFrontmatter(
-			'---\ndate: 12345\nupdated: not-a-date\n---\nbody\n'
-		);
+		const { fieldErrors } = splitFrontmatter('---\ndate: 12345\nupdated: not-a-date\n---\nbody\n');
 		expect(fieldErrors).toHaveLength(2);
 	});
 });
@@ -353,5 +344,73 @@ describe('resolveNav (v0.2 [[nav]] schema)', () => {
 			{ label: 'Survivor', href: '/s' }
 		]);
 		expect(out).toEqual([{ label: 'Survivor', href: '/s' }]);
+	});
+});
+
+describe('buildPage — auto_index validation', () => {
+	let root: string;
+	beforeEach(() => {
+		root = mkdtempSync(join(tmpdir(), 'amber-buildpage-'));
+		mkdirSync(join(root, 'writing'));
+	});
+	afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+	function write(rel: string, frontmatter: string): string {
+		const p = join(root, rel);
+		writeFileSync(p, `---\n${frontmatter}\n---\nbody\n`);
+		return p;
+	}
+
+	test('valid auto_index is normalized onto the page; no warning', () => {
+		const { page, warnings } = buildPage(
+			root,
+			write('feature.md', 'title: Feature\nauto_index:\n  path: writing\n  limit: 3')
+		);
+		expect(warnings).toEqual([]);
+		expect(page.frontmatter.auto_index).toEqual({ path: 'writing', sort: 'date desc', limit: 3 });
+	});
+
+	test('missing directory → auto_index_path_missing warning (with source) and the directive is dropped', () => {
+		const { page, warnings } = buildPage(root, write('feature.md', 'auto_index:\n  path: nope'));
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toMatchObject({ code: 'auto_index_path_missing', source: 'feature.md' });
+		expect(page.frontmatter.auto_index).toBeUndefined();
+	});
+
+	test('bad sort → auto_index_invalid_sort warning, directive dropped', () => {
+		const { page, warnings } = buildPage(
+			root,
+			write('feature.md', 'auto_index:\n  path: writing\n  sort: newest')
+		);
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toMatchObject({ code: 'auto_index_invalid_sort', source: 'feature.md' });
+		expect(page.frontmatter.auto_index).toBeUndefined();
+	});
+
+	test('bad limit → auto_index_invalid_limit warning, directive dropped', () => {
+		const { page, warnings } = buildPage(
+			root,
+			write('feature.md', 'auto_index:\n  path: writing\n  limit: 0')
+		);
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toMatchObject({ code: 'auto_index_invalid_limit', source: 'feature.md' });
+		expect(page.frontmatter.auto_index).toBeUndefined();
+	});
+
+	test('a frontmatter parse error and a bad auto_index can co-occur — two warnings', () => {
+		// Invalid `date` (a field error → frontmatter_parse_error) plus a bad sort.
+		const { warnings } = buildPage(
+			root,
+			write('feature.md', 'date: not-a-date\nauto_index:\n  path: writing\n  sort: bogus')
+		);
+		expect(warnings.map((w) => w.code).sort()).toEqual([
+			'auto_index_invalid_sort',
+			'frontmatter_parse_error'
+		]);
+		// buildPage guarantees frontmatter_parse_error before auto_index_*.
+		expect(warnings.map((w) => w.code)).toEqual([
+			'frontmatter_parse_error',
+			'auto_index_invalid_sort'
+		]);
 	});
 });

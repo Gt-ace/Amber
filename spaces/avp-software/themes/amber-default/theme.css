@@ -9,7 +9,7 @@
  * to change is an `--amber-*` custom property on :root. Light + dark live in
  * one file; the dark block remaps the eight colour tokens and nothing else.
  *
- * Pairs with chrome.html / page.html / error.html in this directory and the
+ * Pairs with chrome.html / page.html / error.html / partials/index.html in this directory and the
  * `theme_color` / `footer` slots in theme.toml. The `--amber-*` contract isn't
  * formally documented yet — that gets pinned down when theme B lands (Wave 3).
  */
@@ -356,6 +356,50 @@ main {
 
 .site-footer a:hover {
 	color: var(--amber-accent);
+}
+
+/* ── Auto-index list (auto_index frontmatter → partials/index.html) ─────── */
+
+.amber-auto-index {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.amber-auto-index-item {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.35rem 1rem;
+	padding: 0.55rem 0;
+	border-bottom: 1px solid var(--amber-rule);
+}
+
+.amber-auto-index-item:first-child {
+	border-top: 1px solid var(--amber-rule);
+}
+
+.amber-auto-index-link {
+	color: var(--amber-accent);
+	text-decoration: none;
+	transition: color 150ms var(--amber-ease);
+}
+
+.amber-auto-index-link:hover {
+	color: var(--amber-accent-hover);
+	text-decoration: underline;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 0.18em;
+}
+
+.amber-auto-index-date {
+	margin-left: auto;
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	text-transform: uppercase;
+	color: var(--amber-ink-muted);
+	white-space: nowrap;
 }
 
 /* ── Entrance: one quiet orchestrated moment, then nothing ─────────────── */

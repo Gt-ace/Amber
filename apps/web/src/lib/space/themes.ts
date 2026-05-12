@@ -29,7 +29,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse as parseToml } from 'smol-toml';
 
-import { BUILTIN_THEME, BUILTIN_TEMPLATES } from '$lib/theme/builtin';
+import { BUILTIN_THEME, BUILTIN_TEMPLATES, BUILTIN_PARTIALS } from '$lib/theme/builtin';
 import type { AmberManifest, Theme, ThemeManifest } from '$lib/types/schema';
 import type { Logger } from '$lib/server/logger';
 
@@ -102,6 +102,27 @@ export function discoverThemes(root: string, log: Logger): Map<string, Theme> {
 export function readTemplate(theme: Theme, kind: TemplateKind): string {
 	if (theme.path === '') return BUILTIN_TEMPLATES[kind];
 	return readFileSync(join(theme.path, TEMPLATE_FILES[kind]), 'utf8');
+}
+
+export type PartialKind = 'index';
+const PARTIAL_FILES: Record<PartialKind, string> = {
+	index: 'partials/index.html'
+};
+
+/**
+ * Read a theme's partial template. Partials are *optional* — discovery doesn't
+ * stat them — so if the active theme ships no `partials/<kind>.html` (or the
+ * read fails for any reason) we fall back to `BUILTIN_PARTIALS[kind]`. The
+ * built-in theme (`path === ''`) always uses the built-in partial. This is the
+ * counterpart to `readTemplate`, which 500s on a missing *required* template.
+ */
+export function readPartial(theme: Theme, kind: PartialKind = 'index'): string {
+	if (theme.path === '') return BUILTIN_PARTIALS[kind];
+	try {
+		return readFileSync(join(theme.path, PARTIAL_FILES[kind]), 'utf8');
+	} catch {
+		return BUILTIN_PARTIALS[kind];
+	}
 }
 
 /** The directory name `theme = "..."` defaults to and falls back to. */

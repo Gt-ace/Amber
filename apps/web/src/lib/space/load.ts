@@ -39,6 +39,7 @@ import {
 	type Space
 } from '$lib/types/schema';
 import { discoverThemes, resolveActiveTheme } from './themes.ts';
+import { validateAutoIndex } from './auto-index.ts';
 
 const redirectsLog = logger.child({ subsystem: 'redirects' });
 const log = logger.child({ subsystem: 'loader' });
@@ -63,7 +64,8 @@ const FRONTMATTER_KEYS: ReadonlySet<keyof PageFrontmatter> = new Set([
 	'author',
 	'tags',
 	'layout',
-	'redirect_from'
+	'redirect_from',
+	'auto_index'
 ]);
 
 /** Frontmatter keys whose values are interpreted as ISO 8601 dates. */
@@ -250,8 +252,8 @@ function loadPage(
 	byRelative: Map<string, Page>,
 	warnings: LoadWarning[]
 ): void {
-	const { page, warning } = buildPage(root, filePath);
-	if (warning) warnings.push(warning);
+	const { page, warnings: pageWarnings } = buildPage(root, filePath);
+	for (const w of pageWarnings) warnings.push(w);
 
 	if (pages.has(page.url)) {
 		warnings.push({
@@ -267,16 +269,18 @@ function loadPage(
 
 /**
  * Read and parse a single markdown file into a `Page`. Pure-ish (touches the
- * filesystem to read the file and stat it) but stateless — no maps, no
- * cross-page concerns. The optional warning is `frontmatter_parse_error` only
- * (block-level parse failure or per-field validation failures combined into
- * one message); `duplicate_url` is a cross-page concern and lives at the
- * call site.
+ * filesystem to read the file, stat it, and — for an `auto_index` directive —
+ * stat the referenced directory) but stateless: no maps, no cross-page
+ * concerns. `duplicate_url` lives at the call site.
+ *
+ * Warnings returned (zero or more, in this order):
+ *   - `frontmatter_parse_error` — block-level YAML parse failure and/or
+ *     per-field validation failures (e.g. bad `date`), combined into one entry.
+ *   - one of `auto_index_path_missing` / `auto_index_invalid_sort` /
+ *     `auto_index_invalid_limit` — the page's `auto_index` is malformed; the
+ *     directive is dropped from `frontmatter`, the page is otherwise unaffected.
  */
-export function buildPage(
-	root: string,
-	filePath: string
-): { page: Page; warning?: LoadWarning } {
+export function buildPage(root: string, filePath: string): { page: Page; warnings: LoadWarning[] } {
 	const rel = relative(root, filePath).split(sep).join(posix.sep);
 	const rawFromDisk = readFileSync(filePath, 'utf8');
 	// Strip a leading UTF-8 BOM so the same logical file produces the same
@@ -286,6 +290,31 @@ export function buildPage(
 	const contentHash = createHash('sha256').update(raw).digest('hex');
 
 	const { frontmatter, extra, body, parseError, fieldErrors } = splitFrontmatter(raw);
+
+	const warnings: LoadWarning[] = [];
+
+	// Combine block-level parse error and per-field validation errors into a
+	// single `frontmatter_parse_error` so each problem is one sentence in one
+	// message.
+	const messages: string[] = [];
+	if (parseError) messages.push(`Frontmatter failed to parse: ${parseError}`);
+	for (const fieldError of fieldErrors) messages.push(fieldError);
+	if (messages.length > 0) {
+		warnings.push({ code: 'frontmatter_parse_error', message: messages.join(' '), source: rel });
+	}
+
+	// `auto_index`: validate & normalize against the content root, or drop the
+	// directive with a structured warning. (Done here rather than in
+	// `splitFrontmatter` because it needs `root` to stat the target directory.)
+	if (frontmatter.auto_index !== undefined) {
+		const result = validateAutoIndex(frontmatter.auto_index, root);
+		if (result.ok) {
+			frontmatter.auto_index = result.value;
+		} else {
+			delete frontmatter.auto_index;
+			warnings.push({ ...result.warning, source: rel });
+		}
+	}
 
 	const url = deriveUrl(rel, frontmatter.slug);
 	const page: Page = {
@@ -299,24 +328,7 @@ export function buildPage(
 		contentHash
 	};
 
-	// Combine block-level parse error and per-field validation errors into a
-	// single warning so callers (Space.apply, the warning index) can keep
-	// their "one warning per page" assumption. Each problem appears as its
-	// own sentence in the message.
-	const messages: string[] = [];
-	if (parseError) messages.push(`Frontmatter failed to parse: ${parseError}`);
-	for (const fieldError of fieldErrors) messages.push(fieldError);
-	if (messages.length > 0) {
-		return {
-			page,
-			warning: {
-				code: 'frontmatter_parse_error',
-				message: messages.join(' '),
-				source: rel
-			}
-		};
-	}
-	return { page };
+	return { page, warnings };
 }
 
 export function splitFrontmatter(raw: string): {
@@ -438,10 +450,7 @@ export function resolveNav(entries: unknown): NavEntry[] {
 		}
 		const e = raw as Record<string, unknown>;
 		if (typeof e.label !== 'string') {
-			log.warn(
-				{ index: i, entry: raw },
-				'skipping nav entry: missing or non-string `label`'
-			);
+			log.warn({ index: i, entry: raw }, 'skipping nav entry: missing or non-string `label`');
 			continue;
 		}
 		if (typeof e.href !== 'string') {
