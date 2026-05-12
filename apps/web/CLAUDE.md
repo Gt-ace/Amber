@@ -24,8 +24,12 @@ matches no files unless `AMBER_E2E` is set, so the default `bun test` stays
 hermetic:
 
 ```
-AMBER_E2E=1 bun --bun vitest --run --project e2e
+bun run test:smoke              # = AMBER_E2E=1 bun --bun vitest --run --project e2e
 ```
+
+There is no CI by design; `test:smoke` is the pre-deploy gate the operator
+runs by hand. It is deliberately *not* part of `bun test` / `bun run test`
+so the fast unit/integration loop stays fast.
 
 Prerequisites: `bun` on `$PATH`, Playwright's Chromium installed
 (`npx playwright install chromium`), and on bare Linux boxes the Chromium
