@@ -1,0 +1,10 @@
+{{#is_404}}{{#has_body}}{{{body}}}{{/has_body}}{{^has_body}}<div class="error-page">
+	<p class="error-code">404</p>
+	<h1 class="error-title">Page not found</h1>
+	<p>The page you were looking for doesn't exist — or never did.</p>
+	<p class="error-back"><a href="/">Back to the index</a></p>
+</div>{{/has_body}}{{/is_404}}{{^is_404}}<div class="error-page">
+	<p class="error-code">{{status}}</p>
+	<h1 class="error-title">{{message}}</h1>
+	<p class="error-back"><a href="/">Back to the index</a></p>
+</div>{{/is_404}}

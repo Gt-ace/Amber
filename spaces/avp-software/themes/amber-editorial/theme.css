@@ -1,0 +1,677 @@
+/*
+ * amber-editorial — Amber's second theme.
+ *
+ * The other axis from amber-default. Where the default is a warm, centred,
+ * settle-in book, this is a cool, asymmetric, scan-it design journal: a
+ * neo-grotesque set tight and large for headlines and chrome, a separate
+ * humanist sans for reading, hard edges (no corner radius), hairline rules,
+ * a single cobalt accent, and a sticky masthead rail down the left edge.
+ *
+ * It speaks the same ~29-token `--amber-*` contract amber-default established
+ * — no new variable names — but every value moves: the point of a small
+ * contract is to prove it holds across two themes that read as different
+ * publications. The one deliberate divergence from the default's choices:
+ * `--amber-font-ui` / `--amber-font-heading` are split off from
+ * `--amber-font-body`. The default keeps one voice; this one breaks it on
+ * purpose — the UI face (nav, dates, captions, footer) is the grotesque, the
+ * body face is the humanist sans.
+ *
+ * Vanilla CSS, no build step. Light + dark in one file; the dark block remaps
+ * the eight colour tokens and nothing else. System font stacks only — a
+ * self-hosted canvas shouldn't phone a font CDN on every page load — so the
+ * named first choices ('Helvetica Neue', 'Avenir Next', …) degrade gracefully
+ * to the platform's nearest grotesque / humanist sans.
+ *
+ * Pairs with chrome.html / page.html / error.html / partials/index.html in
+ * this directory and the `theme_color` / `footer` slots in theme.toml.
+ */
+
+:root {
+	/* ── Color ──────────────────────────────────────────────────────────── */
+	--amber-bg: #f4f4f2; /* page — cool near-white, faintly grey */
+	--amber-ink: #16171a; /* primary text — cool near-black, blue-grey undertone */
+	--amber-ink-muted: #57595e; /* secondary text — dates, captions, chrome, footer */
+	--amber-accent: #1f31d6; /* links and ::marker accents — electric cobalt */
+	--amber-accent-hover: #131f9c; /* link hover — a deeper cobalt */
+	--amber-rule: #d4d4d0; /* hairlines — header/footer/article rules, borders */
+	--amber-surface-sunken: #e7e8e3; /* recessed fill — code blocks, inline code */
+	--amber-selection-bg: rgba(31, 49, 214, 0.18); /* ::selection / link-hover wash */
+
+	/* ── Type ───────────────────────────────────────────────────────────── */
+	/* Body face: a humanist sans — open, tall x-height, comfortable at small
+	   sizes. Distinct from the grotesque used for chrome and headings (this
+	   theme splits the two on purpose; see the file header). */
+	--amber-font-body:
+		'Avenir Next', Avenir, 'Segoe UI', Cantarell, 'Lucida Grande', 'Lucida Sans Unicode', Ubuntu,
+		sans-serif;
+	/* Headings: a tight neo-grotesque, set heavy. */
+	--amber-font-heading:
+		'Helvetica Neue', 'Helvetica Now Display', Helvetica, 'Arial Nova', Arial, 'Liberation Sans',
+		'Nimbus Sans', sans-serif;
+	/* Chrome (nav, dates, captions, footer): the same grotesque, small / caps /
+	   tracked. Same family as --amber-font-heading; *different* from the body. */
+	--amber-font-ui: var(--amber-font-heading);
+	--amber-font-mono:
+		ui-monospace, 'SF Mono', 'JetBrains Mono', 'IBM Plex Mono', 'Cascadia Code', Menlo, Consolas,
+		monospace;
+
+	--amber-text-base: 1.0625rem; /* root body size — 17px; the sans is dense, doesn't need 19 */
+	--amber-text-sm: 0.72rem; /* small chrome text — nav, date, caption, footer */
+	--amber-text-h1: 2.7rem; /* article title — big; scale contrast is part of the look */
+	--amber-text-h2: 1.5rem; /* section heading */
+	--amber-text-h3: 1.12rem; /* sub-heading */
+
+	--amber-leading-body: 1.6; /* body line-height — tighter than the book theme */
+	--amber-leading-tight: 1.06; /* headings line-height — set close */
+	--amber-tracking-ui: 0.13em; /* letter-spacing for the uppercased chrome — wide */
+
+	/* ── Space & layout ─────────────────────────────────────────────────── */
+	--amber-measure: 42rem; /* prose column max-width — ~75 chars at 17px sans */
+	--amber-pad-page: 2.75rem; /* horizontal padding of the content column */
+	--amber-gap-flow: 1rem; /* vertical rhythm between flowing blocks (p, ul, …) */
+	--amber-gap-section: 2.4rem; /* extra space above a section heading (h2) */
+	--amber-gap-chrome: 2.75rem; /* gap around the content column / used as the rail's padding */
+
+	/* ── Shape & motion ─────────────────────────────────────────────────── */
+	--amber-radius: 0; /* hard edges — code blocks, images. The zine has no rounded corners */
+	--amber-ease: cubic-bezier(0.16, 1, 0.3, 1); /* snappy ease-out */
+	--amber-duration: 280ms; /* entrance duration — quicker than the book theme */
+
+	/* Rail width — not part of the --amber-* contract; an implementation detail
+	   of this theme's asymmetric layout, scoped here so the media query can
+	   collapse it. */
+	--ed-rail-width: 14.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+	/* A second mode is a second set of colour tokens. Type, spacing and layout
+	   are mode-agnostic; only these eight move. Tuned so dark reads as *this*
+	   theme — cool and high-contrast — not as a dimmed amber-default. */
+	:root {
+		--amber-bg: #0d0e11;
+		--amber-ink: #e7e8ea;
+		--amber-ink-muted: #888a90;
+		--amber-accent: #8b9bff;
+		--amber-accent-hover: #b0bbff;
+		--amber-rule: #25262b;
+		--amber-surface-sunken: #16171b;
+		--amber-selection-bg: rgba(139, 155, 255, 0.26);
+	}
+}
+
+/* ───────────────────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	font-family: var(--amber-font-body);
+	font-size: var(--amber-text-base);
+	line-height: var(--amber-leading-body);
+	color: var(--amber-ink);
+	background: var(--amber-bg);
+	-webkit-text-size-adjust: 100%;
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+}
+
+::selection {
+	background: var(--amber-selection-bg);
+}
+
+/* ── The page as a two-column grid: a sticky rail, then the content column.
+   chrome.html gives us <header> … <!--amber:content--> … <footer>; the layout
+   wraps the page in <main> between the two halves, so <body> has exactly three
+   children: .site-header, main, .site-footer. We place the header in the rail
+   (spanning the full height, sticking to the top) and main + footer stacked in
+   the wide column. Below --ed-rail-width's worth of room the whole thing
+   collapses to one column (see the media query at the foot of this file). ── */
+
+body {
+	margin: 0;
+	min-height: 100dvh;
+	display: grid;
+	grid-template-columns: var(--ed-rail-width) minmax(0, 1fr);
+	grid-template-rows: 1fr auto;
+}
+
+/* ── Page chrome: the masthead rail ────────────────────────────────────── */
+
+.site-header {
+	grid-column: 1;
+	grid-row: 1 / -1; /* the rail spans the whole page height — the spine runs the full side */
+	display: flex;
+	flex-direction: column;
+	gap: 1.8rem;
+	padding: var(--amber-gap-chrome) 1.4rem;
+	border-right: 1px solid var(--amber-rule);
+	font-family: var(--amber-font-ui);
+}
+
+/* The wordmark, set as a reversed "stamp" — the one solid block of colour in
+   the chrome. In dark mode --amber-ink is the light token, so it inverts with
+   the page and stays a reversed mark either way. */
+.site-header .site-title {
+	align-self: flex-start;
+	display: inline-block;
+	background: var(--amber-ink);
+	color: var(--amber-bg);
+	padding: 0.1em 0.34em 0.2em;
+	font-family: var(--amber-font-heading);
+	font-size: 1.35rem;
+	font-weight: 800;
+	letter-spacing: -0.02em;
+	line-height: 1.05;
+	text-decoration: none;
+	transition: background-color 140ms var(--amber-ease);
+}
+
+.site-header .site-title:hover,
+.site-header .site-title:focus-visible {
+	background: var(--amber-accent);
+}
+
+.site-nav ul {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	border-top: 1px solid var(--amber-rule);
+}
+
+.site-nav li {
+	border-bottom: 1px solid var(--amber-rule);
+}
+
+.site-nav a {
+	display: block;
+	padding: 0.6rem 0 0.6rem 0;
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	text-transform: uppercase;
+	color: var(--amber-ink-muted);
+	text-decoration: none;
+	transition:
+		color 140ms var(--amber-ease),
+		padding-left 140ms var(--amber-ease),
+		box-shadow 140ms var(--amber-ease);
+}
+
+.site-nav a:hover,
+.site-nav a:focus-visible {
+	color: var(--amber-ink);
+	padding-left: 0.7rem;
+	box-shadow: inset 3px 0 0 var(--amber-accent);
+}
+
+/* ── Content column ────────────────────────────────────────────────────── */
+
+main {
+	grid-column: 2;
+	grid-row: 1;
+	min-width: 0;
+	padding: var(--amber-gap-chrome) var(--amber-pad-page) calc(var(--amber-gap-chrome) * 1.6);
+}
+
+/* ── Article ───────────────────────────────────────────────────────────── */
+
+.article-header {
+	position: relative;
+	max-width: 54rem; /* the headline is allowed to break the prose measure */
+	margin-bottom: 2.6rem;
+	padding-bottom: 1.5rem;
+}
+
+/* The headline's bottom rule: a cobalt bar (heavier, brighter than a hairline).
+   With motion enabled it draws in from the left on entrance — see the bottom of
+   this file. */
+.article-header::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: 2px;
+	background: var(--amber-accent);
+	transform-origin: left;
+}
+
+.article-date {
+	margin: 0 0 0.7rem;
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	text-transform: uppercase;
+	color: var(--amber-ink-muted);
+}
+
+.article-title {
+	margin: 0;
+	font-family: var(--amber-font-heading);
+	font-size: var(--amber-text-h1);
+	line-height: var(--amber-leading-tight);
+	font-weight: 800;
+	letter-spacing: -0.022em;
+}
+
+/* The markdown body. Selectors are scoped under .article-body because the HTML
+   is injected via {@html} — these styles can't ride Svelte's component scoping,
+   so the stylesheet is global and we scope by hand. */
+
+.article-body {
+	max-width: var(--amber-measure);
+}
+
+.article-body > :first-child {
+	margin-top: 0;
+}
+
+.article-body p,
+.article-body ul,
+.article-body ol,
+.article-body blockquote,
+.article-body pre,
+.article-body figure,
+.article-body table {
+	margin: 0 0 var(--amber-gap-flow);
+}
+
+.article-body h2,
+.article-body h3 {
+	font-family: var(--amber-font-heading);
+	line-height: var(--amber-leading-tight);
+	font-weight: 700;
+	letter-spacing: -0.012em;
+	margin: var(--amber-gap-section) 0 0.55rem;
+}
+
+.article-body h2 {
+	font-size: var(--amber-text-h2);
+	padding-bottom: 0.3rem;
+	border-bottom: 1px solid var(--amber-rule);
+}
+
+.article-body h3 {
+	font-size: var(--amber-text-h3);
+}
+
+.article-body a {
+	color: var(--amber-accent);
+	text-decoration: underline;
+	text-decoration-thickness: 0.08em;
+	text-underline-offset: 0.16em;
+	transition:
+		color 140ms var(--amber-ease),
+		background-color 140ms var(--amber-ease);
+}
+
+.article-body a:hover,
+.article-body a:focus-visible {
+	color: var(--amber-accent-hover);
+	background: var(--amber-selection-bg);
+	text-decoration-color: transparent;
+}
+
+.article-body strong {
+	font-weight: 700;
+}
+
+.article-body em {
+	font-style: italic;
+}
+
+.article-body ul,
+.article-body ol {
+	padding-left: 1.3rem;
+}
+
+.article-body li {
+	margin-bottom: 0.28rem;
+}
+
+.article-body li::marker {
+	color: var(--amber-accent);
+}
+
+.article-body blockquote {
+	position: relative;
+	padding: 0.1rem 0 0.1rem 1.4rem;
+	border-left: 3px solid var(--amber-accent);
+	font-size: 1.1em;
+	line-height: 1.5;
+	color: var(--amber-ink);
+}
+
+.article-body blockquote p:last-child {
+	margin-bottom: 0;
+}
+
+.article-body img {
+	display: block;
+	max-width: min(100%, 54rem); /* images may bleed wider than the text column */
+	height: auto;
+	margin: calc(var(--amber-gap-flow) * 1.4) 0;
+	border-radius: var(--amber-radius);
+	border: 1px solid var(--amber-rule);
+}
+
+.article-body code {
+	font-family: var(--amber-font-mono);
+	font-size: 0.86em;
+	background: var(--amber-surface-sunken);
+	padding: 0.12em 0.32em;
+	border-radius: var(--amber-radius);
+}
+
+.article-body pre {
+	font-family: var(--amber-font-mono);
+	font-size: 0.86em;
+	line-height: 1.55;
+	background: var(--amber-surface-sunken);
+	padding: 0.95rem 1.15rem;
+	border-left: 2px solid var(--amber-accent);
+	border-radius: var(--amber-radius);
+	overflow-x: auto;
+}
+
+.article-body pre code {
+	background: transparent;
+	padding: 0;
+	border-radius: 0;
+	font-size: inherit;
+}
+
+.article-body hr {
+	border: none;
+	border-top: 2px solid var(--amber-ink);
+	margin: var(--amber-gap-section) 0;
+}
+
+.article-body table {
+	border-collapse: collapse;
+	width: 100%;
+	font-size: 0.94em;
+}
+
+.article-body th,
+.article-body td {
+	padding: 0.4rem 0.7rem 0.4rem 0;
+	border-bottom: 1px solid var(--amber-rule);
+	text-align: left;
+	vertical-align: top;
+}
+
+.article-body th {
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	text-transform: uppercase;
+	color: var(--amber-ink-muted);
+}
+
+/* ── Draft banner (dev-only) ───────────────────────────────────────────── */
+
+.draft-banner {
+	max-width: 54rem;
+	margin: 0 0 1.8rem;
+	padding: 0.5rem 0.8rem;
+	border: 1px solid var(--amber-accent);
+	border-radius: var(--amber-radius);
+	background: var(--amber-selection-bg);
+	color: var(--amber-ink);
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	text-transform: uppercase;
+}
+
+/* ── Auto-index list (auto_index frontmatter → partials/index.html) ─────── */
+
+.amber-auto-index {
+	counter-reset: amber-idx;
+	max-width: 54rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.amber-auto-index-item {
+	counter-increment: amber-idx;
+	display: grid;
+	grid-template-columns: 2.4rem 1fr auto;
+	align-items: baseline;
+	gap: 0.4rem 1rem;
+	padding: 0.7rem 0;
+	border-bottom: 1px solid var(--amber-rule);
+}
+
+.amber-auto-index-item:first-child {
+	border-top: 2px solid var(--amber-ink);
+}
+
+.amber-auto-index-item::before {
+	content: counter(amber-idx, decimal-leading-zero);
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: 0.06em;
+	color: var(--amber-ink-muted);
+}
+
+.amber-auto-index-link {
+	font-family: var(--amber-font-body);
+	color: var(--amber-ink);
+	text-decoration: underline;
+	text-decoration-color: transparent;
+	text-decoration-thickness: 0.08em;
+	text-underline-offset: 0.16em;
+	transition:
+		color 140ms var(--amber-ease),
+		text-decoration-color 140ms var(--amber-ease);
+}
+
+.amber-auto-index-link:hover,
+.amber-auto-index-link:focus-visible {
+	color: var(--amber-accent);
+	text-decoration-color: currentColor;
+}
+
+.amber-auto-index-date {
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	text-transform: uppercase;
+	color: var(--amber-ink-muted);
+	white-space: nowrap;
+}
+
+/* ── Error page ────────────────────────────────────────────────────────── */
+
+.error-page {
+	max-width: 54rem;
+}
+
+.error-code {
+	margin: 0 0 0.4rem;
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	text-transform: uppercase;
+	color: var(--amber-accent);
+}
+
+.error-title {
+	margin: 0 0 1.2rem;
+	font-family: var(--amber-font-heading);
+	font-size: var(--amber-text-h1);
+	line-height: var(--amber-leading-tight);
+	font-weight: 800;
+	letter-spacing: -0.022em;
+}
+
+.error-back {
+	margin-top: 1.4rem;
+}
+
+.error-page a {
+	color: var(--amber-accent);
+	text-decoration: underline;
+	text-decoration-thickness: 0.08em;
+	text-underline-offset: 0.16em;
+}
+
+.error-page a:hover,
+.error-page a:focus-visible {
+	color: var(--amber-accent-hover);
+	background: var(--amber-selection-bg);
+	text-decoration-color: transparent;
+}
+
+/* ── Page chrome: footer ───────────────────────────────────────────────── */
+
+.site-footer {
+	grid-column: 2;
+	grid-row: 2;
+	min-width: 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem 1.5rem;
+	align-items: baseline;
+	margin: 0 var(--amber-pad-page);
+	padding: 1.1rem 0 var(--amber-gap-chrome);
+	border-top: 1px solid var(--amber-rule);
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	text-transform: uppercase;
+	color: var(--amber-ink-muted);
+}
+
+.site-footer a {
+	margin-left: auto;
+	color: var(--amber-ink-muted);
+	text-decoration: none;
+	transition: color 140ms var(--amber-ease);
+}
+
+.site-footer a:hover,
+.site-footer a:focus-visible {
+	color: var(--amber-accent);
+}
+
+/* ── Entrance: one quick orchestrated moment, then nothing ─────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+	.article-header,
+	.article-body,
+	.amber-auto-index,
+	.error-page {
+		animation: ed-rise var(--amber-duration) var(--amber-ease) both;
+	}
+
+	.article-body,
+	.amber-auto-index {
+		animation-delay: 60ms;
+	}
+
+	/* The cobalt rule under the headline draws in from the left. */
+	.article-header::after {
+		transform: scaleX(0);
+		animation: ed-draw 480ms var(--amber-ease) 140ms both;
+	}
+
+	@keyframes ed-rise {
+		from {
+			opacity: 0;
+			transform: translateY(8px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	@keyframes ed-draw {
+		to {
+			transform: scaleX(1);
+		}
+	}
+}
+
+/* ── Narrow viewports: collapse the rail; everything goes one column ────── */
+
+@media (max-width: 52rem) {
+	body {
+		display: block;
+	}
+
+	.site-header {
+		grid-column: auto;
+		grid-row: auto;
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.7rem 1.6rem;
+		padding: var(--amber-pad-page) var(--amber-pad-page) 1rem;
+		border-right: none;
+		border-bottom: 2px solid var(--amber-ink);
+	}
+
+	.site-header .site-title {
+		margin-right: auto;
+	}
+
+	.site-nav ul {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0 1.4rem;
+		border-top: none;
+	}
+
+	.site-nav li {
+		border-bottom: none;
+	}
+
+	.site-nav a {
+		padding: 0.2rem 0;
+	}
+
+	.site-nav a:hover,
+	.site-nav a:focus-visible {
+		padding-left: 0;
+		box-shadow: inset 0 -2px 0 var(--amber-accent);
+	}
+
+	main {
+		grid-column: auto;
+		grid-row: auto;
+		padding: var(--amber-pad-page) var(--amber-pad-page) calc(var(--amber-pad-page) * 1.4);
+	}
+
+	.site-footer {
+		grid-column: auto;
+		grid-row: auto;
+		margin: 0 var(--amber-pad-page);
+		padding-bottom: var(--amber-pad-page);
+	}
+
+	:root {
+		--amber-text-h1: 2.1rem; /* the big headline needs to come down on phones */
+	}
+}
+
+@media (max-width: 32rem) {
+	:root {
+		--amber-pad-page: 1.4rem;
+	}
+
+	.amber-auto-index-item {
+		grid-template-columns: 1.8rem 1fr;
+	}
+
+	.amber-auto-index-date {
+		grid-column: 2;
+		margin-left: 0;
+	}
+}
