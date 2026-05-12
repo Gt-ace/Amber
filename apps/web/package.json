@@ -13,7 +13,8 @@
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
 		"test:unit": "bun --bun vitest",
-		"test": "bun --bun vitest --run"
+		"test": "bun --bun vitest --run",
+		"test:smoke": "AMBER_E2E=1 bun --bun vitest --run --project e2e"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.0.4",
