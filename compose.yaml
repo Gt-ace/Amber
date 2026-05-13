@@ -1,0 +1,20 @@
+# Desktop-developer install. `docker compose up` from the repo root boots
+# Amber against the bundled example space and serves it at
+# http://localhost:3000. Editing `spaces/example/*.md` on the host triggers
+# the in-container watcher; the next browser refresh shows the change.
+#
+# This is intentionally the simplest install path — no Caddy, no TLS, no
+# healthcheck. Production lives in `compose.prod.yaml` (deployed by
+# `./bin/deploy`); the two are separate by design.
+
+services:
+  amber:
+    build:
+      context: ./apps/web
+    ports:
+      - "3000:3000"
+    environment:
+      AMBER_SPACE_PATH: /space
+    volumes:
+      - ./spaces/example:/space
+    restart: unless-stopped
