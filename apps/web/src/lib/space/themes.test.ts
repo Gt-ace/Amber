@@ -95,30 +95,71 @@ describe('resolveActiveTheme', () => {
 		const root = scratchSpace();
 		writeTheme(root, 'amber-default', FULL_THEME_FILES);
 		writeTheme(root, 'other', FULL_THEME_FILES);
+		writeTheme(root, 'editorial', FULL_THEME_FILES);
 		const m = discoverThemes(root, log);
 		rmSync(root, { recursive: true, force: true });
 		return m;
 	})();
 
-	test('missing `theme` key → amber-default', () => {
+	test('chain step 4: no config at all → amber-default', () => {
 		const m: AmberManifest = { amber_version: '0.2' };
-		expect(resolveActiveTheme(themes, m, log).name).toBe('amber-default');
+		const { theme, warnings } = resolveActiveTheme(themes, m, null, log);
+		expect(theme.name).toBe('amber-default');
+		expect(warnings).toEqual([]);
 	});
-	test('string `theme` → that theme', () => {
+
+	test('chain step 2: amber.toml `theme` resolves when space.toml absent', () => {
 		const m: AmberManifest = { amber_version: '0.2', theme: 'other' };
-		expect(resolveActiveTheme(themes, m, log).name).toBe('other');
+		const { theme, warnings } = resolveActiveTheme(themes, m, null, log);
+		expect(theme.name).toBe('other');
+		expect(warnings).toEqual([]);
 	});
-	test('object `theme = { name }` → that theme', () => {
+
+	test('chain step 2: amber.toml object `theme = { name }` resolves', () => {
 		const m: AmberManifest = { amber_version: '0.2', theme: { name: 'other' } };
-		expect(resolveActiveTheme(themes, m, log).name).toBe('other');
+		const { theme } = resolveActiveTheme(themes, m, null, log);
+		expect(theme.name).toBe('other');
 	});
-	test('unknown theme name → falls back to amber-default (logged)', () => {
-		const m: AmberManifest = { amber_version: '0.2', theme: 'nope' };
-		expect(resolveActiveTheme(themes, m, log).name).toBe('amber-default');
+
+	test('chain step 1: space.toml `theme` overrides amber.toml', () => {
+		const m: AmberManifest = { amber_version: '0.2', theme: 'other' };
+		const { theme, warnings } = resolveActiveTheme(themes, m, { theme: 'editorial' }, log);
+		expect(theme.name).toBe('editorial');
+		expect(warnings).toEqual([]);
 	});
-	test('no usable themes at all → BUILTIN_THEME', () => {
-		const m: AmberManifest = { amber_version: '0.2', theme: 'nope' };
-		expect(resolveActiveTheme(new Map(), m, log)).toBe(BUILTIN_THEME);
+
+	test('space.toml names a missing theme → warns and falls through to amber.toml', () => {
+		const m: AmberManifest = { amber_version: '0.2', theme: 'other' };
+		const { theme, warnings } = resolveActiveTheme(themes, m, { theme: 'nope' }, log);
+		expect(theme.name).toBe('other');
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0].code).toBe('space_theme_not_found');
+		expect(warnings[0].message).toContain('nope');
+	});
+
+	test('both space.toml and amber.toml name missing themes → two warnings, then amber-default', () => {
+		const m: AmberManifest = { amber_version: '0.2', theme: 'gone' };
+		const { theme, warnings } = resolveActiveTheme(themes, m, { theme: 'nope' }, log);
+		expect(theme.name).toBe('amber-default');
+		expect(warnings).toHaveLength(2);
+		expect(warnings.map((w) => w.code)).toEqual([
+			'space_theme_not_found',
+			'space_theme_not_found'
+		]);
+	});
+
+	test('chain step 4: no usable themes at all → BUILTIN_THEME, no warnings about amber-default missing', () => {
+		const m: AmberManifest = { amber_version: '0.2' };
+		const { theme, warnings } = resolveActiveTheme(new Map(), m, null, log);
+		expect(theme).toBe(BUILTIN_THEME);
+		expect(warnings).toEqual([]);
+	});
+
+	test('space.toml with no `theme` field → falls through to amber.toml', () => {
+		const m: AmberManifest = { amber_version: '0.2', theme: 'other' };
+		const { theme, warnings } = resolveActiveTheme(themes, m, {}, log);
+		expect(theme.name).toBe('other');
+		expect(warnings).toEqual([]);
 	});
 });
 

@@ -91,8 +91,12 @@ export class SpaceWatcher {
 		const rel = relative(this.space.root, absPath);
 		if (rel === '' || rel === '.') return false;
 		const segs = rel.split(sep);
-		// `amber.toml` lives in RESERVED_TOP_LEVEL but we *do* watch it.
-		if (segs.length === 1 && segs[0] === 'amber.toml') return false;
+		// `amber.toml` and `space.toml` live in RESERVED_TOP_LEVEL but we *do*
+		// watch them. Both fire dedicated events (manifest_change /
+		// space_config_change) — see `flush` for the dispatch.
+		if (segs.length === 1 && (segs[0] === 'amber.toml' || segs[0] === 'space.toml')) {
+			return false;
+		}
 		if (RESERVED_TOP_LEVEL.has(segs[0])) return true;
 		if (segs.some((s) => s.startsWith('_') || s.startsWith('.'))) return true;
 		return false;
@@ -116,13 +120,18 @@ export class SpaceWatcher {
 		// add+unlink within one debounce window cancels itself out.
 		if (p.lastType === 'unlink' && p.created) return;
 
-		// `amber.toml` is a single special case.
+		// `amber.toml` and `space.toml` are the two special-cased top-level
+		// config files. Both fire on add/change/unlink alike — for amber.toml
+		// the unlink is unrecoverable territory but we still fire so apply()
+		// surfaces a typed error to callers that wired up an error boundary;
+		// for space.toml the unlink is a valid state transition that falls the
+		// resolver through to amber.toml / amber-default / built-in.
 		if (rel === 'amber.toml') {
-			// `unlink` of the manifest is unrecoverable territory; we still
-			// fire `manifest_change` so apply() surfaces a typed error to
-			// callers that wired up an error boundary.
-			const event: FsEvent = { type: 'manifest_change' };
-			this.dispatch(event);
+			this.dispatch({ type: 'manifest_change' });
+			return;
+		}
+		if (rel === 'space.toml') {
+			this.dispatch({ type: 'space_config_change' });
 			return;
 		}
 

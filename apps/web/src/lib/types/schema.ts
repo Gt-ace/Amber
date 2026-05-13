@@ -323,6 +323,16 @@ export interface LoadWarning {
      * values (`auto_index_invalid_sort`); `limit` not a positive integer
      * (`auto_index_invalid_limit`). Each warning drops the directive; the page
      * still renders, just without the index.
+     *
+     * Per-space theming (v0.3 P1):
+     *   - `space_config_invalid`: `space.toml` exists but failed to parse, isn't
+     *     a top-level table, or its `theme` field isn't a string. The space loads
+     *     normally; the resolver falls through to `amber.toml` / `amber-default` /
+     *     built-in.
+     *   - `space_theme_not_found`: a resolution-chain step (`space.toml` or
+     *     `amber.toml`) named a theme that isn't a discovered directory under
+     *     `<space>/themes/`. Each missing step emits one warning; the chain falls
+     *     through to the next step.
      */
     code:
     | "manifest_nav_missing_target"
@@ -332,7 +342,9 @@ export interface LoadWarning {
     | "redirect_loop"
     | "auto_index_path_missing"
     | "auto_index_invalid_sort"
-    | "auto_index_invalid_limit";
+    | "auto_index_invalid_limit"
+    | "space_config_invalid"
+    | "space_theme_not_found";
     message: string;
     /** Space-relative path or manifest pointer, where applicable. */
     source?: string;
@@ -345,6 +357,7 @@ export interface LoadWarning {
 /** Top-level names the loader skips when discovering content. */
 export const RESERVED_TOP_LEVEL = new Set([
     "amber.toml",
+    "space.toml",
     ".amber",
     "themes",
 ]);

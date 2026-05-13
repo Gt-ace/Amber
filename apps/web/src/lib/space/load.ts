@@ -39,6 +39,7 @@ import {
 	type Space
 } from '$lib/types/schema';
 import { discoverThemes, resolveActiveTheme } from './themes.ts';
+import { readSpaceConfig } from './config.ts';
 import { validateAutoIndex } from './auto-index.ts';
 
 const redirectsLog = logger.child({ subsystem: 'redirects' });
@@ -125,7 +126,12 @@ export function load(spacePath: string): { space: Space; warnings: LoadWarning[]
 	mergeFrontmatterRedirects(pages, redirects, 'manifest');
 
 	const themes = discoverThemes(root, log);
-	const theme = resolveActiveTheme(themes, manifest, log);
+
+	const { config: spaceConfig, warnings: spaceConfigWarnings } = readSpaceConfig(root);
+	for (const w of spaceConfigWarnings) warnings.push(w);
+
+	const { theme, warnings: themeWarnings } = resolveActiveTheme(themes, manifest, spaceConfig, log);
+	for (const w of themeWarnings) warnings.push(w);
 
 	const space: Space = { root, manifest, pages, nav, redirects, warnings, themes, theme };
 	return { space, warnings };

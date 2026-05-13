@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { fileURLToPath } from 'node:url';
-import { mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -358,5 +358,69 @@ describe('Space.load() cache resilience', () => {
 		} | null;
 		verify.close();
 		expect(row?.value).toBe('3');
+	});
+});
+
+describe('Space.apply space_config_change', () => {
+	let root: string;
+	const themeFiles = {
+		'theme.toml': 'name = "T"\nversion = "1"\n',
+		'theme.css': ':root{}',
+		'chrome.html': '<!--amber:content-->',
+		'page.html': '{{{html}}}',
+		'error.html': '<p>{{status}}</p>'
+	} as const;
+
+	beforeEach(() => {
+		root = mkdtempSync(join(tmpdir(), 'amber-space-config-change-'));
+		writeFileSync(join(root, 'amber.toml'), 'amber_version = "0.2"\n');
+		writeFileSync(join(root, 'index.md'), '# hi\n');
+		for (const name of ['theme-a', 'theme-b']) {
+			mkdirSync(join(root, 'themes', name), { recursive: true });
+			for (const [f, c] of Object.entries(themeFiles)) {
+				writeFileSync(join(root, 'themes', name, f), c);
+			}
+		}
+	});
+
+	afterEach(() => {
+		rmSync(root, { recursive: true, force: true });
+	});
+
+	test('adding space.toml swaps the active theme', () => {
+		const { space } = Space.load(root, { cache: false });
+		// No space.toml, no amber.toml theme → built-in floor.
+		expect(space.theme.path).toBe('');
+
+		writeFileSync(join(root, 'space.toml'), 'theme = "theme-a"\n');
+		space.apply({ type: 'space_config_change' });
+		expect(space.theme.name).toBe('theme-a');
+	});
+
+	test('editing space.toml swaps the theme without reload', () => {
+		writeFileSync(join(root, 'space.toml'), 'theme = "theme-a"\n');
+		const { space } = Space.load(root, { cache: false });
+		expect(space.theme.name).toBe('theme-a');
+
+		writeFileSync(join(root, 'space.toml'), 'theme = "theme-b"\n');
+		space.apply({ type: 'space_config_change' });
+		expect(space.theme.name).toBe('theme-b');
+	});
+
+	test('deleting space.toml falls through to amber.toml / amber-default / built-in', () => {
+		writeFileSync(join(root, 'space.toml'), 'theme = "theme-a"\n');
+		const { space } = Space.load(root, { cache: false });
+		expect(space.theme.name).toBe('theme-a');
+
+		unlinkSync(join(root, 'space.toml'));
+		space.apply({ type: 'space_config_change' });
+		expect(space.theme.path).toBe(''); // built-in floor (no amber.toml theme, no amber-default)
+	});
+
+	test('invalid space.toml emits space_config_invalid; theme falls through', () => {
+		const { space } = Space.load(root, { cache: false });
+		writeFileSync(join(root, 'space.toml'), 'this = = not toml');
+		space.apply({ type: 'space_config_change' });
+		expect(space.warnings.some((w) => w.code === 'space_config_invalid')).toBe(true);
 	});
 });

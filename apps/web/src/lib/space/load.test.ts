@@ -347,6 +347,55 @@ describe('resolveNav (v0.2 [[nav]] schema)', () => {
 	});
 });
 
+describe('per-space theming via space.toml', () => {
+	let scratch: string;
+
+	beforeEach(() => {
+		scratch = mkdtempSync(join(tmpdir(), 'amber-load-space-toml-'));
+		writeFileSync(join(scratch, 'amber.toml'), 'amber_version = "0.2"\n');
+		writeFileSync(join(scratch, 'index.md'), '# hi\n');
+		mkdirSync(join(scratch, 'themes', 'theme-a'), { recursive: true });
+		const themeFiles = {
+			'theme.toml': 'name = "A"\nversion = "1"\n',
+			'theme.css': ':root{}',
+			'chrome.html': '<!--amber:content-->',
+			'page.html': '{{{html}}}',
+			'error.html': '<p>{{status}}</p>'
+		} as const;
+		for (const [f, c] of Object.entries(themeFiles)) {
+			writeFileSync(join(scratch, 'themes', 'theme-a', f), c);
+		}
+	});
+
+	afterEach(() => {
+		rmSync(scratch, { recursive: true, force: true });
+	});
+
+	test('space.toml `theme` selects the theme', () => {
+		writeFileSync(join(scratch, 'space.toml'), 'theme = "theme-a"\n');
+		const { space, warnings } = load(scratch);
+		expect(space.theme.name).toBe('theme-a');
+		expect(warnings).toEqual([]);
+	});
+
+	test('invalid space.toml emits space_config_invalid and falls through', () => {
+		writeFileSync(join(scratch, 'space.toml'), 'this = = not toml');
+		const { space, warnings } = load(scratch);
+		expect(warnings.some((w) => w.code === 'space_config_invalid')).toBe(true);
+		// theme-a is the only discovered theme; no amber-default present so the
+		// space falls through to the built-in floor. Important: space still loads.
+		expect(space.theme).toBeDefined();
+	});
+
+	test('space.toml names a missing theme → space_theme_not_found, falls through', () => {
+		writeFileSync(join(scratch, 'space.toml'), 'theme = "ghost"\n');
+		const { space, warnings } = load(scratch);
+		expect(warnings.some((w) => w.code === 'space_theme_not_found')).toBe(true);
+		// No amber-default theme in this fixture either → built-in floor.
+		expect(space.theme.path).toBe('');
+	});
+});
+
 describe('buildPage — auto_index validation', () => {
 	let root: string;
 	beforeEach(() => {
