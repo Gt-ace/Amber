@@ -3,7 +3,8 @@ node_modules/
 data/
 *.log
 .DS_Store
-docs/
+docs/prompt.md
+docs/superpowers/
 spaces/*/.amber/
 apps/web/fixtures/*/.amber/
 notes.md

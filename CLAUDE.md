@@ -65,6 +65,7 @@ plugin state) and is safe to delete.
 - Folder-with-`index.md` is the colocated-assets pattern.
 - `amber_version` in the manifest gates migrations.
 - Redirects table is reserved from day one even if unused.
+- Theme contract (file layout, `--amber-*` tokens, template runtime) is documented in [`docs/themes.md`](docs/themes.md).
 
 ### Reserved names
 
