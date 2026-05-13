@@ -5,8 +5,13 @@ set -euo pipefail
 # recreate containers. `--build` is load-bearing — without it `up -d` keeps the
 # old image and only content (the bind-mounted space) would change, not app code.
 # Boot-time survival is systemd's job (see ./amber.service), not this script's.
+#
+# `-f compose.prod.yaml` is explicit because the repo root also ships
+# `compose.yaml` (the desktop-developer install, mounts `spaces/example`).
+# Without the flag, Docker Compose's default lookup would prefer `compose.yaml`
+# and silently swap production onto the dev install.
 
 SERVER="${AMBER_DEPLOY_HOST:-amber@178.105.56.249}"
 REMOTE_DIR="${AMBER_DEPLOY_PATH:-/home/amber/Amber}"
 
-ssh -o BatchMode=yes "$SERVER" "cd '$REMOTE_DIR' && git pull --ff-only && docker compose up -d --build && docker compose ps"
+ssh -o BatchMode=yes "$SERVER" "cd '$REMOTE_DIR' && git pull --ff-only && docker compose -f compose.prod.yaml up -d --build && docker compose -f compose.prod.yaml ps"

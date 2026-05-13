@@ -11,6 +11,17 @@ The position is anti-platform. Your software, your server, your files. Not
 multi-tenant. Not a SaaS. Not a CMS. The data is markdown on a filesystem —
 portable, greppable, editable in any editor, version-controllable with git.
 
+## Quick start
+
+```
+git clone https://github.com/Gt-ace/Amber.git
+cd Amber
+docker compose up
+```
+
+Open <http://localhost:3000>. Edit files in `spaces/example/` to see
+changes live.
+
 ## Status
 
 Current version: 0.3. Early development. A production instance runs at
@@ -18,9 +29,10 @@ Current version: 0.3. Early development. A production instance runs at
 personal site, which happens to run on Amber. It isn't Amber's homepage.
 
 The substrate is stable. The theme contract has been exercised by two
-themes. Per-space configuration works. What isn't there yet is a clean
-install path that a stranger could follow; that's planned for a future
-version. For now, watch the repo.
+themes. Per-space configuration works. As of v0.4 the desktop-developer
+install above is the supported way to try Amber from a clone. The
+self-hoster path (TLS, systemd, backups, your own domain) is the
+remaining gap and is in progress.
 
 v0.3 ships per-space theming via `space.toml`, theme-author documentation,
 and a second bundled theme (`amber-editorial`).

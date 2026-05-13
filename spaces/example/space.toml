@@ -1,0 +1,13 @@
+# space.toml — per-space configuration.
+#
+# The only field the loader reads here is `theme`, which selects the
+# active theme by name from this space's `themes/` directory. If the
+# named theme isn't present (as is the case in this example space,
+# whose `themes/` is empty by design), Amber falls through to
+# `amber-default`, then to its built-in floor.
+#
+# Uncomment the second line below — and drop a copy of
+# `themes/amber-editorial/` into this space — to switch themes.
+
+theme = "amber-default"
+# theme = "amber-editorial"

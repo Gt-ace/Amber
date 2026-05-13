@@ -9,6 +9,11 @@
 #
 # WorkingDirectory must match the actual checkout path exactly — a case typo
 # here (…/amber vs …/Amber) is what left this unit dead with 200/CHDIR.
+#
+# `-f compose.prod.yaml` is explicit because the repo root also ships
+# `compose.yaml` (the desktop-developer install, mounts `spaces/example`).
+# Without the flag, Docker Compose's default lookup would prefer that file
+# and silently swap production onto the dev install on the next reboot.
 
 [Unit]
 Description=Amber Docker Compose stack
@@ -20,8 +25,8 @@ Wants=network-online.target
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=/home/amber/Amber
-ExecStart=/usr/bin/docker compose up -d
-ExecStop=/usr/bin/docker compose down
+ExecStart=/usr/bin/docker compose -f compose.prod.yaml up -d
+ExecStop=/usr/bin/docker compose -f compose.prod.yaml down
 User=amber
 Group=amber
 
