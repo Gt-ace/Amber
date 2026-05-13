@@ -187,14 +187,30 @@ up from a working content pipeline; the substrate is in place.
 
 ## Roadmap shape
 
-- v0.1: single-space link-in-bio + simple sites.
-- v0.2: plugins, themes ecosystem, custom domains.
-- v0.3: Tauri desktop app with local-disk sync.
-- v0.4: multi-space, better-auth, CRDT-based collaboration.
+- **v0.1 (shipped):** single-space link-in-bio + simple sites. Loader,
+  watcher, SQLite cache, markdown→HTML render pipeline, SvelteKit page
+  handler with the `Space` singleton, hardening sprint (structured
+  logging, sitemap/robots/og meta, shared layout + Amber-chrome 404,
+  render-cache vacuum, loader robustness, corrupt-cache recovery).
+- **v0.2 (shipped):** the `auto_index` frontmatter primitive, Theme A
+  (`amber-default`), render-cache key fix, hydration smoke as an
+  operator-runnable pre-deploy gate.
+- **v0.3 (shipped):** per-space theming via `space.toml` with a
+  four-step theme-resolution chain, Theme B (`amber-editorial`),
+  `docs/themes.md`, README, asset-route per-space correctness, dead
+  `LoadWarning` codes removed, `amber_version` → 0.3.
+- **v0.4 (in progress):** `getSpace()` per-space registry refactor
+  (path-keyed `Map`, single-space behaviour unchanged); desktop-developer
+  `docker compose up` install path; self-hoster documentation as a
+  stretch. Project identity (logo, possible `amber.software` landing)
+  runs as a parallel track and doesn't block ship.
+- **Off-roadmap:** native desktop app (Tauri wrapper). Possible someday,
+  not a current direction — self-hostable canvas is Amber's identity.
 
-Anything not in the current version is not a v0.1 design constraint.
-Resist the urge to "leave room for" v0.4 in v0.1 code — the redirects table
-reservation is the only speculative concession, and it's a five-line table.
+Anything not in the current version is not that version's design
+constraint. Resist the urge to "leave room for" later versions in
+current code — the redirects table reservation is the only speculative
+concession, and it's a five-line table.
 
 ## Scope guards
 
