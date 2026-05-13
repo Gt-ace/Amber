@@ -82,10 +82,8 @@ describe('Space.apply()', () => {
 	});
 
 	test('add: does not affect the validated nav (v0.2 nav is opaque to the page index)', () => {
-		// v0.1 used to drop a `manifest_nav_missing_target` warning when the
-		// referenced file finally appeared. v0.2 nav is `{label, href}` —
-		// `href` is not resolved against pages — so adding a page never
-		// changes the nav array.
+		// v0.2 nav is `{label, href}` — `href` is not resolved against pages
+		// — so adding a page never changes the nav array.
 		const navBefore = [...space.nav];
 		writeFileSync(join(dir, 'talks.md'), '---\ntitle: Talks\n---\n\nUpcoming.');
 		space.apply({ type: 'add', path: 'talks.md' });

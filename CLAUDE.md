@@ -71,8 +71,7 @@ plugin state) and is safe to delete.
 `amber.toml`, `.amber/`, `themes/`, plus the `_*` and `.*` prefixes anywhere
 in the content tree. The top-level reserved-prefix scan is **silent** — those
 directories are skipped without warning, by design (they're scratch/decoy
-space). The warning fires only when the manifest *references* into reserved
-space (see `reserved_name_in_content` below).
+space).
 
 ## URL derivation rules
 
@@ -132,12 +131,8 @@ references.
 
 ## `LoadWarning` codes
 
-Every code in the enum must have a defined trigger. The schema declares
-five:
+Every code in the enum must have a defined trigger. The loader emits:
 
-- `manifest_nav_missing_target` — manifest nav references a path that
-  doesn't exist in the filesystem; the entry is dropped from the in-memory
-  nav (the on-disk manifest is never rewritten).
 - `frontmatter_parse_error` — a page's YAML frontmatter block is malformed;
   the page is included in the index with empty frontmatter so the rest of
   the space still builds.
@@ -148,19 +143,18 @@ five:
   (the loser's content isn't kept around). A subsequent `change` on the
   loser, or any cold start, picks the right winner. Cold start is
   authoritative; live state can lag.
-- `reserved_name_in_content` — manifest references a path containing a
-  reserved segment (e.g., a nav entry pointing into `_drafts/`). The
-  top-level reserved-prefix skip is silent; this warning is specifically
-  for *active* references into reserved space.
-- `redirect_loop` — a chain of redirects cycles. **Reserved from day one,
-  unreachable in v0.1**: redirects aren't resolved yet, so this code ships
-  declared but unfired. Same rationale as the redirects table itself —
-  having it in the enum means landing the redirect handler later doesn't
-  require a schema bump.
+- `auto_index_path_missing`, `auto_index_invalid_sort`,
+  `auto_index_invalid_limit` — Wave 3 P1 `auto_index` frontmatter is
+  malformed. Each warning drops the directive; the page still renders.
+- `space_config_invalid` — `space.toml` exists but failed to parse, isn't
+  a top-level table, or its `theme` field isn't a string. The space loads
+  normally; the theme resolver falls through.
+- `space_theme_not_found` — `space.toml` or `amber.toml` named a theme
+  that isn't a discovered directory under `<space>/themes/`. The chain
+  falls through.
 
 If a code can't be triggered by any code path, it gets removed from the
-enum. Unreachable codes are bugs — `redirect_loop` is the deliberate
-exception, paired with the reserved redirects table.
+enum. Unreachable codes are bugs.
 
 ## `updated` frontmatter field
 

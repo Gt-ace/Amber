@@ -33,9 +33,13 @@ so the fast unit/integration loop stays fast.
 
 Prerequisites: `bun` on `$PATH`, Playwright's Chromium installed
 (`npx playwright install chromium`), and on bare Linux boxes the Chromium
-runtime libs (e.g. `libasound2`) reachable via `LD_LIBRARY_PATH`. The smoke
-rebuilds the bundle itself so it always reflects HEAD — a stale `build/` is
-the same trap as a unit test that asserts the broken structure.
+runtime libs (e.g. `libasound2`) reachable via `LD_LIBRARY_PATH` — in
+sandboxed dev environments without sudo, `apt-get download libasound2t64 &&
+dpkg-deb -x libasound2t64_*.deb /tmp/pwlibs` and point `LD_LIBRARY_PATH` at
+`/tmp/pwlibs/usr/lib/x86_64-linux-gnu` (a smoke failing with an alsa /
+libasound error is the trigger). The smoke rebuilds the bundle itself so
+it always reflects HEAD — a stale `build/` is the same trap as a unit test
+that asserts the broken structure.
 
 What it guards: SSR-vs-hydration agreement and the layout-owned `<main>`
 landmark (the `article.closest('main')` invariant). Route-handler unit tests

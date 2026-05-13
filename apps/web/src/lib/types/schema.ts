@@ -306,16 +306,13 @@ export interface LoadWarning {
     /**
      * Machine-readable code so we can suppress specific classes in tests.
      *
-     * Reserved-but-unfired in v0.2 (declared so that landing the relevant
-     * feature later doesn't require a schema bump, mirroring `redirect_loop`):
-     *   - `manifest_nav_missing_target`: the v0.1 nav schema validated nav
-     *     entries against the page index. The v0.2 schema is `{ label, href }`
-     *     — `href` is opaque, so this code has no trigger today.
-     *   - `reserved_name_in_content`: same story; v0.1 manifests could
-     *     reference into reserved space via `path = "_drafts/..."`. The v0.2
-     *     `href` field carries no path semantics for the loader.
-     *   - `redirect_loop`: redirects aren't resolved yet (see CLAUDE.md →
-     *     "LoadWarning codes").
+     * `frontmatter_parse_error`: a page's YAML frontmatter block is malformed.
+     * The page is included in the index with empty frontmatter so the rest of
+     * the space still builds.
+     *
+     * `duplicate_url`: two pages resolve to the same URL (e.g. a `slug:`
+     * collision, or `foo.md` colliding with `foo/index.md`). First one wins;
+     * later ones are dropped from `Space.pages`.
      *
      * `auto_index_*` (Wave 3 P1): a page's `auto_index` frontmatter is
      * malformed — `path` missing / not a string / not a directory under the
@@ -335,11 +332,8 @@ export interface LoadWarning {
      *     through to the next step.
      */
     code:
-    | "manifest_nav_missing_target"
     | "frontmatter_parse_error"
     | "duplicate_url"
-    | "reserved_name_in_content"
-    | "redirect_loop"
     | "auto_index_path_missing"
     | "auto_index_invalid_sort"
     | "auto_index_invalid_limit"

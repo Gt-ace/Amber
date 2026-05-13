@@ -27,11 +27,11 @@ SQLite layer (used by isolation-sensitive unit tests).
 
 `apply(event)` mutates the index in place and returns the _newly added_
 warnings produced by the event. Warnings that go away as a result of the
-event (e.g. a `manifest_nav_missing_target` invalidated by the previously
-missing file appearing on disk) reflect in `space.warnings` shrinking, not
-as negative entries in the delta. The cumulative live array on the instance
-is the union of `load()`'s warnings and every successful `apply()`'s effect
-minus invalidations.
+event (e.g. a `duplicate_url` cleared by the losing page being unlinked)
+reflect in `space.warnings` shrinking, not as negative entries in the
+delta. The cumulative live array on the instance is the union of
+`load()`'s warnings and every successful `apply()`'s effect minus
+invalidations.
 
 `SpaceWatcher` is a chokidar-based event source that normalizes raw
 filesystem events into `FsEvent` values and feeds them into
