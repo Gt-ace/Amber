@@ -11,9 +11,9 @@
  *   - Mutates the in-memory index in place. Consumers holding references to
  *     `space.pages`, `space.nav`, `space.warnings` see updates immediately.
  *   - Returns the *newly added* warnings produced by this event. Warnings
- *     that go away (e.g. a `manifest_nav_missing_target` invalidated by an
- *     `add` of the missing file) are reflected by `space.warnings` shrinking,
- *     not by negative entries in the delta.
+ *     that go away (e.g. a `duplicate_url` invalidated by unlinking the
+ *     losing file) are reflected by `space.warnings` shrinking, not by
+ *     negative entries in the delta.
  *   - Never re-scans the whole tree. That's `load()`'s job.
  */
 
@@ -123,11 +123,6 @@ export class Space implements SpaceData {
 					break;
 				case 'duplicate_url':
 					if (w.source) this.dupeWarningByRel.set(w.source, w);
-					break;
-				case 'manifest_nav_missing_target':
-				case 'reserved_name_in_content':
-				case 'redirect_loop':
-					this.navWarnings.push(w);
 					break;
 				case 'space_config_invalid':
 				case 'space_theme_not_found':
