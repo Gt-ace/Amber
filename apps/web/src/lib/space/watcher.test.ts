@@ -127,4 +127,57 @@ describe('SpaceWatcher', () => {
 		expect(events[0].event).toMatchObject({ type: 'change', path: 'about.md' });
 		expect(space.pages.get('/about')!.frontmatter.title).toBe('Iteration 9');
 	});
+
+	function completeMinimalTheme(): void {
+		const t = join(dir, 'themes', 'minimal');
+		writeFileSync(join(t, 'theme.css'), ':root{}');
+		writeFileSync(join(t, 'chrome.html'), '<!--amber:content-->');
+		writeFileSync(join(t, 'page.html'), '{{{html}}}');
+		writeFileSync(join(t, 'error.html'), '<p>{{status}}</p>');
+	}
+
+	test('space.toml: creating it fires space_config_change and updates the theme', async () => {
+		completeMinimalTheme();
+		// Theme discovery is cold-start only, so re-load the space to pick up
+		// the now-complete `minimal` theme directory before the test mutates
+		// space.toml.
+		await watcher.close();
+		space.close();
+		({ space } = Space.load(dir));
+		watcher = new SpaceWatcher(space, {
+			debounceMs: 50,
+			onEvent: (event) => events.push({ event })
+		});
+		await watcher.ready();
+		events.length = 0;
+
+		writeFileSync(join(dir, 'space.toml'), 'theme = "minimal"\n');
+		await captureEvents(events, 1, 2000);
+
+		expect(events.length).toBe(1);
+		expect(events[0].event).toMatchObject({ type: 'space_config_change' });
+		expect(space.theme.name).toBe('minimal');
+	});
+
+	test('space.toml: editing it fires a single space_config_change', async () => {
+		writeFileSync(join(dir, 'space.toml'), 'theme = "minimal"\n');
+		await captureEvents(events, 1, 2000);
+		events.length = 0;
+
+		writeFileSync(join(dir, 'space.toml'), '# noop\n');
+		await captureEvents(events, 1, 2000);
+		expect(events.length).toBe(1);
+		expect(events[0].event).toMatchObject({ type: 'space_config_change' });
+	});
+
+	test('space.toml: deleting it fires space_config_change', async () => {
+		writeFileSync(join(dir, 'space.toml'), 'theme = "minimal"\n');
+		await captureEvents(events, 1, 2000);
+		events.length = 0;
+
+		unlinkSync(join(dir, 'space.toml'));
+		await captureEvents(events, 1, 2000);
+		expect(events.length).toBe(1);
+		expect(events[0].event).toMatchObject({ type: 'space_config_change' });
+	});
 });

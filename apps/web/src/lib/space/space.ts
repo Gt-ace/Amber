@@ -28,6 +28,7 @@ import {
 	LoadError
 } from './load.ts';
 import { discoverThemes, resolveActiveTheme } from './themes.ts';
+import { readSpaceConfig } from './config.ts';
 import { SpaceCache } from './cache.ts';
 import { bodyHash } from '$lib/render/cache';
 import { logger } from '$lib/server/logger';
@@ -46,7 +47,8 @@ export type FsEvent =
 	| { type: 'add'; path: string }
 	| { type: 'change'; path: string }
 	| { type: 'unlink'; path: string }
-	| { type: 'manifest_change' };
+	| { type: 'manifest_change' }
+	| { type: 'space_config_change' };
 
 export class Space implements SpaceData {
 	readonly root: string;
@@ -80,6 +82,9 @@ export class Space implements SpaceData {
 	/** Warnings produced by nav resolution; recomputed on every nav reconcile. */
 	private navWarnings: LoadWarning[];
 
+	/** Warnings produced by space.toml resolution (space_config_*); recomputed on space_config_change. */
+	private spaceConfigWarnings: LoadWarning[];
+
 	private cache: SpaceCache | null;
 
 	private constructor(initial: SpaceData, cache: SpaceCache | null) {
@@ -101,6 +106,7 @@ export class Space implements SpaceData {
 		this.pageWarningByRel = new Map();
 		this.dupeWarningByRel = new Map();
 		this.navWarnings = [];
+		this.spaceConfigWarnings = [];
 
 		// Distribute the initial warnings across our buckets.
 		for (const w of initial.warnings) {
@@ -122,6 +128,10 @@ export class Space implements SpaceData {
 				case 'reserved_name_in_content':
 				case 'redirect_loop':
 					this.navWarnings.push(w);
+					break;
+				case 'space_config_invalid':
+				case 'space_theme_not_found':
+					this.spaceConfigWarnings.push(w);
 					break;
 			}
 		}
@@ -151,14 +161,23 @@ export class Space implements SpaceData {
 		const cache = new SpaceCache(spacePath);
 		const hydrated = cache.tryHydrate(spacePath);
 		if (hydrated) {
-			// The SQLite cache does not persist themes (they're small, fast to
-			// re-read, and `themes/` isn't watched) — discover them fresh.
+			// The SQLite cache does not persist themes or space.toml — discover
+			// themes fresh and re-read space.toml on every hydration. Resolver
+			// warnings are merged into the hydrated warnings array so the
+			// `Space` constructor can bucket them like cold-load warnings.
 			hydrated.space.themes = discoverThemes(hydrated.space.root, log);
-			hydrated.space.theme = resolveActiveTheme(
+			const { config: spaceConfig, warnings: configWarnings } = readSpaceConfig(
+				hydrated.space.root
+			);
+			for (const w of configWarnings) hydrated.warnings.push(w);
+			const resolved = resolveActiveTheme(
 				hydrated.space.themes,
 				hydrated.space.manifest,
+				spaceConfig,
 				log
 			);
+			hydrated.space.theme = resolved.theme;
+			for (const w of resolved.warnings) hydrated.warnings.push(w);
 			const space = new Space(hydrated.space, cache);
 			// Hydration skips the writeAll path, but render orphans can still
 			// have accumulated across previous runs — vacuum opportunistically.
@@ -220,6 +239,9 @@ export class Space implements SpaceData {
 			case 'manifest_change':
 				this.applyManifestChange();
 				break;
+			case 'space_config_change':
+				this.applySpaceConfigChange();
+				break;
 		}
 
 		this.reconcileNav();
@@ -243,6 +265,8 @@ export class Space implements SpaceData {
 				}
 			} else if (event.type === 'manifest_change') {
 				this.cache.updateManifestMtime(this.root);
+			} else if (event.type === 'space_config_change') {
+				// No cache changes — themes & space.toml are not persisted.
 			}
 			this.cache.replacePageWarnings(this.warnings);
 		}
@@ -338,6 +362,13 @@ export class Space implements SpaceData {
 		this.redirects = redirects;
 	}
 
+	private applySpaceConfigChange(): void {
+		const { config, warnings: configWarnings } = readSpaceConfig(this.root);
+		const resolved = resolveActiveTheme(this.themes, this.manifest, config, log);
+		this.theme = resolved.theme;
+		this.spaceConfigWarnings = [...configWarnings, ...resolved.warnings];
+	}
+
 	private parseAndIndex(rel: string): void {
 		const filePath = join(this.root, ...rel.split(posix.sep));
 		let result: ReturnType<typeof buildPage>;
@@ -402,6 +433,7 @@ export class Space implements SpaceData {
 		const dupeRels = [...this.dupeWarningByRel.keys()].sort();
 		for (const rel of dupeRels) this.warnings.push(this.dupeWarningByRel.get(rel)!);
 		for (const w of this.navWarnings) this.warnings.push(w);
+		for (const w of this.spaceConfigWarnings) this.warnings.push(w);
 	}
 }
 

@@ -30,8 +30,9 @@ import { join } from 'node:path';
 import { parse as parseToml } from 'smol-toml';
 
 import { BUILTIN_THEME, BUILTIN_TEMPLATES, BUILTIN_PARTIALS } from '$lib/theme/builtin';
-import type { AmberManifest, Theme, ThemeManifest } from '$lib/types/schema';
+import type { AmberManifest, LoadWarning, Theme, ThemeManifest } from '$lib/types/schema';
 import type { Logger } from '$lib/server/logger';
+import type { SpaceConfig } from './config';
 
 export type TemplateKind = 'chrome' | 'page' | 'error';
 const TEMPLATE_FILES: Record<TemplateKind, string> = {
@@ -129,39 +130,65 @@ export function readPartial(theme: Theme, kind: PartialKind = 'index'): string {
 export const DEFAULT_THEME_NAME = 'amber-default';
 
 /**
- * Pick the active theme: `manifest.theme` (a bare string or `{ name }`),
- * defaulting to `amber-default`, resolved against the discovered map. Unknown
- * name → log and fall back to `amber-default`. `amber-default` itself not
- * discovered → log and fall back to the in-app `BUILTIN_THEME`. Never null.
+ * Pick the active theme via the per-space resolution chain:
+ *
+ *   1. `spaceConfig.theme` if set and a discovered theme.
+ *   2. `manifest.theme` (bare string or `{ name }`) if set and a discovered theme.
+ *   3. `amber-default` if discovered.
+ *   4. `BUILTIN_THEME` (the in-app floor).
+ *
+ * Steps 1 and 2 emit a `space_theme_not_found` LoadWarning when they name a
+ * missing theme; the chain still falls through. Steps 3 and 4 are silent
+ * fallbacks (the built-in floor is logged via `log.error` for visibility but
+ * doesn't surface a structured warning — that pre-v0.3 P1 behavior is
+ * preserved).
+ *
+ * Never returns null.
  */
 export function resolveActiveTheme(
 	themes: Map<string, Theme>,
 	manifest: AmberManifest,
+	spaceConfig: SpaceConfig | null,
 	log: Logger
-): Theme {
+): { theme: Theme; warnings: LoadWarning[] } {
+	const warnings: LoadWarning[] = [];
+
+	// Step 1: space.toml
+	if (spaceConfig?.theme !== undefined) {
+		const hit = themes.get(spaceConfig.theme);
+		if (hit) return { theme: hit, warnings };
+		warnings.push({
+			code: 'space_theme_not_found',
+			message: `space.toml theme "${spaceConfig.theme}" not found under themes/; falling through`,
+			source: 'space.toml'
+		});
+	}
+
+	// Step 2: amber.toml
 	const configured =
 		typeof manifest.theme === 'string'
 			? manifest.theme
 			: manifest.theme && typeof manifest.theme === 'object'
 				? manifest.theme.name
 				: undefined;
-	const wanted = configured ?? DEFAULT_THEME_NAME;
-
-	const hit = themes.get(wanted);
-	if (hit) return hit;
-
-	if (wanted !== DEFAULT_THEME_NAME) {
-		log.error(
-			{ wanted, available: [...themes.keys()] },
-			`theme "${wanted}" not found under themes/; falling back to ${DEFAULT_THEME_NAME}`
-		);
-		const fallback = themes.get(DEFAULT_THEME_NAME);
-		if (fallback) return fallback;
+	if (configured !== undefined) {
+		const hit = themes.get(configured);
+		if (hit) return { theme: hit, warnings };
+		warnings.push({
+			code: 'space_theme_not_found',
+			message: `amber.toml theme "${configured}" not found under themes/; falling through`,
+			source: 'amber.toml'
+		});
 	}
 
+	// Step 3: amber-default
+	const fallback = themes.get(DEFAULT_THEME_NAME);
+	if (fallback) return { theme: fallback, warnings };
+
+	// Step 4: built-in floor
 	log.error(
 		{ available: [...themes.keys()] },
 		`no usable "${DEFAULT_THEME_NAME}" theme found under themes/; using the built-in fallback theme`
 	);
-	return BUILTIN_THEME;
+	return { theme: BUILTIN_THEME, warnings };
 }
