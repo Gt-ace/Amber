@@ -1,0 +1,17 @@
+amber_version = "0.3"
+
+[site]
+title = "Your Amber space"
+description = "Edit the markdown files in `spaces/example/` and watch them update live."
+
+[[nav]]
+label = "Home"
+href = "/"
+
+[[nav]]
+label = "About"
+href = "/about"
+
+[[nav]]
+label = "Notes"
+href = "/notes"
