@@ -31,8 +31,8 @@ personal site, which happens to run on Amber. It isn't Amber's homepage.
 The substrate is stable. The theme contract has been exercised by two
 themes. Per-space configuration works. As of v0.4 the desktop-developer
 install above is the supported way to try Amber from a clone. The
-self-hoster path (TLS, systemd, backups, your own domain) is the
-remaining gap and is in progress.
+self-hoster path (TLS, systemd, backups, your own domain) is documented
+in [`docs/self-hosting.md`](docs/self-hosting.md).
 
 v0.3 ships per-space theming via `space.toml`, theme-author documentation,
 and a second bundled theme (`amber-editorial`).
