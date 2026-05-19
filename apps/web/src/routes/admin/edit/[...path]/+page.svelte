@@ -12,9 +12,18 @@
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let crepe: any = null;
 
-	let hash = $state(data.hash);
+	// `hash` is mutated by save() but never read in the template — a plain
+	// `let` is sufficient and avoids a needless reactive binding.
+	// svelte-ignore state_referenced_locally
+	let hash = data.hash;
+	// These three seed local form state from the server-loaded values and then
+	// diverge as the user edits — a one-time snapshot is exactly the intent, so
+	// the state_referenced_locally advisory is suppressed deliberately.
+	// svelte-ignore state_referenced_locally
 	let fmTitle = $state(data.frontmatter.title);
+	// svelte-ignore state_referenced_locally
 	let fmDate = $state(data.frontmatter.date);
+	// svelte-ignore state_referenced_locally
 	let fmDraft = $state(data.frontmatter.draft);
 	let fmDirty = $state(false);
 	let status = $state('');
