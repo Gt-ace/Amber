@@ -45,7 +45,8 @@ afterAll(async () => {
 const stubEvent = (params: Record<string, string>) =>
 	({ params }) as unknown as Parameters<typeof pageLoad>[0];
 
-const stubLayoutEvent = () => ({ params: {} }) as unknown as Parameters<typeof layoutLoad>[0];
+const stubLayoutEvent = () =>
+	({ params: {}, url: new URL('http://localhost/') }) as unknown as Parameters<typeof layoutLoad>[0];
 
 describe('catch-all +page.server load', () => {
 	test('throws 404 for an unknown URL', () => {
