@@ -14,9 +14,11 @@ import { dev } from '$app/environment';
 import { getSpace } from '$lib/server/space';
 import { renderPageBody } from '$lib/render/page';
 import { readSiteUrl } from '$lib/server/sitemap';
+import { isAuthor } from '$lib/server/auth';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = ({ params }) => {
+export const load: PageServerLoad = (event) => {
+	const { params } = event;
 	const space = getSpace();
 
 	const raw = params.path ?? '';
@@ -33,6 +35,11 @@ export const load: PageServerLoad = ({ params }) => {
 
 	const { html, bodyHtml } = renderPageBody(space, page, { dev });
 
+	// Authenticated requests get a server-emitted edit link — a plain href,
+	// no page content crosses to the client as data. `url` is the canonical
+	// page URL already resolved above; `/` maps to `/admin/edit`.
+	const editHref = isAuthor(event) ? `/admin/edit${url === '/' ? '' : url}` : null;
+
 	return {
 		page: {
 			url: page.url,
@@ -42,6 +49,7 @@ export const load: PageServerLoad = ({ params }) => {
 		},
 		bodyHtml,
 		site: space.manifest.site ?? null,
-		siteUrl: readSiteUrl()
+		siteUrl: readSiteUrl(),
+		editHref
 	};
 };

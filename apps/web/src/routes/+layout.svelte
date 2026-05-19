@@ -34,8 +34,12 @@
 	duplicate it.
 -->
 <!-- eslint-disable svelte/no-at-html-tags -->
-{@html data.chromeBefore}
-<main>
+{#if data.admin}
 	{@render children()}
-</main>
-{@html data.chromeAfter}
+{:else}
+	{@html data.chromeBefore}
+	<main>
+		{@render children()}
+	</main>
+	{@html data.chromeAfter}
+{/if}

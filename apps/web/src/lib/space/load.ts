@@ -55,6 +55,15 @@ export class LoadError extends Error {
 	}
 }
 
+/**
+ * Matches a leading YAML frontmatter block: a `---` line opens it, a `---`
+ * (or `...`) line closes it. Group 1 is the inner YAML. `match[0]` is the
+ * whole block including delimiters and the closing newline. Exported so the
+ * editor (`lib/server/editor.ts`) can capture the verbatim block without
+ * re-declaring the pattern.
+ */
+export const FRONTMATTER_BLOCK_RE = /^---\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)\r?\n?/;
+
 const FRONTMATTER_KEYS: ReadonlySet<keyof PageFrontmatter> = new Set([
 	'title',
 	'description',
@@ -346,7 +355,7 @@ export function splitFrontmatter(raw: string): {
 	fieldErrors: string[];
 } {
 	// A leading `---` line opens the YAML block; a `---` (or `...`) line closes it.
-	const match = /^---\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)\r?\n?/.exec(raw);
+	const match = FRONTMATTER_BLOCK_RE.exec(raw);
 	if (!match) {
 		// No frontmatter is fine — return the raw text as the body, with line
 		// endings normalized so cached HTML is deterministic across platforms.

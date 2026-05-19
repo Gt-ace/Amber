@@ -32,7 +32,26 @@ import { renderTemplate, CONTENT_SLOT } from '$lib/render/template';
 import { readTemplate } from '$lib/space/themes';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = () => {
+// The /admin authoring surface renders inside its own minimal chrome
+// (routes/admin/+layout.svelte), never the public theme chrome. This blank
+// shape skips all theme work so an admin page never depends on the space's theme.
+const ADMIN_BLANK = {
+	admin: true as const,
+	nav: [],
+	site: null,
+	notFoundHtml: null,
+	chromeBefore: '',
+	chromeAfter: '',
+	errorTemplate: '',
+	themeCssHref: null,
+	themeColor: null
+};
+
+export const load: LayoutServerLoad = ({ url }) => {
+	if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {
+		return ADMIN_BLANK;
+	}
+
 	const space = getSpace();
 	const theme = space.theme;
 
@@ -66,6 +85,7 @@ export const load: LayoutServerLoad = () => {
 			: null;
 
 	return {
+		admin: false as const,
 		nav,
 		site,
 		notFoundHtml,
