@@ -4,6 +4,7 @@ data/
 *.log
 .DS_Store
 docs/prompt.md
+docs/current-state.md
 docs/superpowers/
 spaces/*/.amber/
 apps/web/fixtures/*/.amber/
