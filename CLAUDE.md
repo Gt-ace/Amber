@@ -65,14 +65,11 @@ produces an index of what exists; it does not decide what is shown.
 index. Consumers (nav builder, page handler, sitemap, RSS) decide what to
 expose. See "Drafts" below.
 
-**Server-only for content.** `+page.server.ts`, never `+page.ts`. Content
-never crosses to the client as data — only as rendered HTML.
-
-> *Authoring-layer revision (v0.5+):* the editor is an interactive client
-> surface and necessarily receives content as editable data. This rule
-> governs the *public render path*, which stays server-only; the editor is
-> a separate, authenticated surface. Revised *with* the editor's code, not
-> before.
+**Server-only for the public render path.** The public page route is
+`+page.server.ts`, never `+page.ts`; public content never crosses to the
+client as data — only as rendered HTML. The authenticated `/admin/edit`
+editor is a separate surface and necessarily receives the page body as
+editable data; that is by design and does not relax the public render path.
 
 **Space directory path comes from `AMBER_SPACE_PATH`.** No hardcoded paths,
 no config-file-pointing-to-config-file.
