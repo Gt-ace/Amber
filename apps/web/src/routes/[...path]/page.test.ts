@@ -125,6 +125,10 @@ describe('catch-all +page.server load', () => {
 		try {
 			const data2 = pageLoad(stubEvent({ path: 'about' })) as { editHref: string | null };
 			expect(data2.editHref).toBe('/admin/edit/about');
+			// Root URL: `/` must produce `/admin/edit` (no trailing slash) — the
+			// invariant the editor's `[...path]` resolver relies on.
+			const data3 = pageLoad(stubEvent({ path: '' })) as { editHref: string | null };
+			expect(data3.editHref).toBe('/admin/edit');
 		} finally {
 			delete process.env.AMBER_DEV_UNSAFE;
 		}
