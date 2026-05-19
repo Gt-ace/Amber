@@ -116,6 +116,19 @@ describe('catch-all +page.server load', () => {
 			result.bodyHtml.indexOf('amber-auto-index')
 		);
 	});
+
+	test('emits an editHref only when AMBER_DEV_UNSAFE is set', async () => {
+		const data1 = pageLoad(stubEvent({ path: 'about' })) as { editHref: string | null };
+		expect(data1.editHref).toBeNull();
+
+		process.env.AMBER_DEV_UNSAFE = '1';
+		try {
+			const data2 = pageLoad(stubEvent({ path: 'about' })) as { editHref: string | null };
+			expect(data2.editHref).toBe('/admin/edit/about');
+		} finally {
+			delete process.env.AMBER_DEV_UNSAFE;
+		}
+	});
 });
 
 describe('root +layout.server load', () => {

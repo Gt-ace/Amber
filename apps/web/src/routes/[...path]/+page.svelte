@@ -29,3 +29,15 @@
 
 <!-- eslint-disable-next-line svelte/no-at-html-tags -->
 {@html data.bodyHtml}
+
+{#if data.editHref}
+	<p class="amber-edit-link"><a href={data.editHref}>Edit this page</a></p>
+{/if}
+
+<style>
+	.amber-edit-link {
+		margin-top: 2rem;
+		font-size: 0.85rem;
+		opacity: 0.7;
+	}
+</style>
