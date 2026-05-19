@@ -232,6 +232,8 @@ up from a working content pipeline; the substrate is in place.
   as six sequenced subsystems, each its own spec → plan → build cycle:
 
   1. **The editor** — WYSIWYG editing that writes plain markdown to disk.
+     Built on Milkdown Crepe (client-only, `/admin/edit` bundle only); the
+     dependency scope guard was revised with this subsystem.
   2. **Auth** — `better-auth`, login, the admin account.
   3. **Multi-space routing** — host/path resolution (the v0.4 registry
      refactor half-unblocked this).
@@ -264,7 +266,11 @@ no:
 - Putting content logic in a `+page.ts` (must be `.server.ts`).
 - Writing through the cache without going through `apply()`.
 - Modifying `amber.toml` from code.
-- Introducing a UI component library, an ORM, or a CSS framework.
+- Introducing a generic UI component library, an ORM, or a CSS framework.
+  (The Milkdown **Crepe** markdown editor is permitted — see "Roadmap
+  shape": it is the load-bearing component of v0.5 subsystem 1, proven by
+  the round-trip spike, client-only, and contained to the `/admin/edit`
+  route's bundle. It is a specialized editor, not a generic component library.)
 - Adding a CI service before there's a release to gate.
 - Designing for future-version features in current code paths.
 
