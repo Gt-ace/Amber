@@ -8,7 +8,7 @@
 import type { PageServerLoad } from './$types';
 import { getSpace } from '$lib/server/space';
 
-export const load: PageServerLoad = () => {
+export const load = ((_event) => {
 	const pages = [...getSpace().pages.values()]
 		.map((p) => ({
 			url: p.url,
@@ -19,4 +19,4 @@ export const load: PageServerLoad = () => {
 		.sort((a, b) => a.url.localeCompare(b.url));
 
 	return { pages };
-};
+}) satisfies PageServerLoad;
