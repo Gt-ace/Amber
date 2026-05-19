@@ -34,8 +34,8 @@ export function splitRaw(raw: string): { fmBlock: string; fmInner: string; body:
  * trailing newline. With an empty block the body is returned unchanged.
  */
 export function recombine(fmBlock: string, body: string): string {
-	const cleanBody = body.replace(/^\n+/, '');
-	if (fmBlock === '') return cleanBody;
+	if (fmBlock === '') return body;
+	const cleanBody = body.replace(/^(\r?\n)+/, '');
 	const block = fmBlock.replace(/\n*$/, '\n');
 	return block + cleanBody;
 }
@@ -53,7 +53,9 @@ export interface EditableFrontmatter {
  * the on-disk YAML (known + extra together) — every key not named in `edits`
  * passes through untouched (spec §3). This reformats the YAML: comments and
  * key order are not preserved, by design. `title`/`date` set to `''` clear the
- * key; `draft: false` omits the key; `draft: true` writes it.
+ * key; `draft: false` omits the key; `draft: true` writes it. The closing
+ * delimiter is always written as `---`; a `...`-closed block is normalized to
+ * `---` on the first frontmatter-edit save.
  */
 export function reserializeFrontmatter(
 	parsed: Record<string, unknown>,
@@ -73,5 +75,8 @@ export function reserializeFrontmatter(
 		else delete merged.draft;
 	}
 	const yaml = stringifyYaml(merged);
-	return `---\n${yaml.endsWith('\n') ? yaml : yaml + '\n'}---\n`;
+	// An empty mapping serializes as '{}' — normalize to '' so an all-cleared
+	// frontmatter block does not write a literal '{}' to the user's file.
+	const inner = yaml === '{}\n' ? '' : yaml;
+	return `---\n${inner.endsWith('\n') ? inner : inner + '\n'}---\n`;
 }

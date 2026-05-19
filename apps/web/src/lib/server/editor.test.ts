@@ -51,6 +51,15 @@ describe('recombine()', () => {
 	test('with an empty block returns the body unchanged', () => {
 		expect(recombine('', 'Body only\n')).toBe('Body only\n');
 	});
+
+	test('with an empty block, a body with leading newlines is returned unchanged', () => {
+		expect(recombine('', '\n\nBody only\n')).toBe('\n\nBody only\n');
+	});
+
+	test('strips a leading CRLF blank line from the body', () => {
+		const out = recombine('---\ntitle: Hi\n---\n', '\r\nBody\r\n');
+		expect(out).toBe('---\ntitle: Hi\n---\nBody\r\n');
+	});
 });
 
 describe('reserializeFrontmatter()', () => {
@@ -76,5 +85,11 @@ describe('reserializeFrontmatter()', () => {
 		const block = reserializeFrontmatter({ title: 'Old', date: '2020-01-01' }, { title: '', date: '' });
 		expect(block).not.toContain('title');
 		expect(block).not.toContain('date');
+	});
+
+	test('an all-cleared mapping produces an empty block, not a literal {}', () => {
+		const block = reserializeFrontmatter({ title: 'Old' }, { title: '' });
+		expect(block).not.toContain('{}');
+		expect(block).toBe('---\n\n---\n');
 	});
 });
