@@ -10,6 +10,16 @@ A self-hostable personal canvas: link-in-bio, small site, notebook, blog.
 Your software, your server, your files. Markdown on disk, no database
 lock-in, AGPL-3.0.
 
+Through v0.4 Amber is a *renderer*: content is authored on disk with an
+external editor and git, and Amber turns it into a served site. v0.5 begins
+an **authoring layer** — an in-browser editor and admin UI so non-technical
+people can create and edit content without a terminal. The authoring layer
+does not change what Amber *stores*: content stays plain markdown on disk,
+config stays hand-editable TOML. It adds a friendlier way to write those
+files, not a new place to keep them. Amber is solo-by-default; multi-user
+(invited authors, per-space permissions) is opt-in, not assumed. See
+"Roadmap shape" for the sequenced subsystems.
+
 ## Stack — decided, not up for casual revision
 
 SvelteKit + Bun + adapter-node. SQLite. Docker Compose. Caddy with automatic
@@ -20,8 +30,10 @@ Explicitly **not** in v0.1: Kubernetes, Portainer, Pangolin, Coolify,
 Cloudflare in front, GitHub Actions CI, monitoring stacks, ORMs, UI component
 libraries.
 
-One server, one Compose file, one process. Every dependency justifies its
-presence. Complexity is added when it's needed, not speculatively.
+One server, one Compose file per environment (`compose.yaml` for desktop
+dev, `compose.prod.yaml` for production), one process. Every dependency
+justifies its presence. Complexity is added when it's needed, not
+speculatively.
 
 ## Architecture — the rules that shape everything
 
@@ -39,6 +51,12 @@ content on `git pull`.
 from the in-memory nav with a `LoadWarning`. The on-disk `amber.toml` is the
 user's file; we read it, we don't edit it.
 
+> *Authoring-layer revision (v0.5+):* the space-creation and theme-picker
+> subsystems will write `amber.toml`/`space.toml` — but only on explicit
+> user action through the admin UI, never silently, and the result stays
+> hand-editable TOML. This rule is revised *with* those subsystems' code,
+> not before. Until then it holds exactly as written.
+
 **Rendering is not the loader's job.** `Page.body` is raw markdown. HTML
 rendering happens at request time, cached by content hash. The loader
 produces an index of what exists; it does not decide what is shown.
@@ -49,6 +67,12 @@ expose. See "Drafts" below.
 
 **Server-only for content.** `+page.server.ts`, never `+page.ts`. Content
 never crosses to the client as data — only as rendered HTML.
+
+> *Authoring-layer revision (v0.5+):* the editor is an interactive client
+> surface and necessarily receives content as editable data. This rule
+> governs the *public render path*, which stays server-only; the editor is
+> a separate, authenticated surface. Revised *with* the editor's code, not
+> before.
 
 **Space directory path comes from `AMBER_SPACE_PATH`.** No hardcoded paths,
 no config-file-pointing-to-config-file.
@@ -199,13 +223,31 @@ up from a working content pipeline; the substrate is in place.
   four-step theme-resolution chain, Theme B (`amber-editorial`),
   `docs/themes.md`, README, asset-route per-space correctness, dead
   `LoadWarning` codes removed, `amber_version` → 0.3.
-- **v0.4 (in progress):** `getSpace()` per-space registry refactor
+- **v0.4 (shipped):** `getSpace()` per-space registry refactor
   (path-keyed `Map`, single-space behaviour unchanged); desktop-developer
-  `docker compose up` install path; self-hoster documentation as a
-  stretch. Project identity (logo, possible `amber.software` landing)
-  runs as a parallel track and doesn't block ship.
+  `docker compose up` install path; self-hoster documentation.
+- **v0.5 onward — the authoring layer.** The direction is decided: an
+  in-browser editor and admin UI so non-technical people can build and
+  edit spaces without a terminal. It is a platform-sized change and ships
+  as six sequenced subsystems, each its own spec → plan → build cycle:
+
+  1. **The editor** — WYSIWYG editing that writes plain markdown to disk.
+  2. **Auth** — `better-auth`, login, the admin account.
+  3. **Multi-space routing** — host/path resolution (the v0.4 registry
+     refactor half-unblocked this).
+  4. **Invites + per-space permissions** — opt-in multi-user.
+  5. **Space-creation UI** — writes `amber.toml`.
+  6. **Theme-picker UI** — writes `space.toml`.
+
+  Build order is risk-first. Subsystem 1 (the editor) is **spiked before
+  any binding rule is revised** — "a WYSIWYG editor that round-trips to
+  *clean, portable* markdown" is the riskiest unproven assumption. If the
+  spike holds, the rule revisions land subsystem by subsystem. If it
+  doesn't, the direction is reconsidered cheaply.
 - **Off-roadmap:** native desktop app (Tauri wrapper). Possible someday,
-  not a current direction — self-hostable canvas is Amber's identity.
+  not a current direction — self-hostable canvas is Amber's identity. The
+  authoring layer is delivered as web routes in the existing SvelteKit
+  app, not a desktop wrapper.
 
 Anything not in the current version is not that version's design
 constraint. Resist the urge to "leave room for" later versions in
@@ -224,7 +266,14 @@ no:
 - Modifying `amber.toml` from code.
 - Introducing a UI component library, an ORM, or a CSS framework.
 - Adding a CI service before there's a release to gate.
-- Designing for v0.2+ features in v0.1 code paths.
+- Designing for future-version features in current code paths.
+
+Three of these guards sit on the authoring layer's path and will be revised
+as its subsystems land (see "Roadmap shape"): the `better-auth` dependency,
+`amber.toml`/`space.toml` writes from the space-creation and theme-picker
+UIs, and a UI component library if the editor needs one. Each guard holds
+until the subsystem that revises it ships *with* its rule revision — the
+authoring layer does not get to pre-emptively waive them.
 
 If the change is genuinely needed and breaks one of these, the rule gets
 revised here first, then the change lands. Not the other way around.

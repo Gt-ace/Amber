@@ -24,7 +24,7 @@ changes live.
 
 ## Status
 
-Current version: 0.3. Early development. A production instance runs at
+Current version: 0.4. Early development. A production instance runs at
 [amber.avp.software](https://amber.avp.software) — that is the operator's
 personal site, which happens to run on Amber. It isn't Amber's homepage.
 
@@ -34,8 +34,9 @@ install above is the supported way to try Amber from a clone. The
 self-hoster path (TLS, systemd, backups, your own domain) is documented
 in [`docs/self-hosting.md`](docs/self-hosting.md).
 
-v0.3 ships per-space theming via `space.toml`, theme-author documentation,
-and a second bundled theme (`amber-editorial`).
+v0.4 ships the desktop-developer `docker compose up` install, a per-space
+registry refactor, and the self-hoster guide. v0.3 added per-space theming
+via `space.toml` and a second bundled theme (`amber-editorial`).
 
 ## Concepts
 
