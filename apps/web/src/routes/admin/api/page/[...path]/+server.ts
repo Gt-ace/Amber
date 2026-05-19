@@ -45,7 +45,12 @@ export const PUT: RequestHandler = async (event) => {
 	const page = getSpace().pages.get(url);
 	if (!page) error(404, `No page at ${url}`);
 
-	const payload = (await event.request.json()) as SavePayload;
+	let payload: SavePayload;
+	try {
+		payload = (await event.request.json()) as SavePayload;
+	} catch {
+		error(400, 'The request body must be valid JSON.');
+	}
 	if (typeof payload.body !== 'string') {
 		error(400, 'The save request must include a string `body`.');
 	}
@@ -53,6 +58,8 @@ export const PUT: RequestHandler = async (event) => {
 	const current = readFileSync(page.filePath, 'utf8');
 	const currentHash = hashContent(current);
 
+	// `If-Match` is required: an absent header (null) matches neither '*' nor
+	// the current hash, so it fails closed with a 409. The editor always sends it.
 	const ifMatch = event.request.headers.get('If-Match');
 	if (ifMatch !== '*' && ifMatch !== currentHash) {
 		error(409, 'The file changed on disk since the editor opened it.');

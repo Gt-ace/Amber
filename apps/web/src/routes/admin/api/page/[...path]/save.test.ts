@@ -53,11 +53,13 @@ describe('PUT /admin/api/page/[...path]', () => {
 	});
 
 	test('400 when body is missing or not a string', async () => {
-		try {
-			await PUT(event('about', { body: JSON.stringify({}), ifMatch: '*' }));
-			expect.unreachable('should have thrown 400');
-		} catch (e) {
-			expect((e as { status: number }).status).toBe(400);
+		for (const bad of [JSON.stringify({}), JSON.stringify({ body: 42 })]) {
+			try {
+				await PUT(event('about', { body: bad, ifMatch: '*' }));
+				expect.unreachable('should have thrown 400');
+			} catch (e) {
+				expect((e as { status: number }).status).toBe(400);
+			}
 		}
 	});
 
