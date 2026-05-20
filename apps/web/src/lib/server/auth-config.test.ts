@@ -47,13 +47,34 @@ describe('buildAuth', () => {
 	test('throws when AMBER_AUTH_SECRET is unset/empty', () => {
 		const { dbPath, cleanup } = tmpAuthDb();
 		cleanups.push(cleanup);
-		expect(() => buildAuth({ dbPath, secret: '', google: null })).toThrow(/AMBER_AUTH_SECRET/);
+		expect(() =>
+			buildAuth({ dbPath, secret: '', publicUrl: 'http://localhost:3000', google: null })
+		).toThrow(/AMBER_AUTH_SECRET/);
+	});
+
+	test('throws when AMBER_PUBLIC_URL is unset/empty', () => {
+		const { dbPath, cleanup } = tmpAuthDb();
+		cleanups.push(cleanup);
+		const prev = process.env.AMBER_PUBLIC_URL;
+		delete process.env.AMBER_PUBLIC_URL;
+		try {
+			expect(() =>
+				buildAuth({ dbPath, secret: 'x'.repeat(32), publicUrl: '', google: null })
+			).toThrow(/AMBER_PUBLIC_URL/);
+		} finally {
+			if (prev !== undefined) process.env.AMBER_PUBLIC_URL = prev;
+		}
 	});
 
 	test('builds when secret is supplied and google is null', () => {
 		const { dbPath, cleanup } = tmpAuthDb();
 		cleanups.push(cleanup);
-		const { auth, db } = buildAuth({ dbPath, secret: 'x'.repeat(32), google: null });
+		const { auth, db } = buildAuth({
+			dbPath,
+			secret: 'x'.repeat(32),
+			publicUrl: 'http://localhost:3000',
+			google: null
+		});
 		expect(auth).toBeDefined();
 		expect(auth.options.socialProviders).toBeUndefined();
 		db.close();
@@ -65,6 +86,7 @@ describe('buildAuth', () => {
 		const { auth, db } = buildAuth({
 			dbPath,
 			secret: 'x'.repeat(32),
+			publicUrl: 'http://localhost:3000',
 			google: { clientId: 'gid', clientSecret: 'gsecret' }
 		});
 		const google = auth.options.socialProviders?.google as

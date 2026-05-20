@@ -19,6 +19,10 @@ services:
       # below is fine for local dev; rotate it with a real random secret
       # (e.g. `openssl rand -hex 32`) before exposing this Amber to anyone.
       AMBER_AUTH_SECRET: "dev-only-replace-me-with-openssl-rand-hex-32"
+      # Required: OAuth callback base, origin-trust value, sitemap base.
+      # Localhost is fine for desktop dev; production sets the real domain
+      # via `.env` (see compose.prod.yaml).
+      AMBER_PUBLIC_URL: "http://localhost:3000"
       # Optional: set both to enable Google sign-in / linking.
       # AMBER_GOOGLE_CLIENT_ID: ""
       # AMBER_GOOGLE_CLIENT_SECRET: ""

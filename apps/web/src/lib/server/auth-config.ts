@@ -71,6 +71,19 @@ function requireSecret(supplied?: string): string {
 	return s;
 }
 
+function requirePublicUrl(supplied?: string): string {
+	const u = supplied ?? process.env.AMBER_PUBLIC_URL;
+	if (!u || u.length === 0) {
+		throw new Error(
+			'AMBER_PUBLIC_URL is required. Set it in the .env file next to your ' +
+				'compose files (e.g. https://your-domain.example). It is used as the ' +
+				'OAuth callback base, the origin-trust value, and the sitemap base. ' +
+				'The auth subsystem refuses to boot without it.'
+		);
+	}
+	return u;
+}
+
 /** Resolve the Google OAuth env pair, enforcing the all-or-nothing rule. */
 export function resolveGoogleEnv(env: NodeJS.ProcessEnv = process.env): {
 	clientId: string;
@@ -91,7 +104,7 @@ export function buildAuth(opts: BuildAuthOptions = {}): { auth: Auth; db: Databa
 	const db = opts.db ?? openAuthDb(opts.dbPath ?? authDbPath());
 	const secret = requireSecret(opts.secret);
 	const google = opts.google !== undefined ? opts.google : resolveGoogleEnv();
-	const baseURL = opts.publicUrl ?? process.env.AMBER_PUBLIC_URL ?? undefined;
+	const baseURL = requirePublicUrl(opts.publicUrl);
 
 	const config: BetterAuthOptions = {
 		appName: 'Amber',
@@ -100,7 +113,7 @@ export function buildAuth(opts: BuildAuthOptions = {}): { auth: Auth; db: Databa
 		database: db,
 		// Trust the public URL as the only allowed origin; SvelteKit's own
 		// CSRF/SameSite cookie defaults cover the rest.
-		trustedOrigins: baseURL ? [baseURL] : undefined,
+		trustedOrigins: [baseURL],
 		emailAndPassword: {
 			enabled: true
 			// disableSignUp stays false: the setup action calls signUpEmail() for

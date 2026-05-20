@@ -12,6 +12,9 @@ export function setup() {
 	if (!process.env.AMBER_AUTH_SECRET) {
 		process.env.AMBER_AUTH_SECRET = 'test-secret-do-not-use-in-production';
 	}
+	if (!process.env.AMBER_PUBLIC_URL) {
+		process.env.AMBER_PUBLIC_URL = 'http://localhost:3000';
+	}
 }
 
 export function teardown() {

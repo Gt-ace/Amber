@@ -142,6 +142,23 @@ it still fails, check `docker compose -f compose.prod.yaml logs caddy` for
 the actual error (usually a DNS mismatch or port 80 blocked at the
 firewall).
 
+If the response is `HTTP/2 502` and Caddy's logs say
+`dial tcp: lookup web on 127.0.0.11:53: server misbehaving`, the
+upstream `web` container is in a restart loop and Docker DNS can't reach
+it. Run `docker compose -f compose.prod.yaml logs web` to see the boot
+error. The two ways this most often happens after a fresh deploy:
+
+- `AMBER_AUTH_SECRET` missing from `.env`. The auth subsystem refuses
+  to boot without it and names the variable directly in the error.
+- `AMBER_PUBLIC_URL` missing from `.env`. `compose.prod.yaml` references
+  it without a default, so `docker compose up` fails substitution before
+  the container starts with a message naming the variable. If the var is
+  somehow present-but-empty, the auth subsystem refuses to boot with a
+  single-line error that also names `AMBER_PUBLIC_URL` directly. Set
+  `AMBER_PUBLIC_URL=https://your-domain.example` in `.env` and redeploy.
+  The same value acts as the OAuth callback base, the origin-trust value,
+  and the sitemap base.
+
 ## Step 7 — Persistence across reboots
 
 The repo includes `amber.service`, a systemd unit that brings the Compose
