@@ -22,6 +22,13 @@ docker compose up
 Open <http://localhost:3000>. Edit files in `spaces/example/` to see
 changes live.
 
+The first visit to <http://localhost:3000/admin> redirects to
+`/admin/setup` — that one-shot screen claims the admin account. Once
+claimed, the setup page is sealed and `/admin` becomes the editor. The
+desktop compose file ships a placeholder `AMBER_AUTH_SECRET`; rotate it
+with `openssl rand -hex 32` before exposing this Amber to anyone (the
+self-hosting guide threads a real secret through production).
+
 ## Status
 
 Current version: 0.4. Early development. A production instance runs at
@@ -37,6 +44,13 @@ in [`docs/self-hosting.md`](docs/self-hosting.md).
 v0.4 ships the desktop-developer `docker compose up` install, a per-space
 registry refactor, and the self-hoster guide. v0.3 added per-space theming
 via `space.toml` and a second bundled theme (`amber-editorial`).
+
+The v0.5 authoring layer is landing as sequenced subsystems. Subsystem 1
+(WYSIWYG editor at `/admin/edit/<page>`, Milkdown Crepe, client-only) has
+shipped. Subsystem 2 (real authentication: `/admin/setup`, `/admin/login`,
+`/admin/account`, optional Google sign-in, offline reset CLI) has shipped.
+Multi-space routing, invites, space-creation and theme-picker UIs are the
+remaining subsystems.
 
 ## Concepts
 
@@ -56,6 +70,9 @@ presentation. Each space picks its own theme. See
 
 - [`docs/themes.md`](docs/themes.md) — building themes: file contract, CSS
   tokens, template runtime.
+- [`docs/self-hosting.md`](docs/self-hosting.md) — production deploy
+  (TLS, systemd, backups, claiming the admin, recovery via the offline
+  reset-password CLI).
 
 More documentation will land as the project matures.
 
