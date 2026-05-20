@@ -28,7 +28,7 @@ bun run test:smoke              # = AMBER_E2E=1 bun --bun vitest --run --project
 ```
 
 There is no CI by design; `test:smoke` is the pre-deploy gate the operator
-runs by hand. It is deliberately *not* part of `bun test` / `bun run test`
+runs by hand. It is deliberately _not_ part of `bun test` / `bun run test`
 so the fast unit/integration loop stays fast.
 
 Prerequisites: `bun` on `$PATH`, Playwright's Chromium installed

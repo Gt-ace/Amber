@@ -1,15 +1,16 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
 </script>
 
 <h1>Pages</h1>
-<p><a href="/admin/new">+ New page</a></p>
+<p><a href={resolve('/admin/new')}>+ New page</a></p>
 
 <ul class="amber-page-list">
 	{#each data.pages as page (page.url)}
 		<li>
-			<a href="/admin/edit/{page.apiPath}">{page.title}</a>
+			<a href={resolve(`/admin/edit/${page.apiPath}` as '/admin/edit')}>{page.title}</a>
 			<code>{page.url}</code>
 			{#if page.draft}<span class="amber-draft">draft</span>{/if}
 		</li>

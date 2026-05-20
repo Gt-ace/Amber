@@ -82,7 +82,10 @@ describe('reserializeFrontmatter()', () => {
 	});
 
 	test('an empty-string title or date clears the key', () => {
-		const block = reserializeFrontmatter({ title: 'Old', date: '2020-01-01' }, { title: '', date: '' });
+		const block = reserializeFrontmatter(
+			{ title: 'Old', date: '2020-01-01' },
+			{ title: '', date: '' }
+		);
 		expect(block).not.toContain('title');
 		expect(block).not.toContain('date');
 	});

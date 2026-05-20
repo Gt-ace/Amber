@@ -142,10 +142,7 @@ describe('resolveActiveTheme', () => {
 		const { theme, warnings } = resolveActiveTheme(themes, m, { theme: 'nope' }, log);
 		expect(theme.name).toBe('amber-default');
 		expect(warnings).toHaveLength(2);
-		expect(warnings.map((w) => w.code)).toEqual([
-			'space_theme_not_found',
-			'space_theme_not_found'
-		]);
+		expect(warnings.map((w) => w.code)).toEqual(['space_theme_not_found', 'space_theme_not_found']);
 	});
 
 	test('chain step 4: no usable themes at all → BUILTIN_THEME, no warnings about amber-default missing', () => {

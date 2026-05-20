@@ -45,6 +45,7 @@
 		"@milkdown/core": "7.21.1",
 		"@milkdown/crepe": "7.21.1",
 		"@milkdown/kit": "7.21.1",
+		"better-auth": "^1.6.11",
 		"chokidar": "^5.0.0",
 		"markdown-it": "^14.1.1",
 		"pino": "^9.5.0",

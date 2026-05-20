@@ -7,3 +7,8 @@ bun.lockb
 
 # Miscellaneous
 /static/
+
+# Fixture content is deliberately weird (BOM, CRLF, long lines, unicode
+# slugs, unusual YAML). Prettier would normalize these and break the
+# robustness tests that assert the loader handles them.
+/fixtures/

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import type { PageData, ActionData } from './$types';
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 </script>
@@ -7,7 +8,7 @@
 	<title>New page — Amber admin</title>
 </svelte:head>
 
-<p><a href="/admin">← All pages</a></p>
+<p><a href={resolve('/admin')}>← All pages</a></p>
 <h1>New page</h1>
 
 {#if form?.error}

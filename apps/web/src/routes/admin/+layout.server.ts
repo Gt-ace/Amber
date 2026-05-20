@@ -1,13 +1,18 @@
 /**
- * Guards the whole /admin authoring surface (spec §8). Every admin PAGE route
- * runs this layout load. The PUT save endpoint is a +server.ts module — those
- * are NOT covered by layout loads, so it calls requireAuthor() itself.
+ * Top-level admin layout load (spec §2).
+ *
+ * Carries no auth guard — the route groups split authentication posture:
+ *
+ *   - `(public)/login`, `(public)/setup` — no session required.
+ *   - `(authed)/*` — guarded by `(authed)/+layout.server.ts`.
+ *
+ * The admin chrome (`/admin/+layout.svelte`) wraps both groups; this load
+ * supplies whatever the chrome needs to decide what to render (currently
+ * just whether to show the "Sign out" affordance).
  */
 
-import { requireAuthor } from '$lib/server/auth';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = (event) => {
-	requireAuthor(event);
-	return {};
+	return { authed: event.locals.user != null };
 };

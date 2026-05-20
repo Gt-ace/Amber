@@ -12,7 +12,6 @@
 
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { fileURLToPath } from 'node:url';
-import { error } from '@sveltejs/kit';
 
 const FIXTURE = fileURLToPath(new URL('../../../fixtures/example-space/', import.meta.url));
 
@@ -42,11 +41,15 @@ afterAll(async () => {
 // SvelteKit's `LoadEvent` carries many fields (`request`, `url`, `route`,
 // `cookies`, etc.) but our handlers only read `params`. Cast through
 // `unknown` so we can pass a minimal stub without listing every field.
-const stubEvent = (params: Record<string, string>) =>
-	({ params }) as unknown as Parameters<typeof pageLoad>[0];
+const stubEvent = (
+	params: Record<string, string>,
+	user: { id: string; email: string; name?: string | null } | null = null
+) => ({ params, locals: { user } }) as unknown as Parameters<typeof pageLoad>[0];
 
 const stubLayoutEvent = () =>
-	({ params: {}, url: new URL('http://localhost/') }) as unknown as Parameters<typeof layoutLoad>[0];
+	({ params: {}, url: new URL('http://localhost/') }) as unknown as Parameters<
+		typeof layoutLoad
+	>[0];
 
 describe('catch-all +page.server load', () => {
 	test('throws 404 for an unknown URL', () => {
@@ -117,21 +120,17 @@ describe('catch-all +page.server load', () => {
 		);
 	});
 
-	test('emits an editHref only when AMBER_DEV_UNSAFE is set', async () => {
-		const data1 = pageLoad(stubEvent({ path: 'about' })) as { editHref: string | null };
+	test('emits an editHref only when locals.user is set', async () => {
+		const data1 = pageLoad(stubEvent({ path: 'about' }, null)) as { editHref: string | null };
 		expect(data1.editHref).toBeNull();
 
-		process.env.AMBER_DEV_UNSAFE = '1';
-		try {
-			const data2 = pageLoad(stubEvent({ path: 'about' })) as { editHref: string | null };
-			expect(data2.editHref).toBe('/admin/edit/about');
-			// Root URL: `/` must produce `/admin/edit` (no trailing slash) — the
-			// invariant the editor's `[...path]` resolver relies on.
-			const data3 = pageLoad(stubEvent({ path: '' })) as { editHref: string | null };
-			expect(data3.editHref).toBe('/admin/edit');
-		} finally {
-			delete process.env.AMBER_DEV_UNSAFE;
-		}
+		const user = { id: 'u1', email: 'a@x' };
+		const data2 = pageLoad(stubEvent({ path: 'about' }, user)) as { editHref: string | null };
+		expect(data2.editHref).toBe('/admin/edit/about');
+		// Root URL: `/` must produce `/admin/edit` (no trailing slash) — the
+		// invariant the editor's `[...path]` resolver relies on.
+		const data3 = pageLoad(stubEvent({ path: '' }, user)) as { editHref: string | null };
+		expect(data3.editHref).toBe('/admin/edit');
 	});
 });
 

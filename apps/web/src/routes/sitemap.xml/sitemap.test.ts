@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { Space } from '$lib/space/space';
 import { buildSitemapXml, readSiteUrl, readSiteUrlOrWarn } from '$lib/server/sitemap';

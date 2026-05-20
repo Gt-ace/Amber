@@ -77,8 +77,16 @@ no config-file-pointing-to-config-file.
 ## On-disk format
 
 A space is a directory containing `amber.toml` at its root. Visible markdown
-files are content. `.amber/` holds regenerable runtime state (cache, drafts,
-plugin state) and is safe to delete.
+files are content.
+
+`.amber/` holds runtime state. Most of it is *regenerable* — `cache.db`,
+the render cache, drafts, plugin state — and is safe to delete; the next
+cold start rebuilds whatever is needed. The exception is
+**`.amber/auth.db`** (landed in v0.5 subsystem 2), which holds the admin
+user row and active sessions. Deleting it loses the admin account; the
+operator either restores from backup or claims a fresh admin via
+`/admin/setup`. Backup guidance covers `.amber/` as a whole, so any
+sensible backup of the space directory picks `auth.db` up automatically.
 
 - TOML for the manifest, YAML for frontmatter.
 - Manifest is authoritative for **nav order**. Filesystem is authoritative
@@ -228,10 +236,16 @@ up from a working content pipeline; the substrate is in place.
   edit spaces without a terminal. It is a platform-sized change and ships
   as six sequenced subsystems, each its own spec → plan → build cycle:
 
-  1. **The editor** — WYSIWYG editing that writes plain markdown to disk.
-     Built on Milkdown Crepe (client-only, `/admin/edit` bundle only); the
-     dependency scope guard was revised with this subsystem.
-  2. **Auth** — `better-auth`, login, the admin account.
+  1. **The editor (shipped)** — WYSIWYG editing that writes plain markdown
+     to disk. Built on Milkdown Crepe (client-only, `/admin/edit` bundle
+     only); the dependency scope guard was revised with this subsystem.
+  2. **Auth (shipped)** — `better-auth` mounted at `/api/auth/*`,
+     email+password sign-in with an optional Google provider, a one-shot
+     `/admin/setup` claim screen, an `/admin/account` page for password
+     changes / Google link-unlink, and an offline reset-password CLI for
+     self-hosters who already have shell access. `AMBER_DEV_UNSAFE` is
+     **removed**; the `.amber/auth.db` and `better-auth` dependency scope
+     guards were revised with this subsystem.
   3. **Multi-space routing** — host/path resolution (the v0.4 registry
      refactor half-unblocked this).
   4. **Invites + per-space permissions** — opt-in multi-user.
@@ -260,6 +274,10 @@ no:
 
 - Adding a service to the Compose file.
 - Adding a build-time dependency that isn't already in `package.json`.
+  (`better-auth` is permitted — see "Roadmap shape": v0.5 subsystem 2's
+  load-bearing library, server-only, contained to the admin surface and
+  the `/api/auth/*` handler. It is a specialized auth library, not a
+  general-purpose framework.)
 - Putting content logic in a `+page.ts` (must be `.server.ts`).
 - Writing through the cache without going through `apply()`.
 - Modifying `amber.toml` from code.
@@ -271,12 +289,15 @@ no:
 - Adding a CI service before there's a release to gate.
 - Designing for future-version features in current code paths.
 
-Three of these guards sit on the authoring layer's path and will be revised
-as its subsystems land (see "Roadmap shape"): the `better-auth` dependency,
-`amber.toml`/`space.toml` writes from the space-creation and theme-picker
-UIs, and a UI component library if the editor needs one. Each guard holds
-until the subsystem that revises it ships *with* its rule revision — the
-authoring layer does not get to pre-emptively waive them.
+Two of these guards still sit on the authoring layer's path and will be
+revised as its subsystems land (see "Roadmap shape"): `amber.toml` /
+`space.toml` writes from the space-creation and theme-picker UIs, and a
+UI component library if the editor needs one. The `better-auth`
+dependency was revised with v0.5 subsystem 2's code, in line with this
+section's "the rule gets revised here first, then the change lands" rule.
+The remaining guards hold until the subsystem that revises each one ships
+*with* its rule revision — the authoring layer does not get to
+pre-emptively waive them.
 
 If the change is genuinely needed and breaks one of these, the rule gets
 revised here first, then the change lands. Not the other way around.

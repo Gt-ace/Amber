@@ -19,6 +19,8 @@ declare module 'bun:sqlite' {
 		);
 		exec(sql: string): void;
 		prepare(sql: string): Statement;
+		query(sql: string): Statement;
+		run(sql: string, params?: unknown[]): { changes: number; lastInsertRowid: number };
 		transaction<T extends (...args: unknown[]) => unknown>(fn: T): T;
 		close(): void;
 	}

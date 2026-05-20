@@ -15,6 +15,13 @@ services:
       - "3000:3000"
     environment:
       AMBER_SPACE_PATH: /space
+      # AMBER_AUTH_SECRET signs the admin session cookie. The placeholder
+      # below is fine for local dev; rotate it with a real random secret
+      # (e.g. `openssl rand -hex 32`) before exposing this Amber to anyone.
+      AMBER_AUTH_SECRET: "dev-only-replace-me-with-openssl-rand-hex-32"
+      # Optional: set both to enable Google sign-in / linking.
+      # AMBER_GOOGLE_CLIENT_ID: ""
+      # AMBER_GOOGLE_CLIENT_SECRET: ""
     volumes:
       - ./spaces/example:/space
     restart: unless-stopped

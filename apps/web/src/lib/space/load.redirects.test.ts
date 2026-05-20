@@ -34,10 +34,7 @@ describe('redirect_from frontmatter — parsing', () => {
 	});
 
 	test('an array of strings is preserved on the page frontmatter', () => {
-		writeFileSync(
-			join(dir, 'about.md'),
-			'---\nredirect_from:\n  - /old\n  - /older\n---\n\nbody'
-		);
+		writeFileSync(join(dir, 'about.md'), '---\nredirect_from:\n  - /old\n  - /older\n---\n\nbody');
 		const { space } = load(dir);
 		const page = space.pages.get('/about')!;
 		expect(page.frontmatter.redirect_from).toEqual(['/old', '/older']);
@@ -58,10 +55,7 @@ describe('redirect_from frontmatter — parsing', () => {
 	});
 
 	test('an array containing non-strings is rejected as malformed', () => {
-		writeFileSync(
-			join(dir, 'about.md'),
-			'---\nredirect_from:\n  - /ok\n  - 123\n---\n\nbody'
-		);
+		writeFileSync(join(dir, 'about.md'), '---\nredirect_from:\n  - /ok\n  - 123\n---\n\nbody');
 		const { space } = load(dir);
 		// All redirects from this page are dropped — partial application would
 		// be confusing (which entry survived?).
@@ -82,10 +76,7 @@ describe('redirect_from frontmatter — merge into Space.redirects', () => {
 	});
 
 	test('two pages with redirect_from each contribute their own entries', () => {
-		writeFileSync(
-			join(dir, 'about.md'),
-			'---\nredirect_from:\n  - /old-about\n---\n\nbody'
-		);
+		writeFileSync(join(dir, 'about.md'), '---\nredirect_from:\n  - /old-about\n---\n\nbody');
 		writeFileSync(
 			join(dir, 'hello.md'),
 			'---\nslug: say-hi\nredirect_from:\n  - /howdy\n  - /greetings\n---\n\nbody'
@@ -105,10 +96,7 @@ describe('redirect_from frontmatter — merge into Space.redirects', () => {
 			join(dir, 'amber.toml'),
 			`amber_version = "0.1"\n[redirects]\n"/clash" = "/old-target"\n`
 		);
-		writeFileSync(
-			join(dir, 'about.md'),
-			'---\nredirect_from:\n  - /clash\n---\n\nbody'
-		);
+		writeFileSync(join(dir, 'about.md'), '---\nredirect_from:\n  - /clash\n---\n\nbody');
 		const { space } = load(dir);
 		expect(space.redirects.get('/clash')).toBe('/about');
 	});
@@ -125,19 +113,13 @@ describe('redirect_from frontmatter — merge into Space.redirects', () => {
 	});
 
 	test('redirect_from entries are normalized (leading slash added if missing)', () => {
-		writeFileSync(
-			join(dir, 'about.md'),
-			'---\nredirect_from:\n  - "old-about"\n---\n\nbody'
-		);
+		writeFileSync(join(dir, 'about.md'), '---\nredirect_from:\n  - "old-about"\n---\n\nbody');
 		const { space } = load(dir);
 		expect(space.redirects.get('/old-about')).toBe('/about');
 	});
 
 	test('empty-string entries in redirect_from are skipped silently', () => {
-		writeFileSync(
-			join(dir, 'about.md'),
-			'---\nredirect_from:\n  - "/legit"\n  - ""\n---\n\nbody'
-		);
+		writeFileSync(join(dir, 'about.md'), '---\nredirect_from:\n  - "/legit"\n  - ""\n---\n\nbody');
 		const { space } = load(dir);
 		expect(space.redirects.get('/legit')).toBe('/about');
 		// Empty string didn't become a "/" redirect to /about.

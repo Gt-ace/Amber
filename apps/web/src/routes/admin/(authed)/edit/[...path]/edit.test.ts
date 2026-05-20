@@ -1,23 +1,22 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { fileURLToPath } from 'node:url';
 
-const FIXTURE = fileURLToPath(new URL('../../../../../fixtures/example-space/', import.meta.url));
+const FIXTURE = fileURLToPath(
+	new URL('../../../../../../fixtures/example-space/', import.meta.url)
+);
 
 let load: typeof import('./+page.server.ts').load;
 
 beforeAll(async () => {
-	process.env.AMBER_DEV_UNSAFE = '1';
 	process.env.AMBER_SPACE_PATH = FIXTURE.replace(/\/$/, '');
 	load = (await import('./+page.server.ts')).load;
 });
 
 afterAll(async () => {
 	(await import('$lib/server/space')).getSpace().close();
-	delete process.env.AMBER_DEV_UNSAFE;
 });
 
-const stub = (path: string) =>
-	({ params: { path } }) as unknown as Parameters<typeof load>[0];
+const stub = (path: string) => ({ params: { path } }) as unknown as Parameters<typeof load>[0];
 
 /**
  * Await the load and narrow away the `void` half of PageServerLoad's declared

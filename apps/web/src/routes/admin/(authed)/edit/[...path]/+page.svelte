@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import { resolve } from '$app/paths';
 	import type { PageData } from './$types';
 	// Crepe's CSS is static (Vite extracts it — no JS executes); the Crepe
 	// runtime itself is dynamic-imported in onMount so it never enters SSR.
@@ -97,7 +98,7 @@
 	<title>Editing {data.url} — Amber admin</title>
 </svelte:head>
 
-<p><a href="/admin">← All pages</a></p>
+<p><a href={resolve('/admin')}>← All pages</a></p>
 <h1>Editing <code>{data.url}</code></h1>
 
 {#if conflict}
@@ -120,12 +121,7 @@
 			</label>
 			<label>
 				Date
-				<input
-					type="text"
-					placeholder="YYYY-MM-DD"
-					bind:value={fmDate}
-					oninput={markFmDirty}
-				/>
+				<input type="text" placeholder="YYYY-MM-DD" bind:value={fmDate} oninput={markFmDirty} />
 			</label>
 			<label class="amber-check">
 				<input type="checkbox" bind:checked={fmDraft} onchange={markFmDirty} />
@@ -133,9 +129,8 @@
 			</label>
 		{:else}
 			<p class="amber-fm-disabled">
-				This page's frontmatter YAML cannot be parsed, so the panel is
-				read-only. Fix the YAML directly in the file to re-enable it. A save
-				here leaves the frontmatter block untouched.
+				This page's frontmatter YAML cannot be parsed, so the panel is read-only. Fix the YAML
+				directly in the file to re-enable it. A save here leaves the frontmatter block untouched.
 			</p>
 		{/if}
 	</aside>
