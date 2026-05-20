@@ -5,13 +5,12 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { Actions } from './$types';
 
-const FIXTURE = fileURLToPath(new URL('../../../../fixtures/example-space/', import.meta.url));
+const FIXTURE = fileURLToPath(new URL('../../../../../fixtures/example-space/', import.meta.url));
 
 let workDir: string;
 let actions: Actions;
 
 beforeEach(async () => {
-	process.env.AMBER_DEV_UNSAFE = '1';
 	workDir = mkdtempSync(join(tmpdir(), 'amber-new-'));
 	cpSync(FIXTURE, workDir, { recursive: true });
 	rmSync(join(workDir, '.amber'), { recursive: true, force: true });
@@ -22,7 +21,6 @@ beforeEach(async () => {
 afterEach(async () => {
 	(await import('$lib/server/space')).getSpace().close();
 	rmSync(workDir, { recursive: true, force: true });
-	delete process.env.AMBER_DEV_UNSAFE;
 });
 
 function formEvent(fields: Record<string, string>) {
@@ -63,25 +61,33 @@ describe('new-page create action', () => {
 	});
 
 	test('rejects a reserved-prefix filename', async () => {
-		const result = await actions.default!(formEvent({ directory: '', filename: '_secret', title: 'X', draft: '' }));
+		const result = await actions.default!(
+			formEvent({ directory: '', filename: '_secret', title: 'X', draft: '' })
+		);
 		expect((result as { status: number }).status).toBe(400);
 		expect(existsSync(join(workDir, '_secret.md'))).toBe(false);
 	});
 
 	test('rejects an already-existing file', async () => {
-		const result = await actions.default!(formEvent({ directory: '', filename: 'about', title: 'X', draft: '' }));
+		const result = await actions.default!(
+			formEvent({ directory: '', filename: 'about', title: 'X', draft: '' })
+		);
 		expect((result as { status: number }).status).toBe(400);
 	});
 
 	test('rejects a directory not in the content tree', async () => {
-		const result = await actions.default!(formEvent({ directory: 'made-up-dir', filename: 'x', title: 'X', draft: '' }));
+		const result = await actions.default!(
+			formEvent({ directory: 'made-up-dir', filename: 'x', title: 'X', draft: '' })
+		);
 		expect((result as { status: number }).status).toBe(400);
 	});
 
 	test('rejects a duplicate URL (index.md whose folder URL already exists)', async () => {
 		// `projects/index.md` already serves `/projects`; a new `projects.md`
 		// would resolve to `/projects` too.
-		const result = await actions.default!(formEvent({ directory: '', filename: 'projects', title: 'X', draft: '' }));
+		const result = await actions.default!(
+			formEvent({ directory: '', filename: 'projects', title: 'X', draft: '' })
+		);
 		expect((result as { status: number }).status).toBe(400);
 	});
 

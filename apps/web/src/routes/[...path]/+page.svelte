@@ -31,6 +31,8 @@
 {@html data.bodyHtml}
 
 {#if data.editHref}
+	<!-- editHref is a server-rendered path; resolve() doesn't fit because the value is dynamic. -->
+	<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 	<p class="amber-edit-link"><a href={data.editHref}>Edit this page</a></p>
 {/if}
 

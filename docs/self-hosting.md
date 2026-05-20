@@ -52,7 +52,7 @@ will serve.
 ## Step 4 — Configure the production compose
 
 The repo ships `compose.prod.yaml` configured for `amber.avp.software`. Two
-substitutions are needed.
+substitutions and one secret are needed.
 
 **Space mount.** In `compose.prod.yaml`, this line:
 
@@ -79,6 +79,32 @@ Caddy issues a Let's Encrypt certificate automatically the first time the
 site is reached over HTTPS, using the domain you just set. No further TLS
 configuration is needed.
 
+**Auth secret.** Amber refuses to boot without `AMBER_AUTH_SECRET` — it
+signs the admin session cookie, and a missing or guessable secret means
+forgeable sessions. Create a `.env` file next to the compose files with at
+least:
+
+```
+AMBER_AUTH_SECRET=<a fresh `openssl rand -hex 32`>
+AMBER_PUBLIC_URL=https://your-domain.example
+```
+
+Compose reads `.env` automatically. Treat the secret like an SSH key: don't
+commit it, don't reuse it across deployments.
+
+**Optional: Google sign-in.** If you'd like a backup sign-in method, also
+set:
+
+```
+AMBER_GOOGLE_CLIENT_ID=<from Google Cloud Console>
+AMBER_GOOGLE_CLIENT_SECRET=<from Google Cloud Console>
+```
+
+Register `https://your-domain.example/api/auth/callback/google` as an
+authorized redirect URI in the Google Cloud Console OAuth credentials.
+Both vars must be set together — half-configured OAuth is a boot error,
+not a partial feature.
+
 ## Step 5 — Start the stack
 
 From the repo root, on the server:
@@ -96,17 +122,25 @@ content changes (the bind-mounted space) would be picked up.
 The stack is two services: `web` (the Amber app, exposed only inside the
 Compose network) and `caddy` (reverse proxy on host ports 80 and 443).
 
-## Step 6 — Verify
+## Step 6 — Verify and claim the admin
 
 ```
 curl -I https://your-domain.example
 ```
 
-Should return `HTTP/2 200`. If it returns `HTTP/2 503` or hangs, Caddy
-hasn't completed Let's Encrypt's HTTP-01 challenge yet — wait up to a
-minute and retry. If it still fails, check
-`docker compose -f compose.prod.yaml logs caddy` for the actual error
-(usually a DNS mismatch or port 80 blocked at the firewall).
+Should return `HTTP/2 200`. Once it does, open
+`https://your-domain.example/admin` in a browser. The first visit
+redirects to `/admin/setup` because no admin exists yet. Fill in your
+email, a strong password, and submit. The page disappears once you've
+claimed it: there is no way to claim the admin twice.
+
+If you lose access to the admin account later, see "Recovery" below.
+
+If the initial `curl` returns `HTTP/2 503` or hangs, Caddy hasn't completed
+Let's Encrypt's HTTP-01 challenge yet — wait up to a minute and retry. If
+it still fails, check `docker compose -f compose.prod.yaml logs caddy` for
+the actual error (usually a DNS mismatch or port 80 blocked at the
+firewall).
 
 ## Step 7 — Persistence across reboots
 
@@ -160,6 +194,43 @@ remotely over SSH from a workstation (it reads `AMBER_DEPLOY_HOST` and
 `AMBER_DEPLOY_PATH` env vars). If you maintain a local checkout and want a
 one-command deploy from your laptop, use it; if you're administering the
 server directly, the commands above are equivalent.
+
+## Recovery
+
+If you lose access to the admin password and don't have a linked Google
+account, there are two paths back in:
+
+1. **Linked Google.** If you linked Google from `/admin/account`, just
+   sign in with Google, then change the password.
+2. **Reset CLI.** If you have shell access to the server, run the
+   reset-password CLI against the running container's mount:
+
+   ```
+   docker compose -f compose.prod.yaml exec web \
+       bun run /app/bin/reset-password.ts --email you@example.com
+   ```
+
+   The CLI writes a new password hash directly into `.amber/auth.db`,
+   revokes every existing session, and prints a temporary password to
+   stdout once. Sign in with that password, then change it from
+   `/admin/account`. The temporary password is single-use only because
+   it's printed once — copy it somewhere safe before closing the shell.
+
+There is no in-app forgot-password flow. Amber has no SMTP and won't
+inherit one; the CLI is the deliberate escape hatch for the self-hoster
+who already has shell access. If both options fail, the only remaining
+recovery is to delete `.amber/auth.db` and re-bootstrap an admin (you
+lose nothing else — content lives on the filesystem).
+
+## Backing up `.amber/auth.db`
+
+`.amber/cache.db` is regenerable: the loader rebuilds it from the
+filesystem on cold start. `.amber/auth.db` is **not** — it holds the
+admin row and session table. Your backup of the space directory needs to
+cover the whole `.amber/` directory, not just markdown content.
+
+The default `restic`/`rsync`/`tar`-of-the-space-dir pattern picks this up
+automatically.
 
 ## Beyond this doc
 

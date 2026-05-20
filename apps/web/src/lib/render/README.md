@@ -19,7 +19,7 @@ body bytes, so the cache key is too.
 
 ## Cache invalidation
 
-Content hash *is* the key, so a body change produces a new key and the
+Content hash _is_ the key, so a body change produces a new key and the
 old row is orphaned. Orphans accumulate in the `renders` table whenever a
 `Page.body` changes. To bound growth, `Space.load()` calls
 `space.vacuumRenderCache()` at the end of cold start (and on the
@@ -35,8 +35,8 @@ safe at any time; the next cold start rebuilds it.
 
 ## Sanitization
 
-We don't sanitize. `html: false` blocks raw HTML *injection through
-markdown* (a `<script>` tag in source becomes `&lt;script&gt;` in output),
+We don't sanitize. `html: false` blocks raw HTML _injection through
+markdown_ (a `<script>` tag in source becomes `&lt;script&gt;` in output),
 which is enough while markdown source is the operator's own files. When
 plugins or user-submitted content arrive, revisit this — a
 DOMPurify-style sanitizer at the cache boundary is the natural seam, and

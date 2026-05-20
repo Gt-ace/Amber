@@ -10,6 +10,18 @@ services:
       NODE_ENV: production
       PORT: "3000"
       HOST: 0.0.0.0
+      # Required. Operator-supplied via the deploy's `.env`. Boot fails if
+      # this is empty.
+      AMBER_AUTH_SECRET: ${AMBER_AUTH_SECRET}
+      # Optional. Both must be set to enable Google sign-in.
+      AMBER_GOOGLE_CLIENT_ID: ${AMBER_GOOGLE_CLIENT_ID:-}
+      AMBER_GOOGLE_CLIENT_SECRET: ${AMBER_GOOGLE_CLIENT_SECRET:-}
+      # Used as the OAuth callback base (and by the sitemap, since v0.1).
+      AMBER_PUBLIC_URL: ${AMBER_PUBLIC_URL:-}
+      # SvelteKit's adapter-node uses ORIGIN to set the request URL's
+      # protocol+host. Keep it in sync with AMBER_PUBLIC_URL so better-auth's
+      # origin check against the request matches the public URL.
+      ORIGIN: ${AMBER_PUBLIC_URL:-}
     volumes:
       - ./spaces/avp-software:/space
     healthcheck:

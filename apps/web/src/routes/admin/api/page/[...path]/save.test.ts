@@ -6,13 +6,14 @@ import { tmpdir } from 'node:os';
 import type { RequestHandler } from './$types';
 import { hashContent, splitRaw, recombine } from '$lib/server/editor';
 
-const FIXTURE = fileURLToPath(new URL('../../../../../../fixtures/example-space/', import.meta.url));
+const FIXTURE = fileURLToPath(
+	new URL('../../../../../../fixtures/example-space/', import.meta.url)
+);
 
 let workDir: string;
 let PUT: RequestHandler;
 
 beforeEach(async () => {
-	process.env.AMBER_DEV_UNSAFE = '1';
 	workDir = mkdtempSync(join(tmpdir(), 'amber-save-'));
 	cpSync(FIXTURE, workDir, { recursive: true });
 	rmSync(join(workDir, '.amber'), { recursive: true, force: true });
@@ -26,7 +27,6 @@ afterEach(async () => {
 	const { getSpace } = await import('$lib/server/space');
 	getSpace().close();
 	rmSync(workDir, { recursive: true, force: true });
-	delete process.env.AMBER_DEV_UNSAFE;
 });
 
 /** Build a RequestEvent-shaped stub with a real Request for `[...path]`. */
@@ -39,7 +39,11 @@ function event(path: string, init: RequestInit & { ifMatch?: string }) {
 		headers,
 		body: init.body
 	});
-	return { params: { path }, request } as unknown as Parameters<RequestHandler>[0];
+	return {
+		params: { path },
+		request,
+		locals: { user: { id: 'test-admin', email: 'admin@x', name: 'admin' } }
+	} as unknown as Parameters<RequestHandler>[0];
 }
 
 describe('PUT /admin/api/page/[...path]', () => {
@@ -76,9 +80,7 @@ describe('PUT /admin/api/page/[...path]', () => {
 		expect(afterFirst).toBe(recombine(fmBlock, body));
 
 		const hash1 = (await res1.json()).hash as string;
-		const res2 = await PUT(
-			event('about', { body: JSON.stringify({ body }), ifMatch: hash1 })
-		);
+		const res2 = await PUT(event('about', { body: JSON.stringify({ body }), ifMatch: hash1 }));
 		expect(res2.status).toBe(200);
 		expect(readFileSync(file, 'utf8')).toBe(afterFirst);
 	});
@@ -90,7 +92,9 @@ describe('PUT /admin/api/page/[...path]', () => {
 		writeFileSync(file, readFileSync(file, 'utf8') + '\nout-of-band\n', 'utf8');
 
 		try {
-			await PUT(event('about', { body: JSON.stringify({ body: 'New body\n' }), ifMatch: staleHash }));
+			await PUT(
+				event('about', { body: JSON.stringify({ body: 'New body\n' }), ifMatch: staleHash })
+			);
 			expect.unreachable('a stale If-Match should have thrown 409');
 		} catch (e) {
 			expect((e as { status: number }).status).toBe(409);

@@ -392,10 +392,7 @@ describe('SpaceCache auto-rename detection', () => {
 		Space.load(dir).space.close();
 
 		renameSync(join(dir, 'old.md'), join(dir, 'auto-target.md'));
-		writeFileSync(
-			join(dir, 'explicit.md'),
-			'---\nredirect_from:\n  - /old\n---\n\ndifferent body'
-		);
+		writeFileSync(join(dir, 'explicit.md'), '---\nredirect_from:\n  - /old\n---\n\ndifferent body');
 		const result = Space.load(dir);
 		// The redirect points at the page that explicitly claimed it, not
 		// the body-hash-matched one.

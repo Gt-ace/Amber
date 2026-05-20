@@ -8,6 +8,10 @@ declare global {
 		// interface Error {}
 		interface Locals {
 			log: Logger;
+			/** Authenticated user, or null. Populated once per request by hooks.server.ts. */
+			user: { id: string; email: string; name?: string | null } | null;
+			/** Better-auth session row, or null. */
+			session: { id: string; userId: string; expiresAt: Date } | null;
 		}
 		// interface PageData {}
 		// interface PageState {}

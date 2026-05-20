@@ -63,13 +63,21 @@ let base: string;
 
 beforeAll(async () => {
 	// Build from current source so the smoke reflects HEAD, not a stale bundle.
-	execFileSync('bun', ['run', 'build'], { cwd: APP_ROOT, stdio: 'inherit' });
+	execFileSync('bun', ['--bun', 'run', 'build'], { cwd: APP_ROOT, stdio: 'inherit' });
 
 	const port = await freePort();
 	base = `http://127.0.0.1:${port}`;
 	server = spawn('bun', [BUNDLE], {
 		cwd: APP_ROOT,
-		env: { ...process.env, AMBER_SPACE_PATH: FIXTURE, PORT: String(port), HOST: '127.0.0.1' },
+		env: {
+			...process.env,
+			AMBER_SPACE_PATH: FIXTURE,
+			// Subsystem 2 (auth) requires this at boot. The hydration smoke
+			// doesn't exercise auth itself, so any non-empty value is fine.
+			AMBER_AUTH_SECRET: 'hydration-smoke-' + 'x'.repeat(32),
+			PORT: String(port),
+			HOST: '127.0.0.1'
+		},
 		stdio: 'ignore'
 	});
 	await waitForServer(base + '/');
