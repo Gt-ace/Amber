@@ -23,6 +23,11 @@
 			<p role="alert">{form.redeem.error}</p>
 		{/if}
 	</form>
+	{#if data.googleEnabled}
+		<a href="/api/auth/sign-in/social/google?callbackURL={encodeURIComponent('/admin/invite/' + page.params.token + '?gstate=' + data.inviteSignedState)}">
+			Continue with Google
+		</a>
+	{/if}
 	<p>
 		Already have an account?
 		<a href="/admin/login?next={encodeURIComponent('/admin/invite/' + page.params.token)}">Sign in to claim.</a>

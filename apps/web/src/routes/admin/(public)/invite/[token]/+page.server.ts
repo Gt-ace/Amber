@@ -9,11 +9,12 @@
 
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { getAuth, getAuthDb } from '$lib/server/auth-config';
-import { hashToken, loadValidByTokenHash, lookupByTokenHash, markRedeemed, type InviteRow } from '$lib/server/invites';
+import { getAuth, getAuthDb, resolveGoogleEnv } from '$lib/server/auth-config';
+import { hashToken, loadValidByTokenHash, lookupById, lookupByTokenHash, markRedeemed, type InviteRow } from '$lib/server/invites';
 import { getRole, upsertMember } from '$lib/server/permissions';
 import { getRegistryEntries } from '$lib/server/space';
 import { inviteContext } from '$lib/server/invite-context';
+import { signInviteState, verifyInviteState } from '$lib/server/google-invite-state';
 import { APIError } from 'better-auth/api';
 import { logger } from '$lib/server/logger';
 import path from 'node:path';
@@ -43,11 +44,39 @@ function shape(row: InviteRow): PublicInvite {
 	};
 }
 
-export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
+export const load: PageServerLoad = async ({ params, locals, setHeaders, url }) => {
 	setHeaders({
 		'Referrer-Policy': 'no-referrer',
 		'Cache-Control': 'no-store'
 	});
+
+	// Google-OAuth finalize: signed-in user returning from Google with a
+	// signed gstate that encodes the invite-id. Verify, redeem, redirect.
+	const gstate = url.searchParams.get('gstate');
+	if (gstate && locals.user && !locals.user.isInstallAdmin) {
+		const inviteId = verifyInviteState(gstate);
+		if (inviteId) {
+			const db = getAuthDb();
+			const inviteRow = lookupById(db, inviteId);
+			if (inviteRow && inviteRow.redeemed_at == null && inviteRow.expires_at >= Date.now()) {
+				const existing = db
+					.query('SELECT role FROM member WHERE user_id = ?1 AND space_slug = ?2')
+					.get(locals.user.id, inviteRow.space_slug);
+				if (!existing) {
+					const userId = locals.user.id;
+					db.transaction(() => {
+						const fresh = db
+							.query('SELECT redeemed_at FROM invite WHERE id = ?1')
+							.get(inviteRow.id) as { redeemed_at: number | null } | undefined;
+						if (!fresh || fresh.redeemed_at != null) return;
+						upsertMember(userId, inviteRow.space_slug, inviteRow.role, inviteRow.created_by);
+						markRedeemed(db, { id: inviteRow.id, userId });
+					})();
+					redirect(302, `/admin/spaces/${inviteRow.space_slug}`);
+				}
+			}
+		}
+	}
 
 	const db = getAuthDb();
 	const row = lookupByTokenHash(db, hashToken(params.token));
@@ -59,23 +88,23 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
 
 	if (!locals.user) {
 		const state: LoadState = { kind: 'signed-out', invite };
-		return { state };
+		return { state, googleEnabled: resolveGoogleEnv() != null, inviteSignedState: signInviteState(row.id) };
 	}
 	if (locals.user.isInstallAdmin) {
 		const state: LoadState = { kind: 'install-admin', invite };
-		return { state };
+		return { state, googleEnabled: resolveGoogleEnv() != null, inviteSignedState: signInviteState(row.id) };
 	}
 	const currentRole = getRole(locals.user.id, row.space_slug);
 	if (currentRole) {
 		const state: LoadState = { kind: 'already-member', invite, currentRole };
-		return { state };
+		return { state, googleEnabled: resolveGoogleEnv() != null, inviteSignedState: signInviteState(row.id) };
 	}
 	const state: LoadState = {
 		kind: 'accept-as-current',
 		invite,
 		email: locals.user.email
 	};
-	return { state };
+	return { state, googleEnabled: resolveGoogleEnv() != null, inviteSignedState: signInviteState(row.id) };
 };
 
 const log = logger.child({ subsystem: 'permissions' });

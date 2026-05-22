@@ -49,15 +49,19 @@ afterEach(async () => {
 
 function loadEvent(
 	token: string,
-	user: { id: string; email: string; isInstallAdmin: boolean } | null
+	user: { id: string; email: string; isInstallAdmin: boolean } | null,
+	searchParams: Record<string, string> = {}
 ) {
 	const headers = new Map<string, string>();
+	const urlObj = new URL(`https://amber.test/admin/invite/${token}`);
+	for (const [k, v] of Object.entries(searchParams)) urlObj.searchParams.set(k, v);
 	return {
 		params: { token },
 		locals: { user, access: null, role: null },
 		setHeaders: (h: Record<string, string>) => {
 			for (const [k, v] of Object.entries(h)) headers.set(k, v);
 		},
+		url: urlObj,
 		_headers: headers
 	} as unknown as Parameters<typeof load>[0];
 }

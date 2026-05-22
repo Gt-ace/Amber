@@ -35,6 +35,7 @@ import type { Database } from 'bun:sqlite';
 import { authDbPath, openAuthDb } from '$lib/server/auth-db';
 import { applyAmberAuthMigrations } from '$lib/server/auth-migrations';
 import { inviteContext } from '$lib/server/invite-context';
+import { verifyInviteState } from '$lib/server/google-invite-state';
 
 export interface BuildAuthOptions {
 	dbPath?: string;
@@ -164,6 +165,28 @@ export function buildAuth(opts: BuildAuthOptions = {}): { auth: Auth; db: Databa
 							) {
 								return; // accept — the redemption action owns the post-state mutations.
 							}
+						}
+
+						// Google-OAuth path fallback: better-auth's social-callback runs outside
+						// the redemption action, so inviteContext.getStore() is null. Detect the
+						// gstate query param via SvelteKit's getRequestEvent() and verify it
+						// server-side; on success we allow the user-row creation.
+						try {
+							const ev = getRequestEvent();
+							const gstate = new URL(ev.request.url).searchParams.get('gstate');
+							if (gstate) {
+								const inviteId = verifyInviteState(gstate);
+								if (inviteId) {
+									const invite = db
+										.query('SELECT redeemed_at, expires_at FROM invite WHERE id = ?1')
+										.get(inviteId) as { redeemed_at: number | null; expires_at: number } | undefined;
+									if (invite && invite.redeemed_at == null && invite.expires_at >= Date.now()) {
+										return; // allow — finalization happens in the redemption load's gstate branch
+									}
+								}
+							}
+						} catch {
+							// Outside a request? Fall through to the existing rejection.
 						}
 
 						throw new APIError('FORBIDDEN', {
