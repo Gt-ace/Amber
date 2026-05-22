@@ -175,3 +175,53 @@ describe('migration 0002 — member table', () => {
 		).toThrow();
 	});
 });
+
+describe('migration 0003 — invite table', () => {
+	test('table exists with every required column', () => {
+		const db = freshDb();
+		applyAmberAuthMigrations(db);
+		const cols = db.query("PRAGMA table_info('invite')").all() as Array<{ name: string }>;
+		const names = cols.map((c) => c.name).sort();
+		expect(names).toEqual(
+			[
+				'created_at',
+				'created_by',
+				'expires_at',
+				'id',
+				'redeemed_at',
+				'redeemed_by',
+				'role',
+				'space_slug',
+				'token_hash'
+			].sort()
+		);
+	});
+
+	test('token_hash is unique', () => {
+		const db = freshDb();
+		applyAmberAuthMigrations(db);
+		const now = Date.now();
+		db.run(
+			'INSERT INTO invite (id, token_hash, space_slug, role, expires_at, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+			['i1', 'hash1', 'site-a', 'editor', now + 7 * 86_400_000, now, 'u1']
+		);
+		expect(() =>
+			db.run(
+				'INSERT INTO invite (id, token_hash, space_slug, role, expires_at, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+				['i2', 'hash1', 'site-a', 'editor', now + 7 * 86_400_000, now, 'u1']
+			)
+		).toThrow();
+	});
+
+	test('role CHECK constraint enforces owner|editor', () => {
+		const db = freshDb();
+		applyAmberAuthMigrations(db);
+		const now = Date.now();
+		expect(() =>
+			db.run(
+				'INSERT INTO invite (id, token_hash, space_slug, role, expires_at, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+				['i1', 'h', 's', 'admin', now, now, 'u1']
+			)
+		).toThrow();
+	});
+});
