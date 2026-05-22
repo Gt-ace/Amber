@@ -14,7 +14,7 @@
  */
 
 import type { Reroute } from '@sveltejs/kit';
-import { reroutePrefixes } from '$lib/server/reroute-prefixes';
+import { reroutePrefixes } from '$lib/reroute-prefixes';
 
 export const reroute: Reroute = ({ url }) => {
 	for (const prefix of reroutePrefixes()) {

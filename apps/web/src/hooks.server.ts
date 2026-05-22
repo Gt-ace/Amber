@@ -31,7 +31,7 @@ import { discoverSpaces } from '$lib/server/spaces-dir';
 import { readSpaceConfig } from '$lib/space/config';
 import { parseSpaceRouting } from '$lib/server/space-routing';
 import { buildResolverIndex, type LoadedSpace } from '$lib/server/resolver-index';
-import { setReroutePrefixes } from '$lib/server/reroute-prefixes';
+import { setReroutePrefixes } from '$lib/reroute-prefixes';
 import { setDefaultSlug } from '$lib/server/default-space';
 import path from 'node:path';
 import type { Space } from '$lib/space/space';
