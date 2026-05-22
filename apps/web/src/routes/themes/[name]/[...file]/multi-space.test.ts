@@ -1,27 +1,25 @@
 /**
  * Architectural regression: the theme asset route must delegate "which space?"
- * to the `getSpace()` abstraction rather than hardcoding a path or assuming a
- * specific space. v0.1 ships a single-space `getSpace()` singleton; v0.4 will
- * key it per-request. This route shouldn't need to change in either world —
- * it consumes `space.root` and resolves `<root>/themes/<name>/<file>`.
+ * to the per-request `event.locals.space` set by `hooks.server.ts`, rather
+ * than hardcoding a path or assuming a specific space. v0.5 subsystem 3
+ * makes "which space?" a per-request decision; this route shouldn't need to
+ * change as the resolver evolves — it consumes `space.root` and resolves
+ * `<root>/themes/<name>/<file>`.
  *
  * Property under test: with two hypothetical spaces that each contain a
  * theme named `amber-default`, the route serves the bytes from whichever
- * space the abstraction returns. Same URL → different content, gated only by
- * what `getSpace()` reports.
+ * space `event.locals.space` reports. Same URL → different content, gated
+ * only by what the hook resolved.
  *
- * Companion to `server.test.ts`, which exercises the real (single-space)
- * `getSpace()` against a fixture; this file mocks the import so the test
- * isn't sensitive to v0.1's process-global singleton.
+ * Companion to `server.test.ts`, which exercises a single fixture space;
+ * this file constructs two stub-space objects and swaps them on the event,
+ * so the test isn't sensitive to the process-global `getSpace()` singleton.
  */
 
-import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-
-const getSpaceMock = vi.fn();
-vi.mock('$lib/server/space', () => ({ getSpace: getSpaceMock }));
 
 let GET: typeof import('./+server.ts').GET;
 let spaceA: string;
@@ -42,35 +40,31 @@ afterAll(() => {
 	rmSync(spaceB, { recursive: true, force: true });
 });
 
-beforeEach(() => {
-	getSpaceMock.mockReset();
-});
-
-const call = (name: string, file: string) =>
-	GET({ params: { name, file } } as unknown as Parameters<typeof GET>[0]);
+const call = (name: string, file: string, root: string) =>
+	GET({
+		params: { name, file },
+		locals: { space: { root } }
+	} as unknown as Parameters<typeof GET>[0]);
 
 describe('theme asset route — per-space resolution', () => {
-	test('same theme name resolves to space A bytes when getSpace() returns space A', async () => {
-		getSpaceMock.mockReturnValue({ root: spaceA });
-		const res = await call('amber-default', 'theme.css');
+	test('same theme name resolves to space A bytes when locals.space points to space A', async () => {
+		const res = await call('amber-default', 'theme.css', spaceA);
 		expect(res.status).toBe(200);
 		expect(await res.text()).toBe(':root{--from:"A"}');
 	});
 
-	test('same theme name resolves to space B bytes when getSpace() returns space B', async () => {
-		getSpaceMock.mockReturnValue({ root: spaceB });
-		const res = await call('amber-default', 'theme.css');
+	test('same theme name resolves to space B bytes when locals.space points to space B', async () => {
+		const res = await call('amber-default', 'theme.css', spaceB);
 		expect(res.status).toBe(200);
 		expect(await res.text()).toBe(':root{--from:"B"}');
 	});
 
 	test('containment guard is enforced against the active space, not a global root', async () => {
 		// The path-traversal check is rooted at `<active-space>/themes/<name>/`.
-		// Once `getSpace()` becomes per-request, an escape attempt out of the
-		// caller's space can't slip into a sibling space's themes/ via `..`
-		// — same guard, same rooting, just a different active root.
-		getSpaceMock.mockReturnValue({ root: spaceA });
-		const res = await call('amber-default', '../../../themes/amber-default/theme.css');
+		// An escape attempt out of the caller's space can't slip into a sibling
+		// space's themes/ via `..` — same guard, same rooting, just a different
+		// active root.
+		const res = await call('amber-default', '../../../themes/amber-default/theme.css', spaceA);
 		expect(res.status).toBe(404);
 	});
 });

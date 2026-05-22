@@ -11,7 +11,6 @@
 
 import { error, redirect } from '@sveltejs/kit';
 import { dev } from '$app/environment';
-import { getSpace } from '$lib/server/space';
 import { renderPageBody } from '$lib/render/page';
 import { readSiteUrl } from '$lib/server/sitemap';
 import { isAuthor } from '$lib/server/auth';
@@ -19,7 +18,8 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = (event) => {
 	const { params } = event;
-	const space = getSpace();
+	const space = event.locals.space;
+	if (!space) error(404, 'No space matched');
 
 	const raw = params.path ?? '';
 	const url = raw === '' ? '/' : '/' + raw.replace(/\/+$/, '');

@@ -30,6 +30,7 @@ import { discoverSpaces } from '$lib/server/spaces-dir';
 import { readSpaceConfig } from '$lib/space/config';
 import { parseSpaceRouting } from '$lib/server/space-routing';
 import { buildResolverIndex, type LoadedSpace } from '$lib/server/resolver-index';
+import { setReroutePrefixes } from '$lib/server/reroute-prefixes';
 import type { Space } from '$lib/space/space';
 
 const bootLog = logger.child({ subsystem: 'resolver' });
@@ -135,6 +136,7 @@ function bootRegistry(): ResolverIndex<Space> {
 }
 
 const resolverIndex = bootRegistry();
+setReroutePrefixes(resolverIndex.prefixes.map((p) => p.prefix));
 
 // Build the auth instance and run better-auth's migrations on first request.
 // Doing this lazily (rather than via top-level `await`) avoids a Vite chunk
