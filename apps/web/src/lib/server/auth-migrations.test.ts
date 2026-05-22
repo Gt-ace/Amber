@@ -129,3 +129,49 @@ describe('migration 0001 — isInstallAdmin', () => {
 		expect(row.isInstallAdmin).toBe(1);
 	});
 });
+
+describe('migration 0002 — member table', () => {
+	test('table and both indexes exist after applying', () => {
+		const db = freshDb();
+		applyAmberAuthMigrations(db);
+		const tbl = db
+			.query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'member'")
+			.get();
+		expect(tbl).toBeDefined();
+		const idxs = db
+			.query(
+				"SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'member' ORDER BY name"
+			)
+			.all() as Array<{ name: string }>;
+		const names = idxs.map((i) => i.name);
+		expect(names).toContain('member_by_user');
+		expect(names).toContain('member_by_space');
+	});
+
+	test('role CHECK constraint enforces owner|editor', () => {
+		const db = freshDb();
+		applyAmberAuthMigrations(db);
+		expect(() =>
+			db.run(
+				'INSERT INTO member (id, user_id, space_slug, role, created_at) VALUES (?, ?, ?, ?, ?)',
+				['m1', 'u1', 'site-a', 'admin', Date.now()]
+			)
+		).toThrow();
+	});
+
+	test('UNIQUE (user_id, space_slug) blocks duplicate rows', () => {
+		const db = freshDb();
+		applyAmberAuthMigrations(db);
+		const now = Date.now();
+		db.run(
+			'INSERT INTO member (id, user_id, space_slug, role, created_at) VALUES (?, ?, ?, ?, ?)',
+			['m1', 'u1', 'site-a', 'editor', now]
+		);
+		expect(() =>
+			db.run(
+				'INSERT INTO member (id, user_id, space_slug, role, created_at) VALUES (?, ?, ?, ?, ?)',
+				['m2', 'u1', 'site-a', 'owner', now]
+			)
+		).toThrow();
+	});
+});
