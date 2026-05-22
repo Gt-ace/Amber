@@ -246,12 +246,16 @@ lose nothing else — content lives on the filesystem).
 ## Backing up `.amber/auth.db`
 
 `.amber/cache.db` is regenerable: the loader rebuilds it from the
-filesystem on cold start. `.amber/auth.db` is **not** — it holds the
-admin row and session table. Your backup of the space directory needs to
-cover the whole `.amber/` directory, not just markdown content.
+filesystem on cold start. `auth.db` is **not** — it holds the admin row
+and session table. In single-space mode (`AMBER_SPACE_PATH`) it lives at
+`<space>/.amber/auth.db`; in multi-space mode (`AMBER_SPACES_DIR`) it
+lives at `<spaces-dir>/.amber/auth.db` (the install root, one admin
+account across every loaded space). Your backup needs to cover whichever
+`.amber/` directory applies, not just markdown content.
 
-The default `restic`/`rsync`/`tar`-of-the-space-dir pattern picks this up
-automatically.
+The default `restic`/`rsync`/`tar` pattern over the space directory
+(single-space) or the install-root parent directory (multi-space) picks
+this up automatically.
 
 ## Beyond this doc
 
@@ -263,7 +267,16 @@ automatically.
   B2, but that's an operator choice, not Amber's prescription.
 - **Monitoring.** Production uses UptimeRobot for liveness. No
   prescription beyond "you should know when your site is down."
-- **Multi-space hosting.** Not yet supported. Coming in a future version.
+- **Multi-space hosting.** Supported as of v0.5 subsystem 3. Set
+  `AMBER_SPACES_DIR` (instead of `AMBER_SPACE_PATH`) to point at a parent
+  directory whose immediate subdirectories — each containing `amber.toml`
+  — are loaded as spaces. Per-space routing fields (`host`, `prefix`,
+  `default`) go in each space's `space.toml`. For host-based routing to
+  work behind Caddy, adapter-node needs to derive the request host and
+  scheme from the proxy-set headers — set `HOST_HEADER=x-forwarded-host`
+  and `PROTOCOL_HEADER=x-forwarded-proto` on the `web` service so
+  `event.url.host` reflects the public hostname, not the in-container
+  origin.
 
 Filesystem is the source of truth. Your space directory is the whole site.
 Back that up; everything else regenerates.

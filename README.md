@@ -49,14 +49,17 @@ The v0.5 authoring layer is landing as sequenced subsystems. Subsystem 1
 (WYSIWYG editor at `/admin/edit/<page>`, Milkdown Crepe, client-only) has
 shipped. Subsystem 2 (real authentication: `/admin/setup`, `/admin/login`,
 `/admin/account`, optional Google sign-in, offline reset CLI) has shipped.
-Multi-space routing, invites, space-creation and theme-picker UIs are the
-remaining subsystems.
+Subsystem 3 (multi-space routing: `AMBER_SPACES_DIR` discovery, per-space
+`host`/`prefix`/`default` routing in `space.toml`, per-space admin at
+`/admin/spaces/[slug]/…`) has shipped. Invites, space-creation and
+theme-picker UIs are the remaining subsystems.
 
 ## Concepts
 
 A **space** is a directory containing your content, configuration, and
-themes. One Amber install hosts one or more spaces — currently one in
-practice; multi-space is on the roadmap.
+themes. One Amber install hosts one or more spaces — single-space via
+`AMBER_SPACE_PATH`, or multi-space via `AMBER_SPACES_DIR` (see
+[`docs/self-hosting.md`](docs/self-hosting.md)).
 
 **Content** is markdown files with YAML frontmatter. The filesystem is the
 source of truth. SQLite at `.amber/cache.db` is a regenerable cache and can
