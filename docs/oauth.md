@@ -19,10 +19,16 @@ sign-in is purely additive.
 - Sign-ins land on `/admin` by default, or on the validated `?next=`
   destination if one was carried through the OAuth dance.
 
-Account creation is gated by the same single-admin rule that applies to
-the password path: the *first* Google sign-in claims the admin slot, and
-every subsequent attempt is rejected at the database hook. Multi-user is
-a later subsystem.
+Account creation is gated by the same rules that apply to the password
+path: the *first* Google sign-in claims the install-admin slot; every
+subsequent sign-up requires a valid invite carried through the OAuth
+dance (an HMAC-signed state token attached to the `callbackURL` — see
+v0.5 subsystem 4). Strangers signing in with their own Google account
+without a pending invite are rejected at the database hook.
+
+Subsystem 4 also surfaces a "Continue with Google" button on the invite
+redemption page at `/admin/invite/[token]` when Google is configured, so
+an invitee can choose Google instead of setting an email + password.
 
 ## Prerequisites
 

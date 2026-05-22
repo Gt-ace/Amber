@@ -51,7 +51,11 @@ shipped. Subsystem 2 (real authentication: `/admin/setup`, `/admin/login`,
 `/admin/account`, optional Google sign-in, offline reset CLI) has shipped.
 Subsystem 3 (multi-space routing: `AMBER_SPACES_DIR` discovery, per-space
 `host`/`prefix`/`default` routing in `space.toml`, per-space admin at
-`/admin/spaces/[slug]/…`) has shipped. Invites, space-creation and
+`/admin/spaces/[slug]/…`) has shipped. Subsystem 4 (invites and per-space
+permissions: install-admin tier over per-space owner/editor roles, bearer
+URL invites delivered out-of-band, members admin at
+`/admin/spaces/[slug]/members`, install-admin user list at `/admin/users`,
+offline `bin/grant-ownership.ts` CLI) has shipped. Space-creation and
 theme-picker UIs are the remaining subsystems.
 
 ## Concepts
