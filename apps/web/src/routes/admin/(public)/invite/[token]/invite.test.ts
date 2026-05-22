@@ -298,3 +298,52 @@ describe('revokeIfAdmin', () => {
 		expect((r as { status: number }).status).toBe(403);
 	});
 });
+
+describe('revokeIfOwner', () => {
+	test('owner can revoke from the redemption page', async () => {
+		const token = await freshInvite();
+		const db = getAuthDb();
+		db.run(
+			"INSERT INTO user (id, email, name, emailVerified, createdAt, updatedAt, isInstallAdmin) VALUES ('u-1', 'o@x.test', 'O', 1, ?1, ?1, 0)",
+			[Date.now()]
+		);
+		db.run(
+			"INSERT INTO member (id, user_id, space_slug, role, created_at, created_by) VALUES ('m-1', 'u-1', ?1, 'owner', ?2, 'admin')",
+			[slug, Date.now()]
+		);
+		const { actions } = await import('./+page.server.ts');
+		const r = await actions.revokeIfOwner!(
+			actionEventWithUser(token, { id: 'u-1', email: 'o@x.test', isInstallAdmin: false })
+		);
+		expect((r as { revoke: { ok: true } }).revoke.ok).toBe(true);
+		const n = getAuthDb().query('SELECT COUNT(*) AS n FROM invite').get() as { n: number };
+		expect(n.n).toBe(0);
+	});
+
+	test('editor cannot revoke: 403', async () => {
+		const token = await freshInvite();
+		const db = getAuthDb();
+		db.run(
+			"INSERT INTO user (id, email, name, emailVerified, createdAt, updatedAt, isInstallAdmin) VALUES ('u-1', 'e@x.test', 'E', 1, ?1, ?1, 0)",
+			[Date.now()]
+		);
+		db.run(
+			"INSERT INTO member (id, user_id, space_slug, role, created_at, created_by) VALUES ('m-1', 'u-1', ?1, 'editor', ?2, 'admin')",
+			[slug, Date.now()]
+		);
+		const { actions } = await import('./+page.server.ts');
+		const r = await actions.revokeIfOwner!(
+			actionEventWithUser(token, { id: 'u-1', email: 'e@x.test', isInstallAdmin: false })
+		);
+		expect((r as { status: number }).status).toBe(403);
+	});
+
+	test('install-admin: 403 (use revokeIfAdmin instead)', async () => {
+		const token = await freshInvite();
+		const { actions } = await import('./+page.server.ts');
+		const r = await actions.revokeIfOwner!(
+			actionEventWithUser(token, { id: 'admin-1', email: 'a@x.test', isInstallAdmin: true })
+		);
+		expect((r as { status: number }).status).toBe(403);
+	});
+});

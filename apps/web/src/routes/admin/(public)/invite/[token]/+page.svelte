@@ -46,6 +46,17 @@
 		<strong>{state.invite.spaceTitle ?? state.invite.slug}</strong>. This invite is
 		still pending and can be passed on or revoked.
 	</p>
+	{#if state.currentRole === 'owner'}
+		<form method="POST" action="?/revokeIfOwner" use:enhance>
+			<button type="submit">Revoke this invite</button>
+		</form>
+		{#if form?.revoke?.ok === false}
+			<p role="alert">{form.revoke.error}</p>
+		{/if}
+		{#if form?.revoke?.ok === true}
+			<p>Invite revoked.</p>
+		{/if}
+	{/if}
 {:else if state.kind === 'accept-as-current'}
 	<p>
 		You're signed in as <strong>{state.email}</strong>. Accept this invite to gain

@@ -59,9 +59,7 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders, url }) 
 			const db = getAuthDb();
 			const inviteRow = lookupById(db, inviteId);
 			if (inviteRow && inviteRow.redeemed_at == null && inviteRow.expires_at >= Date.now()) {
-				const existing = db
-					.query('SELECT role FROM member WHERE user_id = ?1 AND space_slug = ?2')
-					.get(locals.user.id, inviteRow.space_slug);
+				const existing = getRole(locals.user.id, inviteRow.space_slug);
 				if (!existing) {
 					const userId = locals.user.id;
 					db.transaction(() => {
@@ -220,14 +218,12 @@ export const actions: Actions = {
 		}
 
 		// Already-member: refuse to consume the invite.
-		const existing = db
-			.query('SELECT role FROM member WHERE user_id = ?1 AND space_slug = ?2')
-			.get(event.locals.user.id, row.space_slug) as { role: string } | undefined;
+		const existing = getRole(event.locals.user.id, row.space_slug);
 		if (existing) {
 			return fail(409, {
 				redeem: {
 					ok: false as const,
-					error: `You already have ${existing.role} access to this space.`
+					error: `You already have ${existing} access to this space.`
 				}
 			});
 		}
@@ -275,6 +271,27 @@ export const actions: Actions = {
 		log.info(
 			{ code: 'invite_revoked', actorId: event.locals.user.id, inviteId: row.id, slug: row.space_slug },
 			'invite revoked by install-admin from redemption page'
+		);
+		return { revoke: { ok: true as const } };
+	},
+
+	revokeIfOwner: async (event) => {
+		// Spec §4 — invitee who's already a member can revoke if they're owner
+		// of the target space (i.e., they could have generated this invite).
+		if (!event.locals.user || event.locals.user.isInstallAdmin) {
+			return fail(403, { revoke: { ok: false as const, error: 'Owner only.' } });
+		}
+		const db = getAuthDb();
+		const row = lookupByTokenHash(db, hashToken(event.params.token));
+		if (!row) return fail(404, { revoke: { ok: false as const, error: 'Unknown invite.' } });
+		const role = getRole(event.locals.user.id, row.space_slug);
+		if (role !== 'owner') {
+			return fail(403, { revoke: { ok: false as const, error: 'Owner only.' } });
+		}
+		db.run('DELETE FROM invite WHERE id = ?1 AND redeemed_at IS NULL', [row.id]);
+		log.info(
+			{ code: 'invite_revoked', actorId: event.locals.user.id, inviteId: row.id, slug: row.space_slug },
+			'invite revoked by space owner from redemption page'
 		);
 		return { revoke: { ok: true as const } };
 	}
