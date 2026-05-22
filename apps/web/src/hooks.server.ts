@@ -23,7 +23,7 @@ import type { Handle } from '@sveltejs/kit';
 import { building } from '$app/environment';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { logger } from '$lib/server/logger';
-import { getSpace } from '$lib/server/space';
+import { getSpace, getRegistryEntries } from '$lib/server/space';
 import { getAuth } from '$lib/server/auth-config';
 import { resolve as resolveRoute, type ResolverIndex } from '$lib/server/resolver';
 import { discoverSpaces } from '$lib/server/spaces-dir';
@@ -31,6 +31,8 @@ import { readSpaceConfig } from '$lib/space/config';
 import { parseSpaceRouting } from '$lib/server/space-routing';
 import { buildResolverIndex, type LoadedSpace } from '$lib/server/resolver-index';
 import { setReroutePrefixes } from '$lib/server/reroute-prefixes';
+import { setDefaultSlug } from '$lib/server/default-space';
+import path from 'node:path';
 import type { Space } from '$lib/space/space';
 
 const bootLog = logger.child({ subsystem: 'resolver' });
@@ -139,6 +141,22 @@ function bootRegistry(): ResolverIndex<Space> {
 
 const resolverIndex = bootRegistry();
 setReroutePrefixes(resolverIndex.prefixes.map((p) => p.prefix));
+// The v0.4-compat admin shims (`/admin/edit`, `/admin/new`,
+// `/admin/api/page`) redirect to a default space. Compute that slug here so
+// the shims pick the `routing.default` space (not whichever sorts first).
+// Falls back to the first registered entry when no default is declared —
+// matches single-space mode and "no default declared in multi-space" alike.
+function computeDefaultSlug(): string | null {
+	const entries = getRegistryEntries();
+	if (entries.length === 0) return null;
+	if (resolverIndex.default) {
+		for (const e of entries) {
+			if (e.space === resolverIndex.default) return path.basename(e.path);
+		}
+	}
+	return path.basename(entries[0].path);
+}
+setDefaultSlug(computeDefaultSlug());
 
 // Build the auth instance and run better-auth's migrations on first request.
 // Doing this lazily (rather than via top-level `await`) avoids a Vite chunk
@@ -165,6 +183,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.session = null;
 	event.locals.space = null;
 	event.locals.mountPath = null;
+	event.locals.mountPrefix = null;
 
 	const method = event.request.method;
 	const path = event.url.pathname;
@@ -205,6 +224,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		if (decision.kind === 'space') {
 			event.locals.space = decision.space;
 			event.locals.mountPath = decision.mountPath;
+			event.locals.mountPrefix = decision.mountPrefix;
 		}
 		// kind === 'admin' falls through to the regular handler.
 

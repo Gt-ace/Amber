@@ -9,6 +9,7 @@
  * render with a banner (the page template's `{{#is_draft}}` block).
  */
 
+import path from 'node:path';
 import { error, redirect } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { renderPageBody } from '$lib/render/page';
@@ -24,9 +25,16 @@ export const load: PageServerLoad = (event) => {
 	const raw = params.path ?? '';
 	const url = raw === '' ? '/' : '/' + raw.replace(/\/+$/, '');
 
+	const mountPrefix = event.locals.mountPrefix ?? '';
 	const target = space.redirects.get(url);
 	if (target !== undefined && target !== url) {
-		redirect(308, target);
+		// Manifest redirect targets are space-relative; remount them under the
+		// active prefix so a prefix-mounted space's `/old → /new` doesn't
+		// silently land in the default space. Root collapses (`/` under
+		// `/scratch` is `/scratch`, not `/scratch/`).
+		const remounted =
+			mountPrefix === '' ? target : target === '/' ? mountPrefix : mountPrefix + target;
+		redirect(308, remounted);
 	}
 
 	const page = space.pages.get(url);
@@ -37,8 +45,12 @@ export const load: PageServerLoad = (event) => {
 
 	// Authenticated requests get a server-emitted edit link — a plain href,
 	// no page content crosses to the client as data. `url` is the canonical
-	// page URL already resolved above; `/` maps to `/admin/edit`.
-	const editHref = isAuthor(event) ? `/admin/edit${url === '/' ? '' : url}` : null;
+	// space-relative page URL; the editor lives under the active space's
+	// admin slug so the link stays inside the matched space.
+	const slug = path.basename(space.root);
+	const editHref = isAuthor(event)
+		? `/admin/spaces/${slug}/edit${url === '/' ? '' : url}`
+		: null;
 
 	return {
 		page: {

@@ -80,7 +80,12 @@ export const load: LayoutServerLoad = ({ url, locals }) => {
 	const chromeAfter = slot === -1 ? '' : chromeRendered.slice(slot + CONTENT_SLOT.length);
 
 	const themeColor = theme.manifest.theme_color ?? null;
-	const themeCssHref = theme.assetBase ? `${theme.assetBase}/theme.css` : null;
+	// Prefix-mounted spaces need their assetBase under the same mount prefix
+	// so the browser request hits the right space. The `/themes/...` route
+	// flows through the same reroute hook page paths use, so the handler
+	// still receives `params.name`/`params.file` after the prefix is stripped.
+	const mountPrefix = locals.mountPrefix ?? '';
+	const themeCssHref = theme.assetBase ? `${mountPrefix}${theme.assetBase}/theme.css` : null;
 
 	const notFoundPage = space.pages.get('/404');
 	const notFoundHtml =
