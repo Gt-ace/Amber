@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { fileURLToPath } from 'node:url';
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
+import { Database } from 'bun:sqlite';
+import { applyAmberAuthMigrations } from '$lib/server/auth-migrations';
 import type { RequestHandler } from './$types';
 import { hashContent, splitRaw, recombine } from '$lib/server/editor';
 
@@ -18,8 +20,42 @@ beforeEach(async () => {
 	workDir = mkdtempSync(join(tmpdir(), 'amber-save-'));
 	cpSync(FIXTURE, workDir, { recursive: true });
 	rmSync(join(workDir, '.amber'), { recursive: true, force: true });
+	mkdirSync(join(workDir, '.amber'), { recursive: true });
+
 	process.env.AMBER_SPACE_PATH = workDir;
+	process.env.AMBER_AUTH_SECRET = 'x'.repeat(32);
+	process.env.AMBER_PUBLIC_URL = 'http://localhost:5173';
+
 	workSlug = basename(workDir);
+
+	// Seed auth.db so the permission guard can resolve member rows.
+	// Install-admin tests short-circuit before any DB lookup, so the DB is
+	// set up for all tests and only queried by the permission-matrix tests.
+	const db = new Database(join(workDir, '.amber', 'auth.db'));
+	db.exec(`
+		CREATE TABLE user (
+			id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, name TEXT,
+			emailVerified INTEGER NOT NULL DEFAULT 0,
+			createdAt INTEGER NOT NULL, updatedAt INTEGER NOT NULL
+		);
+	`);
+	applyAmberAuthMigrations(db);
+	const now = Date.now();
+	db.run('INSERT INTO user (id, email, isInstallAdmin, createdAt, updatedAt) VALUES (?, ?, 1, ?, ?)', [
+		'admin-id', 'admin@x.test', now, now
+	]);
+	db.run('INSERT INTO user (id, email, createdAt, updatedAt) VALUES (?, ?, ?, ?)', [
+		'editor-id', 'editor@x.test', now, now
+	]);
+	db.run('INSERT INTO user (id, email, createdAt, updatedAt) VALUES (?, ?, ?, ?)', [
+		'stranger-id', 'stranger@x.test', now, now
+	]);
+	db.run(
+		'INSERT INTO member (id, user_id, space_slug, role, created_at) VALUES (?, ?, ?, ?, ?)',
+		['m1', 'editor-id', workSlug, 'editor', now]
+	);
+	db.close();
+
 	// Prime the registry so the +server.ts handler finds the space by slug.
 	const { getSpace } = await import('$lib/server/space');
 	getSpace();
@@ -29,8 +65,10 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+	const { _resetAuthSingleton } = await import('$lib/server/auth-config');
 	const { __resetRegistryForTests } = await import('$lib/server/space');
 	await __resetRegistryForTests();
+	_resetAuthSingleton();
 	rmSync(workDir, { recursive: true, force: true });
 });
 
@@ -47,7 +85,7 @@ function event(path: string, init: RequestInit & { ifMatch?: string }) {
 	return {
 		params: { path, slug: workSlug },
 		request,
-		locals: { user: { id: 'test-admin', email: 'admin@x', name: 'admin', isInstallAdmin: false } }
+		locals: { user: { id: 'admin-id', email: 'admin@x.test', name: 'admin', isInstallAdmin: true } }
 	} as unknown as Parameters<RequestHandler>[0];
 }
 
@@ -155,13 +193,91 @@ describe('PUT /admin/spaces/[slug]/api/page/[...path]', () => {
 		const ev = {
 			params: { path: 'about', slug: 'does-not-exist' },
 			request: req,
-			locals: { user: { id: 'test-admin', email: 'admin@x', name: 'admin', isInstallAdmin: false } }
+			locals: { user: { id: 'admin-id', email: 'admin@x.test', name: 'admin', isInstallAdmin: true } }
 		} as unknown as Parameters<RequestHandler>[0];
 		try {
 			await PUT(ev);
 			expect.unreachable('should have thrown 404');
 		} catch (e) {
 			expect((e as { status: number }).status).toBe(404);
+		}
+	});
+});
+
+describe('PUT save endpoint — permission matrix', () => {
+	test('install-admin saves without a member row', async () => {
+		// Install-admin short-circuits requireSpaceAccess before any member
+		// lookup — it can save any space it knows about.
+		const file = join(workDir, 'about.md');
+		const original = readFileSync(file, 'utf8');
+		const { body } = splitRaw(original);
+		const res = await PUT(
+			event('about', { body: JSON.stringify({ body }), ifMatch: hashContent(original) })
+		);
+		expect(res.status).toBe(200);
+	});
+
+	test('member-editor saves their space', async () => {
+		const file = join(workDir, 'about.md');
+		const original = readFileSync(file, 'utf8');
+		const { body } = splitRaw(original);
+
+		const headers = new Headers({ 'Content-Type': 'application/json', 'If-Match': hashContent(original) });
+		const req = new Request(`http://x/admin/spaces/${workSlug}/api/page/about`, {
+			method: 'PUT',
+			headers,
+			body: JSON.stringify({ body })
+		});
+		const ev = {
+			params: { path: 'about', slug: workSlug },
+			request: req,
+			locals: { user: { id: 'editor-id', email: 'editor@x.test', name: 'editor', isInstallAdmin: false } }
+		} as unknown as Parameters<RequestHandler>[0];
+
+		const res = await PUT(ev);
+		expect(res.status).toBe(200);
+	});
+
+	test('non-member returns 404 on the slug (spec §3 disclosure)', async () => {
+		// stranger-id exists in DB but has no member row for this space.
+		const headers = new Headers({ 'Content-Type': 'application/json', 'If-Match': '*' });
+		const req = new Request(`http://x/admin/spaces/${workSlug}/api/page/about`, {
+			method: 'PUT',
+			headers,
+			body: JSON.stringify({ body: 'x' })
+		});
+		const ev = {
+			params: { path: 'about', slug: workSlug },
+			request: req,
+			locals: { user: { id: 'stranger-id', email: 'stranger@x.test', name: 'stranger', isInstallAdmin: false } }
+		} as unknown as Parameters<RequestHandler>[0];
+
+		try {
+			await PUT(ev);
+			expect.unreachable('non-member should have thrown 404');
+		} catch (e) {
+			expect((e as { status: number }).status).toBe(404);
+		}
+	});
+
+	test('signed-out returns 401', async () => {
+		const headers = new Headers({ 'Content-Type': 'application/json', 'If-Match': '*' });
+		const req = new Request(`http://x/admin/spaces/${workSlug}/api/page/about`, {
+			method: 'PUT',
+			headers,
+			body: JSON.stringify({ body: 'x' })
+		});
+		const ev = {
+			params: { path: 'about', slug: workSlug },
+			request: req,
+			locals: { user: null }
+		} as unknown as Parameters<RequestHandler>[0];
+
+		try {
+			await PUT(ev);
+			expect.unreachable('signed-out should have thrown 401');
+		} catch (e) {
+			expect((e as { status: number }).status).toBe(401);
 		}
 	});
 });
