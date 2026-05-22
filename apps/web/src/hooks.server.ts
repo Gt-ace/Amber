@@ -26,7 +26,13 @@ import { logger } from '$lib/server/logger';
 import { getSpace } from '$lib/server/space';
 import { getAuth } from '$lib/server/auth-config';
 import { resolve as resolveRoute, type ResolverIndex } from '$lib/server/resolver';
+import { discoverSpaces } from '$lib/server/spaces-dir';
+import { readSpaceConfig } from '$lib/space/config';
+import { parseSpaceRouting } from '$lib/server/space-routing';
+import { buildResolverIndex, type LoadedSpace } from '$lib/server/resolver-index';
 import type { Space } from '$lib/space/space';
+
+const bootLog = logger.child({ subsystem: 'resolver' });
 
 function adminHostFromPublicUrl(): string {
 	const u = process.env.AMBER_PUBLIC_URL;
@@ -39,17 +45,96 @@ function adminHostFromPublicUrl(): string {
 	return new URL(u).host;
 }
 
-// Spike-stage index: degenerate single-space, no host, no prefix, the lone
-// space is the default. Subsystem 3 step 4 replaces this with a real builder
-// that reads the registry + space.toml routing fields.
-// TODO(v0.5 subsystem 3, Task 6): replace with buildResolverIndex(registry)
-const bootSpace = getSpace();
-const resolverIndex: ResolverIndex<Space> = {
-	adminHost: adminHostFromPublicUrl(),
-	byHost: new Map(),
-	prefixes: [],
-	default: bootSpace
-};
+function bootRegistry(): ResolverIndex<Space> {
+	const adminHost = adminHostFromPublicUrl();
+	const singleEnv = process.env.AMBER_SPACE_PATH;
+	const multiEnv = process.env.AMBER_SPACES_DIR;
+
+	if (singleEnv && multiEnv) {
+		throw new Error(
+			'AMBER_SPACE_PATH and AMBER_SPACES_DIR are both set. Pick one: ' +
+				'AMBER_SPACE_PATH for single-space mode (v0.4 default), AMBER_SPACES_DIR ' +
+				'for multi-space mode (v0.5 subsystem 3). Both together is ambiguous and ' +
+				'the boot refuses to guess.'
+		);
+	}
+	if (!singleEnv && !multiEnv) {
+		throw new Error(
+			'Set exactly one of AMBER_SPACE_PATH (single-space) or AMBER_SPACES_DIR ' +
+				'(multi-space). Neither is set; Amber needs to know where its content lives.'
+		);
+	}
+
+	if (singleEnv) {
+		// Single-space mode: load the one space, ignore its `space.toml` routing
+		// fields (spec §6), make it the default.
+		const space = getSpace(singleEnv);
+		const { config } = readSpaceConfig(space.root);
+		if (config) {
+			for (const field of ['host', 'prefix', 'default'] as const) {
+				if (config[field] !== undefined) {
+					bootLog.info(
+						{ field },
+						`single-space mode ignores space.toml \`${field}\`; set AMBER_SPACES_DIR to use multi-space routing`
+					);
+				}
+			}
+		}
+		bootLog.info(
+			{ spaces: 1, hosts: [] as string[], prefixes: [] as string[], default: 'default' },
+			'resolver index built (single-space mode)'
+		);
+		return {
+			adminHost,
+			byHost: new Map(),
+			prefixes: [],
+			default: space
+		};
+	}
+
+	// Multi-space mode: discover, load each space, parse routing, build index.
+	const { entries, warnings: discoveryWarnings } = discoverSpaces(multiEnv!);
+	for (const w of discoveryWarnings) {
+		bootLog.warn({ code: w.code, source: w.source }, w.message);
+	}
+
+	const loaded: LoadedSpace[] = [];
+	for (const entry of entries) {
+		const space = getSpace(entry.absPath);
+		const { config, warnings: cfgWarnings } = readSpaceConfig(space.root);
+		for (const w of cfgWarnings) {
+			bootLog.warn({ code: w.code, slug: entry.slug, source: w.source }, w.message);
+		}
+		const { routing, warnings: routingWarnings } = parseSpaceRouting(
+			config ?? {},
+			entry.slug,
+			adminHost
+		);
+		for (const w of routingWarnings) {
+			bootLog.warn({ code: w.code, slug: entry.slug, source: w.source }, w.message);
+		}
+		loaded.push({ slug: entry.slug, space, routing });
+	}
+
+	const { index, warnings: buildWarnings } = buildResolverIndex(loaded, adminHost);
+	for (const w of buildWarnings) {
+		bootLog.warn({ code: w.code, source: w.source }, w.message);
+	}
+
+	const defaultSlug = loaded.find((l) => l.space === index.default)?.slug ?? null;
+	bootLog.info(
+		{
+			spaces: loaded.length,
+			hosts: [...index.byHost.keys()],
+			prefixes: index.prefixes.map((p) => p.prefix),
+			default: defaultSlug
+		},
+		'resolver index built (multi-space mode)'
+	);
+	return index;
+}
+
+const resolverIndex = bootRegistry();
 
 // Build the auth instance and run better-auth's migrations on first request.
 // Doing this lazily (rather than via top-level `await`) avoids a Vite chunk
