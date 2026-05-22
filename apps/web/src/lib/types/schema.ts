@@ -330,6 +330,31 @@ export interface LoadWarning {
 	 *     `amber.toml`) named a theme that isn't a discovered directory under
 	 *     `<space>/themes/`. Each missing step emits one warning; the chain falls
 	 *     through to the next step.
+	 *
+	 * Multi-space routing (v0.5 subsystem 3):
+	 *   - `space_routing_conflict`: a space declares both `host` and `prefix`.
+	 *     Both fields dropped; the space stays in the registry but loses its
+	 *     public route hook (still reachable via admin slug).
+	 *   - `space_routing_duplicate_host`: two spaces declare the same `host`.
+	 *     First-loaded wins; the loser's `host` is dropped.
+	 *   - `space_routing_duplicate_prefix`: same shape as duplicate_host but
+	 *     for `prefix`.
+	 *   - `space_routing_duplicate_default`: two spaces both set
+	 *     `default = true`. First-loaded wins.
+	 *   - `space_routing_invalid_host`: `host` value isn't a bare host string
+	 *     (contains a scheme, port, path, or wildcard).
+	 *   - `space_routing_admin_host_collision`: `host` equals the host derived
+	 *     from `AMBER_PUBLIC_URL`. The admin/auth short-circuit always wins;
+	 *     this warning surfaces the misconfiguration loudly.
+	 *   - `space_routing_invalid_prefix`: `prefix` not starting with `/`,
+	 *     equal to `/`, ending in `/`, or containing `?`/`#`.
+	 *   - `space_routing_invalid_slug`: directory name doesn't satisfy
+	 *     `^[a-z0-9][a-z0-9-]{0,62}$`. Unlike the others, this one drops the
+	 *     space from the registry entirely (no slug → no admin URL → no way
+	 *     to reach the space). Rename the directory to fix.
+	 *   - `space_routing_unreachable` (info): a space has no `host`, no
+	 *     `prefix`, and is not `default`. Loaded and listed in the admin
+	 *     picker, but never serves a public request.
 	 */
 	code:
 		| 'frontmatter_parse_error'
@@ -338,7 +363,16 @@ export interface LoadWarning {
 		| 'auto_index_invalid_sort'
 		| 'auto_index_invalid_limit'
 		| 'space_config_invalid'
-		| 'space_theme_not_found';
+		| 'space_theme_not_found'
+		| 'space_routing_conflict'
+		| 'space_routing_duplicate_host'
+		| 'space_routing_duplicate_prefix'
+		| 'space_routing_duplicate_default'
+		| 'space_routing_invalid_host'
+		| 'space_routing_admin_host_collision'
+		| 'space_routing_invalid_prefix'
+		| 'space_routing_invalid_slug'
+		| 'space_routing_unreachable';
 	message: string;
 	/** Space-relative path or manifest pointer, where applicable. */
 	source?: string;
