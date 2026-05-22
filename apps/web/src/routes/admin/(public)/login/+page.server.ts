@@ -27,9 +27,10 @@ export const load: PageServerLoad = async (event) => {
 	if ((await adminCount()) === 0) {
 		redirect(302, '/admin/setup');
 	}
+	const rawNext = event.url.searchParams.get('next');
 	return {
 		googleEnabled: resolveGoogleEnv() != null,
-		next: event.url.searchParams.get('next') ?? null
+		next: rawNext == null ? null : validateNext(rawNext)
 	};
 };
 

@@ -26,7 +26,6 @@
  * the chrome itself is built here from them.
  */
 
-import { getSpace } from '$lib/server/space';
 import { getOrRenderHtml } from '$lib/render/cache';
 import { renderTemplate, CONTENT_SLOT } from '$lib/render/template';
 import { readTemplate } from '$lib/space/themes';
@@ -47,12 +46,17 @@ const ADMIN_BLANK = {
 	themeColor: null
 };
 
-export const load: LayoutServerLoad = ({ url }) => {
+export const load: LayoutServerLoad = ({ url, locals }) => {
 	if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {
 		return ADMIN_BLANK;
 	}
 
-	const space = getSpace();
+	const space = locals.space;
+	if (!space) {
+		// Public route that didn't resolve to a space — should be unreachable
+		// because the resolver already 404'd, but be defensive.
+		return ADMIN_BLANK;
+	}
 	const theme = space.theme;
 
 	const nav = space.nav;

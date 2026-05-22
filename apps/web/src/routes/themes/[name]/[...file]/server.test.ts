@@ -5,6 +5,10 @@ import { tmpdir } from 'node:os';
 
 let GET: typeof import('./+server.ts').GET;
 let root: string;
+// Cached resolved space — see the page.test.ts twin for context. The handler
+// now reads `event.locals.space`; in production `hooks.server.ts` populates
+// it, so the unit test mirrors that.
+let testSpace: import('$lib/space/space').Space;
 
 beforeAll(async () => {
 	root = mkdtempSync(join(tmpdir(), 'amber-asset-'));
@@ -15,6 +19,7 @@ beforeAll(async () => {
 	writeFileSync(join(root, 'themes', 'amber-default', 'fonts', 'x.woff2'), 'BINARY');
 	process.env.AMBER_SPACE_PATH = root;
 	GET = (await import('./+server.ts')).GET;
+	testSpace = (await import('$lib/server/space')).getSpace();
 });
 
 afterAll(async () => {
@@ -24,7 +29,10 @@ afterAll(async () => {
 });
 
 const call = (name: string, file: string) =>
-	GET({ params: { name, file } } as unknown as Parameters<typeof GET>[0]);
+	GET({
+		params: { name, file },
+		locals: { space: testSpace }
+	} as unknown as Parameters<typeof GET>[0]);
 
 describe('theme asset route', () => {
 	test('serves theme.css with text/css', async () => {

@@ -17,6 +17,10 @@ const FIXTURE = fileURLToPath(new URL('../../../fixtures/example-space/', import
 
 let pageLoad: typeof import('./+page.server.ts').load;
 let layoutLoad: typeof import('../+layout.server.ts').load;
+// Cached resolved space — populated in beforeAll, then injected into every
+// stub event's `locals.space` (mirroring what `hooks.server.ts` does at
+// runtime, since direct unit tests of route handlers bypass the hook).
+let testSpace: import('$lib/space/space').Space;
 
 beforeAll(async () => {
 	process.env.AMBER_SPACE_PATH = FIXTURE.replace(/\/$/, '');
@@ -25,6 +29,7 @@ beforeAll(async () => {
 	const layoutMod = await import('../+layout.server.ts');
 	pageLoad = pageMod.load;
 	layoutLoad = layoutMod.load;
+	testSpace = (await import('$lib/server/space')).getSpace();
 });
 
 afterAll(async () => {
@@ -39,17 +44,26 @@ afterAll(async () => {
 });
 
 // SvelteKit's `LoadEvent` carries many fields (`request`, `url`, `route`,
-// `cookies`, etc.) but our handlers only read `params`. Cast through
-// `unknown` so we can pass a minimal stub without listing every field.
+// `cookies`, etc.) but our handlers only read `params` and `locals`. Cast
+// through `unknown` so we can pass a minimal stub without listing every
+// field. v0.5 subsystem 3 threads the resolved Space through
+// `event.locals.space`, which `hooks.server.ts` populates in production —
+// tests reach into the process-global singleton to mirror that.
 const stubEvent = (
 	params: Record<string, string>,
 	user: { id: string; email: string; name?: string | null } | null = null
-) => ({ params, locals: { user } }) as unknown as Parameters<typeof pageLoad>[0];
+) =>
+	({
+		params,
+		locals: { user, space: testSpace }
+	}) as unknown as Parameters<typeof pageLoad>[0];
 
 const stubLayoutEvent = () =>
-	({ params: {}, url: new URL('http://localhost/') }) as unknown as Parameters<
-		typeof layoutLoad
-	>[0];
+	({
+		params: {},
+		url: new URL('http://localhost/'),
+		locals: { space: testSpace }
+	}) as unknown as Parameters<typeof layoutLoad>[0];
 
 describe('catch-all +page.server load', () => {
 	test('throws 404 for an unknown URL', () => {

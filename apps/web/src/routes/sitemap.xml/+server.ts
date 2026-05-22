@@ -8,11 +8,11 @@
  */
 
 import type { RequestHandler } from './$types';
-import { getSpace } from '$lib/server/space';
 import { buildSitemapXml, readSiteUrlOrWarn } from '$lib/server/sitemap';
 
-export const GET: RequestHandler = () => {
-	const space = getSpace();
+export const GET: RequestHandler = ({ locals }) => {
+	const space = locals.space;
+	if (!space) return new Response('Not Found', { status: 404 });
 	const siteUrl = readSiteUrlOrWarn();
 	const xml = buildSitemapXml(space.pages.values(), siteUrl);
 	return new Response(xml, {

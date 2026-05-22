@@ -12,8 +12,11 @@
  * Usage:
  *   bun run --cwd apps/web bin/reset-password.ts --email <addr>
  *
- * Env:
- *   AMBER_SPACE_PATH (required) — points at the space directory.
+ * Env (exactly one, mirroring the server's discovery rule):
+ *   AMBER_SPACE_PATH (single-space) — points at the space directory.
+ *   AMBER_SPACES_DIR (multi-space)  — points at the install root, whose
+ *                                     `.amber/auth.db` is shared across
+ *                                     every loaded space.
  *
  * The CLI is the deliberate escape hatch for the self-hoster with shell
  * access. There is no in-app forgot-password flow by design.
@@ -21,7 +24,7 @@
 
 import { Database } from 'bun:sqlite';
 import { hashPassword } from 'better-auth/crypto';
-import { resolve } from 'node:path';
+import { authDbPath } from '../src/lib/server/auth-db';
 
 function arg(name: string): string | null {
 	const i = process.argv.indexOf(`--${name}`);
@@ -43,12 +46,13 @@ async function main() {
 		console.error('usage: reset-password --email <addr>');
 		process.exit(2);
 	}
-	const space = process.env.AMBER_SPACE_PATH;
-	if (!space) {
-		console.error('AMBER_SPACE_PATH is required to locate .amber/auth.db');
+	let dbPath: string;
+	try {
+		dbPath = authDbPath();
+	} catch (e) {
+		console.error((e as Error).message);
 		process.exit(2);
 	}
-	const dbPath = resolve(space, '.amber', 'auth.db');
 	const db = new Database(dbPath);
 
 	const user = db.query('SELECT id FROM user WHERE email = ?1').get(email) as

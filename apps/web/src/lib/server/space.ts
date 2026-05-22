@@ -102,6 +102,15 @@ export function getSpace(spacePath?: string): Space {
 }
 
 /**
+ * Enumerate every space currently in the registry. Used at boot by
+ * `hooks.server.ts` to construct the resolver index after the spaces dir
+ * has been scanned. Returns absolute path + Space pairs.
+ */
+export function getRegistryEntries(): Array<{ path: string; space: Space }> {
+	return [...registry.entries()].map(([p, e]) => ({ path: p, space: e.space }));
+}
+
+/**
  * Test-only escape hatch. Closes every entry's watcher and Space, then clears
  * the registry so the next `getSpace()` call rehydrates from disk. Intended
  * for use in test `beforeEach`/`afterEach` so `Space` instances and watcher

@@ -71,8 +71,13 @@ client as data — only as rendered HTML. The authenticated `/admin/edit`
 editor is a separate surface and necessarily receives the page body as
 editable data; that is by design and does not relax the public render path.
 
-**Space directory path comes from `AMBER_SPACE_PATH`.** No hardcoded paths,
-no config-file-pointing-to-config-file.
+**Space directory path comes from `AMBER_SPACE_PATH` (single-space mode)
+or `AMBER_SPACES_DIR` (multi-space mode).** Mutually exclusive; boot fails
+loudly if neither or both are set. `AMBER_SPACES_DIR` points at a parent
+directory whose immediate subdirectories — each containing `amber.toml` —
+are loaded as spaces; their directory names become admin slugs (constrained
+to `^[a-z0-9][a-z0-9-]{0,62}$`). No hardcoded paths, no
+config-file-pointing-to-config-file.
 
 ## On-disk format
 
@@ -81,12 +86,23 @@ files are content.
 
 `.amber/` holds runtime state. Most of it is *regenerable* — `cache.db`,
 the render cache, drafts, plugin state — and is safe to delete; the next
-cold start rebuilds whatever is needed. The exception is
-**`.amber/auth.db`** (landed in v0.5 subsystem 2), which holds the admin
-user row and active sessions. Deleting it loses the admin account; the
-operator either restores from backup or claims a fresh admin via
-`/admin/setup`. Backup guidance covers `.amber/` as a whole, so any
-sensible backup of the space directory picks `auth.db` up automatically.
+cold start rebuilds whatever is needed. The exception is **`auth.db`**
+(landed in v0.5 subsystem 2), which holds the admin user row and active
+sessions and is **install-level** state: one admin account spans every
+loaded space. Its location follows the discovery mode:
+
+- Single-space mode (`AMBER_SPACE_PATH`): `auth.db` lives at
+  `<AMBER_SPACE_PATH>/.amber/auth.db`, alongside the space's cache.
+- Multi-space mode (`AMBER_SPACES_DIR`): `auth.db` lives at
+  `<AMBER_SPACES_DIR>/.amber/auth.db` — at the *install root* (the parent
+  directory of the spaces), not inside any one space, because the admin
+  account spans the install.
+
+Deleting `auth.db` loses the admin account; the operator either restores
+from backup or claims a fresh admin via `/admin/setup`. Backup guidance
+covers `.amber/` as a whole, so any sensible backup of either the space
+directory (single-space) or the install-root parent directory
+(multi-space) picks `auth.db` up automatically.
 
 - TOML for the manifest, YAML for frontmatter.
 - Manifest is authoritative for **nav order**. Filesystem is authoritative
@@ -183,6 +199,32 @@ Every code in the enum must have a defined trigger. The loader emits:
   that isn't a discovered directory under `<space>/themes/`. The chain
   falls through.
 
+### Multi-space routing (v0.5 subsystem 3)
+
+- `space_routing_conflict` — a space declares both `host` and `prefix`.
+  Both dropped; the space stays in the registry but loses its public
+  route hook (still reachable via admin slug).
+- `space_routing_duplicate_host` — two spaces declare the same `host`.
+  First-loaded wins; the loser's `host` is dropped.
+- `space_routing_duplicate_prefix` — same shape as `duplicate_host` but
+  for `prefix`.
+- `space_routing_duplicate_default` — two spaces both set
+  `default = true`. First-loaded wins.
+- `space_routing_invalid_host` — `host` value isn't a bare host string
+  (contains a scheme, port, path, or wildcard).
+- `space_routing_admin_host_collision` — `host` equals the host derived
+  from `AMBER_PUBLIC_URL`. The admin/auth short-circuit always wins on
+  the admin host; this warning surfaces the misconfiguration loudly.
+- `space_routing_invalid_prefix` — `prefix` not starting with `/`, equal
+  to `/`, ending in `/`, or containing `?` / `#`.
+- `space_routing_invalid_slug` — directory name doesn't satisfy
+  `^[a-z0-9][a-z0-9-]{0,62}$`. Unlike the others, this one drops the
+  space from the registry entirely (no slug → no admin URL → no way to
+  reach the space). Rename the directory to fix.
+- `space_routing_unreachable` (info) — a space has no `host`, no
+  `prefix`, and is not `default`. Loaded and listed in the admin picker,
+  but never serves a public request.
+
 If a code can't be triggered by any code path, it gets removed from the
 enum. Unreachable codes are bugs.
 
@@ -246,8 +288,12 @@ up from a working content pipeline; the substrate is in place.
      self-hosters who already have shell access. `AMBER_DEV_UNSAFE` is
      **removed**; the `.amber/auth.db` and `better-auth` dependency scope
      guards were revised with this subsystem.
-  3. **Multi-space routing** — host/path resolution (the v0.4 registry
-     refactor half-unblocked this).
+  3. **Multi-space routing (shipped)** — host/path resolution via a
+     per-request resolver. The v0.4 registry made the runtime path-keyed;
+     subsystem 3 lit it up with `AMBER_SPACES_DIR` discovery, per-space
+     `space.toml` routing fields (`host`, `prefix`, `default`), and a
+     per-space admin surface at `/admin/spaces/[slug]/…`. Single-space
+     mode (`AMBER_SPACE_PATH`) keeps every v0.4 observable behaviour.
   4. **Invites + per-space permissions** — opt-in multi-user.
   5. **Space-creation UI** — writes `amber.toml`.
   6. **Theme-picker UI** — writes `space.toml`.

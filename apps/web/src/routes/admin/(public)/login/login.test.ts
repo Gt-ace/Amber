@@ -93,6 +93,18 @@ describe('/admin/login load', () => {
 		expect(data).toEqual({ googleEnabled: false, next: null });
 	});
 
+	test('returns a validated same-origin ?next= for OAuth callback wiring', async () => {
+		await claimAdmin();
+		const data = await load(loadEvent({ nextParam: '/admin/edit/about' }));
+		expect(data).toEqual({ googleEnabled: false, next: '/admin/edit/about' });
+	});
+
+	test('sanitises an open-redirect ?next= so it cannot reach the OAuth callbackURL', async () => {
+		await claimAdmin();
+		const data = await load(loadEvent({ nextParam: '//evil.example.com/' }));
+		expect(data).toEqual({ googleEnabled: false, next: '/admin' });
+	});
+
 	test('redirects authenticated requests away from login', async () => {
 		await claimAdmin();
 		try {

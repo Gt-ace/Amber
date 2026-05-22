@@ -22,7 +22,6 @@
 
 import { readFileSync, statSync } from 'node:fs';
 import { resolve, sep, extname } from 'node:path';
-import { getSpace } from '$lib/server/space';
 import type { RequestHandler } from './$types';
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -41,7 +40,7 @@ const CONTENT_TYPES: Record<string, string> = {
 
 const NOT_FOUND = () => new Response('Not found', { status: 404 });
 
-export const GET: RequestHandler = ({ params }) => {
+export const GET: RequestHandler = ({ params, locals }) => {
 	const name = params.name ?? '';
 	const file = params.file ?? '';
 	if (!name || !file) return NOT_FOUND();
@@ -51,7 +50,8 @@ export const GET: RequestHandler = ({ params }) => {
 	// below only verifies `target` is under `themeRoot`, not `themeRoot` itself.
 	if (name.includes('/') || name === '.' || name === '..') return NOT_FOUND();
 
-	const space = getSpace();
+	const space = locals.space;
+	if (!space) return NOT_FOUND();
 	const themeRoot = resolve(space.root, 'themes', name);
 	const target = resolve(themeRoot, file);
 

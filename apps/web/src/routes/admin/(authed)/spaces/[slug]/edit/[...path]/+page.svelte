@@ -59,7 +59,7 @@
 			payload.frontmatter = { title: fmTitle, draft: fmDraft, date: fmDate };
 		}
 		try {
-			const res = await fetch(`/admin/api/page/${data.apiPath}`, {
+			const res = await fetch(`/admin/spaces/${data.slug}/api/page/${data.apiPath}`, {
 				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json',
@@ -98,7 +98,9 @@
 	<title>Editing {data.url} — Amber admin</title>
 </svelte:head>
 
-<p><a href={resolve('/admin')}>← All pages</a></p>
+<p>
+	<a href={resolve(`/admin/spaces/${data.slug}` as '/admin/spaces/[slug]')}>← All pages</a>
+</p>
 <h1>Editing <code>{data.url}</code></h1>
 
 {#if conflict}
