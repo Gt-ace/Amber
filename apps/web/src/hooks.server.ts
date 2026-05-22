@@ -172,9 +172,8 @@ function auth() {
 	return authPromise;
 }
 
-let bootSweepDone = false;
-async function ensureBootSweeps(): Promise<void> {
-	if (bootSweepDone) return;
+let bootSweepPromise: Promise<void> | null = null;
+async function runBootSweeps(): Promise<void> {
 	await auth(); // ensure migrations have run, singleton is built
 	const db = getAuthDb();
 	const removed = sweepExpiredInvites(db);
@@ -184,7 +183,10 @@ async function ensureBootSweeps(): Promise<void> {
 	const slugs = new Set(getRegistryEntries().map((e) => path.basename(e.path)));
 	const orphans = scanOrphans(db, slugs);
 	logOrphans(logger.child({ subsystem: 'permissions' }), orphans);
-	bootSweepDone = true;
+}
+function ensureBootSweeps(): Promise<void> {
+	if (!bootSweepPromise) bootSweepPromise = runBootSweeps();
+	return bootSweepPromise;
 }
 
 function newRequestId(): string {
