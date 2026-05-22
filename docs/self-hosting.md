@@ -278,5 +278,37 @@ this up automatically.
   `event.url.host` reflects the public hostname, not the in-container
   origin.
 
+## Migrating single-space → multi-space
+
+The on-disk format is unchanged — a multi-space install is just N
+single-space directories under a shared parent. There is, however, one
+file that moves: `auth.db`. In single-space mode it lives at
+`<space>/.amber/auth.db`; in multi-space mode it lives at
+`<spaces-dir>/.amber/auth.db` (the install root, one admin row shared
+across every loaded space). If you forget to move it, the next boot will
+look in the new location, find nothing, and `/admin` will offer
+`/admin/setup` as though the account were lost. The row isn't gone —
+it's just in the wrong place.
+
+Stop the container, then:
+
+```bash
+# 1. Move the space directory under a new parent.
+mv /srv/amber-space /srv/amber/spaces/main
+
+# 2. Move auth.db from the per-space .amber/ into the install-root .amber/.
+mkdir -p /srv/amber/spaces/.amber
+mv /srv/amber/spaces/main/.amber/auth.db /srv/amber/spaces/.amber/auth.db
+
+# 3. In .env, replace AMBER_SPACE_PATH with AMBER_SPACES_DIR.
+#    AMBER_SPACE_PATH=/srv/amber-space      →  remove this line
+#    AMBER_SPACES_DIR=/srv/amber/spaces     →  add this line
+```
+
+Optionally edit the moved space's `space.toml` to add `default = true`
+(and/or a `host`) so the resolver picks it for unclaimed hosts. Then
+start the container. Existing sessions survive because the same
+`auth.db` is in front of better-auth at boot.
+
 Filesystem is the source of truth. Your space directory is the whole site.
 Back that up; everything else regenerates.
