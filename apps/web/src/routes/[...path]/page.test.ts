@@ -51,7 +51,7 @@ afterAll(async () => {
 // tests reach into the process-global singleton to mirror that.
 const stubEvent = (
 	params: Record<string, string>,
-	user: { id: string; email: string; name?: string | null } | null = null,
+	user: { id: string; email: string; name?: string | null; isInstallAdmin: boolean } | null = null,
 	mountPrefix: string = ''
 ) =>
 	({
@@ -154,7 +154,7 @@ describe('catch-all +page.server load', () => {
 		const data1 = pageLoad(stubEvent({ path: 'about' }, null)) as { editHref: string | null };
 		expect(data1.editHref).toBeNull();
 
-		const user = { id: 'u1', email: 'a@x' };
+		const user = { id: 'u1', email: 'a@x', isInstallAdmin: false };
 		const data2 = pageLoad(stubEvent({ path: 'about' }, user)) as { editHref: string | null };
 		// The link is namespaced under the active space's slug — for the
 		// fixture, the directory basename `example-space`. Without this, a

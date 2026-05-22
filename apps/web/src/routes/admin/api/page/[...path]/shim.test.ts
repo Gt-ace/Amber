@@ -12,7 +12,7 @@ import { afterAll, beforeEach, describe, expect, test } from 'vitest';
 import { setDefaultSlug, getDefaultSlug } from '$lib/server/default-space';
 import { PUT } from './+server';
 
-const callPut = (user: { id: string; email: string } | null) =>
+const callPut = (user: { id: string; email: string; isInstallAdmin: boolean } | null) =>
 	PUT({
 		params: { path: 'about' },
 		url: new URL('http://localhost/admin/api/page/about'),
@@ -41,14 +41,14 @@ describe('PUT /admin/api/page/[...path] shim', () => {
 	});
 
 	test('with an authenticated user → 308 to the configured default slug', async () => {
-		const res = (await callPut({ id: 'u1', email: 'a@x' })) as Response;
+		const res = (await callPut({ id: 'u1', email: 'a@x', isInstallAdmin: false })) as Response;
 		expect(res.status).toBe(308);
 		expect(res.headers.get('location')).toBe('/admin/spaces/the-default/api/page/about');
 	});
 
 	test('with no default slug set → 404 No spaces loaded (auth still required first)', async () => {
 		setDefaultSlug(null);
-		const res = (await callPut({ id: 'u1', email: 'a@x' })) as Response;
+		const res = (await callPut({ id: 'u1', email: 'a@x', isInstallAdmin: false })) as Response;
 		expect(res.status).toBe(404);
 		expect(await res.text()).toBe('No spaces loaded');
 	});

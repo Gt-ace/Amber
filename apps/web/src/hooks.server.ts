@@ -202,6 +202,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.space = null;
 	event.locals.mountPath = null;
 	event.locals.mountPrefix = null;
+	event.locals.access = null;
+	event.locals.role = null;
 
 	const method = event.request.method;
 	const path = event.url.pathname;
@@ -249,10 +251,14 @@ export const handle: Handle = async ({ event, resolve }) => {
 		try {
 			const result = await (await auth()).api.getSession({ headers: event.request.headers });
 			if (result?.user) {
+				const flagRow = getAuthDb()
+					.query('SELECT isInstallAdmin FROM user WHERE id = ?')
+					.get(result.user.id) as { isInstallAdmin: number } | undefined;
 				event.locals.user = {
 					id: result.user.id,
 					email: result.user.email,
-					name: result.user.name
+					name: result.user.name,
+					isInstallAdmin: !!flagRow?.isInstallAdmin
 				};
 				event.locals.session = {
 					id: result.session.id,

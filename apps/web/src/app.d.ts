@@ -9,7 +9,13 @@ declare global {
 		interface Locals {
 			log: Logger;
 			/** Authenticated user, or null. Populated once per request by hooks.server.ts. */
-			user: { id: string; email: string; name?: string | null } | null;
+			user: {
+				id: string;
+				email: string;
+				name?: string | null;
+				/** v0.5 subsystem 4: true when this user holds the install-admin row. */
+				isInstallAdmin: boolean;
+			} | null;
 			/** Better-auth session row, or null. */
 			session: { id: string; userId: string; expiresAt: Date } | null;
 			/** Resolved space for the current request, or null on admin/auth paths. */
@@ -23,6 +29,17 @@ declare global {
 			 * generated URLs so links stay inside the matched space.
 			 */
 			mountPrefix: string | null;
+			/**
+			 * v0.5 subsystem 4: per-space access resolved by
+			 * `requireSpaceAccess()`. Null on routes that haven't run the
+			 * per-space layout (admin chrome, public render path).
+			 */
+			access: import('$lib/server/permissions').ResolvedAccess | null;
+			/**
+			 * v0.5 subsystem 4: flat role for child routes that branch on
+			 * owner / editor / install-admin. Set whenever `access` is set.
+			 */
+			role: import('$lib/server/permissions').SpaceRole | 'install-admin' | null;
 		}
 		// interface PageData {}
 		// interface PageState {}

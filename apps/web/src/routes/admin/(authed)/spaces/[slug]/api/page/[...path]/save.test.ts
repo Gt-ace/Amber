@@ -47,7 +47,7 @@ function event(path: string, init: RequestInit & { ifMatch?: string }) {
 	return {
 		params: { path, slug: workSlug },
 		request,
-		locals: { user: { id: 'test-admin', email: 'admin@x', name: 'admin' } }
+		locals: { user: { id: 'test-admin', email: 'admin@x', name: 'admin', isInstallAdmin: false } }
 	} as unknown as Parameters<RequestHandler>[0];
 }
 
@@ -155,7 +155,7 @@ describe('PUT /admin/spaces/[slug]/api/page/[...path]', () => {
 		const ev = {
 			params: { path: 'about', slug: 'does-not-exist' },
 			request: req,
-			locals: { user: { id: 'test-admin', email: 'admin@x', name: 'admin' } }
+			locals: { user: { id: 'test-admin', email: 'admin@x', name: 'admin', isInstallAdmin: false } }
 		} as unknown as Parameters<RequestHandler>[0];
 		try {
 			await PUT(ev);
