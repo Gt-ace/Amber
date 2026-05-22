@@ -12,6 +12,10 @@ declare global {
 			user: { id: string; email: string; name?: string | null } | null;
 			/** Better-auth session row, or null. */
 			session: { id: string; userId: string; expiresAt: Date } | null;
+			/** Resolved space for the current request, or null on admin/auth paths. */
+			space: import('$lib/space/space').Space | null;
+			/** Pathname after stripping the space's mount prefix; null on admin/auth. */
+			mountPath: string | null;
 		}
 		// interface PageData {}
 		// interface PageState {}
