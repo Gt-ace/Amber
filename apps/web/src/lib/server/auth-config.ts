@@ -34,6 +34,7 @@ import { getRequestEvent } from '$app/server';
 import type { Database } from 'bun:sqlite';
 import { authDbPath, openAuthDb } from '$lib/server/auth-db';
 import { applyAmberAuthMigrations } from '$lib/server/auth-migrations';
+import { inviteContext } from '$lib/server/invite-context';
 
 export interface BuildAuthOptions {
 	dbPath?: string;
@@ -139,21 +140,36 @@ export function buildAuth(opts: BuildAuthOptions = {}): { auth: Auth; db: Databa
 			user: {
 				create: {
 					before: async () => {
-						// Single-admin subsystem (spec §1, §5). The first creation is
-						// allowed; everything after is rejected. SQLite is single-writer
-						// under WAL, so by the time the second hook fires the first row
-						// is committed and the count returns ≥ 1.
 						const row = db.query('SELECT COUNT(*) AS n FROM user').get() as
 							| { n: number }
 							| undefined;
 						const n = row?.n ?? 0;
-						if (n >= 1) {
-							throw new APIError('FORBIDDEN', {
-								message:
-									'Sign-up is disabled. Amber is single-admin in this version; ' +
-									'the admin account has already been claimed.'
-							});
+						if (n === 0) return; // setup path — first claim always allowed.
+
+						// Multi-user path (spec §4, §6): allow creation when the calling
+						// stack established an inviteContext with a still-valid invite id.
+						const ctx = inviteContext.getStore();
+						if (ctx?.pendingInviteId) {
+							const invite = db
+								.query(
+									`SELECT redeemed_at, expires_at FROM invite WHERE id = ?1`
+								)
+								.get(ctx.pendingInviteId) as
+								| { redeemed_at: number | null; expires_at: number }
+								| undefined;
+							if (
+								invite &&
+								invite.redeemed_at == null &&
+								invite.expires_at >= Date.now()
+							) {
+								return; // accept — the redemption action owns the post-state mutations.
+							}
 						}
+
+						throw new APIError('FORBIDDEN', {
+							message:
+								'Sign-up requires a valid invite. Open the invite URL you were sent, or contact your administrator.'
+						});
 					}
 				}
 			}
