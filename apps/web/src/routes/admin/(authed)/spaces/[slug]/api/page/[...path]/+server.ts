@@ -11,7 +11,7 @@
  * pipeline picks it up. This handler never touches the cache or the index.
  *
  * `+server.ts` modules are not covered by layout loads, so this calls
- * `requireAuthor()` itself in addition to the (authed) layout above. The
+ * `requireSpaceAccess()` itself in addition to the (authed) layout above. The
  * per-space [slug] layout sets `locals.space`, but +server.ts also bypasses
  * layout loads — so we resolve the space from the registry here using the
  * `[slug]` route param.
@@ -22,7 +22,7 @@ import { error, json } from '@sveltejs/kit';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { parse as parseYaml } from 'yaml';
 import type { RequestHandler } from './$types';
-import { requireAuthor } from '$lib/server/auth';
+import { requireSpaceAccess } from '$lib/server/permissions';
 import { getRegistryEntries } from '$lib/server/space';
 import {
 	hashContent,
@@ -44,7 +44,11 @@ interface SavePayload {
 }
 
 export const PUT: RequestHandler = async (event) => {
-	requireAuthor(event);
+	// Spec §10 — +server.ts modules bypass layout loads, so this guard runs
+	// even though the per-space layout above also calls requireSpaceAccess.
+	// `editor` is the minimum role; install-admin short-circuits at the top of
+	// the resolver.
+	requireSpaceAccess(event, event.params.slug, 'editor');
 
 	const slug = event.params.slug;
 	const match = getRegistryEntries().find((e) => path.basename(e.path) === slug);

@@ -20,6 +20,7 @@ let workDir: string;
 let actions: typeof import('./+page.server.ts').actions;
 let setupActions: typeof import('../../(public)/setup/+page.server.ts').actions;
 let resetSingleton: () => void;
+let getAuth: () => ReturnType<typeof import('$lib/server/auth-config').getAuth>;
 let getAuthDb: () => import('bun:sqlite').Database;
 
 beforeEach(async () => {
@@ -34,6 +35,7 @@ beforeEach(async () => {
 	setupActions = (await import('../../(public)/setup/+page.server.ts')).actions;
 	const cfg = await import('$lib/server/auth-config');
 	resetSingleton = cfg._resetAuthSingleton;
+	getAuth = cfg.getAuth;
 	getAuthDb = cfg.getAuthDb;
 });
 
@@ -49,7 +51,7 @@ afterEach(async () => {
 });
 
 interface AdminInfo {
-	user: { id: string; email: string; name: string | null };
+	user: { id: string; email: string; name: string | null; isInstallAdmin: boolean };
 	cookieHeader: string;
 }
 
@@ -65,10 +67,11 @@ async function claimAdminAndSignIn(): Promise<AdminInfo> {
 		if ((e as { status?: number }).status !== 302) throw e;
 	});
 	const db = getAuthDb();
-	const user = db.query('SELECT id, email, name FROM user').get() as {
+	const user = db.query('SELECT id, email, name, isInstallAdmin FROM user').get() as {
 		id: string;
 		email: string;
 		name: string | null;
+		isInstallAdmin: number;
 	};
 	// Pick up the session row better-auth wrote during signUpEmail.
 	const session = db.query('SELECT token FROM session WHERE userId = ?1').get(user.id) as
@@ -77,7 +80,7 @@ async function claimAdminAndSignIn(): Promise<AdminInfo> {
 	const cookieHeader = session
 		? `better-auth.session_token=${encodeURIComponent(session.token)}`
 		: '';
-	return { user, cookieHeader };
+	return { user: { ...user, isInstallAdmin: Boolean(user.isInstallAdmin) }, cookieHeader };
 }
 
 function actionEvent(
@@ -138,5 +141,67 @@ describe('account unlinkGoogle action', () => {
 		};
 		expect(r.status).toBe(400);
 		expect(r.data.unlinkGoogle.error).toMatch(/Set a password/);
+	});
+});
+
+describe('deleteSelf action', () => {
+	test('editor self-delete cascades rows', async () => {
+		await getAuth();
+		const db = getAuthDb();
+		db.run(
+			"INSERT INTO user (id, email, name, emailVerified, createdAt, updatedAt, isInstallAdmin) VALUES ('u-1', 'e@x.test', 'E', 1, ?1, ?1, 0)",
+			[Date.now()]
+		);
+		db.run(
+			"INSERT INTO member (id, user_id, space_slug, role, created_at, created_by) VALUES ('m-1', 'u-1', 'example-space', 'editor', ?1, 'admin')",
+			[Date.now()]
+		);
+		const { actions: freshActions } = await import('./+page.server.ts');
+		await Promise.resolve(
+			freshActions.deleteSelf!(
+				actionEvent(
+					{ confirmEmail: 'e@x.test' },
+					{ user: { id: 'u-1', email: 'e@x.test', name: null, isInstallAdmin: false }, cookieHeader: '' }
+				)
+			)
+		).catch((e: unknown) => {
+			if ((e as { status?: number }).status !== 302) throw e;
+		});
+		expect(db.query('SELECT COUNT(*) AS n FROM user WHERE id = ?1').get('u-1')).toEqual({ n: 0 });
+		expect(db.query('SELECT COUNT(*) AS n FROM member WHERE user_id = ?1').get('u-1')).toEqual({ n: 0 });
+	});
+
+	test('install-admin self-delete is blocked', async () => {
+		await getAuth();
+		const db = getAuthDb();
+		db.run(
+			"INSERT INTO user (id, email, name, emailVerified, createdAt, updatedAt, isInstallAdmin) VALUES ('admin-1', 'a@x.test', 'A', 1, ?1, ?1, 1)",
+			[Date.now()]
+		);
+		const { actions: freshActions } = await import('./+page.server.ts');
+		const r = await freshActions.deleteSelf!(
+			actionEvent(
+				{ confirmEmail: 'a@x.test' },
+				{ user: { id: 'admin-1', email: 'a@x.test', name: null, isInstallAdmin: true }, cookieHeader: '' }
+			)
+		);
+		expect((r as { status: number }).status).toBe(400);
+	});
+
+	test('confirmation email mismatch → 400', async () => {
+		await getAuth();
+		const db = getAuthDb();
+		db.run(
+			"INSERT INTO user (id, email, name, emailVerified, createdAt, updatedAt, isInstallAdmin) VALUES ('u-1', 'e@x.test', 'E', 1, ?1, ?1, 0)",
+			[Date.now()]
+		);
+		const { actions: freshActions } = await import('./+page.server.ts');
+		const r = await freshActions.deleteSelf!(
+			actionEvent(
+				{ confirmEmail: 'wrong@x.test' },
+				{ user: { id: 'u-1', email: 'e@x.test', name: null, isInstallAdmin: false }, cookieHeader: '' }
+			)
+		);
+		expect((r as { status: number }).status).toBe(400);
 	});
 });

@@ -13,6 +13,9 @@
 	<a href={resolve('/admin')}><strong>Amber</strong> admin</a>
 	{#if data.authed}
 		<nav class="amber-admin-nav">
+			{#if data.user?.isInstallAdmin}
+				<a href="/admin/users">Users</a>
+			{/if}
 			<a href={resolve('/admin/account')}>Account</a>
 			<form method="post" action="/api/auth/sign-out" class="amber-signout-form">
 				<button type="submit" class="amber-signout-button">Sign out</button>

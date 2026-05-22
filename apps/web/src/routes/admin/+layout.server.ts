@@ -14,5 +14,9 @@
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = (event) => {
-	return { authed: event.locals.user != null };
+	const u = event.locals.user;
+	return {
+		authed: u != null,
+		user: u != null ? { isInstallAdmin: u.isInstallAdmin } : null
+	};
 };

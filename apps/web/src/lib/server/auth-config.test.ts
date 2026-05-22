@@ -2,7 +2,20 @@ import { afterEach, describe, expect, test } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { getMigrations } from 'better-auth/db/migration';
 import { buildAuth, resolveGoogleEnv } from './auth-config.ts';
+import { inviteContext } from './invite-context.ts';
+import { insertInvite } from './invites.ts';
+import { applyAmberAuthMigrations } from './auth-migrations.ts';
+
+/** Build auth + run both better-auth and Amber migrations. Needed for any test that calls auth.api.*. */
+async function buildAndMigrateAuth(opts: Parameters<typeof buildAuth>[0]) {
+	const { auth, db } = buildAuth(opts);
+	const { runMigrations } = await getMigrations(auth.options);
+	await runMigrations();
+	applyAmberAuthMigrations(db);
+	return { auth, db };
+}
 
 function tmpAuthDb(): { dbPath: string; cleanup: () => void } {
 	const dir = mkdtempSync(join(tmpdir(), 'amber-auth-cfg-'));
@@ -94,6 +107,72 @@ describe('buildAuth', () => {
 			| undefined;
 		expect(google).toBeDefined();
 		expect(google?.clientId).toBe('gid');
+		db.close();
+	});
+});
+
+describe('user-create hook with inviteContext', () => {
+	const cleanups: Array<() => void> = [];
+	afterEach(() => {
+		for (const c of cleanups.splice(0)) c();
+	});
+
+	test('with no context and ≥1 user → reject', async () => {
+		const { dbPath, cleanup } = tmpAuthDb();
+		cleanups.push(cleanup);
+		const { auth, db } = await buildAndMigrateAuth({ dbPath, secret: 'x'.repeat(32), publicUrl: 'https://amber.test', google: null });
+		await auth.api.signUpEmail({ body: { email: 'a@x.test', password: 'password123', name: 'A' }, headers: new Headers() });
+		await expect(
+			auth.api.signUpEmail({ body: { email: 'b@x.test', password: 'password123', name: 'B' }, headers: new Headers() })
+		).rejects.toThrow();
+		db.close();
+	});
+
+	test('with valid pending invite in context → allow', async () => {
+		const { dbPath, cleanup } = tmpAuthDb();
+		cleanups.push(cleanup);
+		const { auth, db } = await buildAndMigrateAuth({ dbPath, secret: 'x'.repeat(32), publicUrl: 'https://amber.test', google: null });
+		await auth.api.signUpEmail({ body: { email: 'admin@x.test', password: 'password123', name: 'admin' }, headers: new Headers() });
+		const { id: inviteId } = insertInvite(db, { spaceSlug: 'site-a', role: 'editor', createdBy: 'admin' });
+		await inviteContext.run({ pendingInviteId: inviteId }, async () => {
+			await auth.api.signUpEmail({ body: { email: 'c@x.test', password: 'password123', name: 'C' }, headers: new Headers() });
+		});
+		const n = db.query('SELECT COUNT(*) AS n FROM user').get() as { n: number };
+		expect(n.n).toBe(2);
+		db.close();
+	});
+
+	test('with expired invite in context → reject', async () => {
+		const { dbPath, cleanup } = tmpAuthDb();
+		cleanups.push(cleanup);
+		const { auth, db } = await buildAndMigrateAuth({ dbPath, secret: 'x'.repeat(32), publicUrl: 'https://amber.test', google: null });
+		await auth.api.signUpEmail({ body: { email: 'admin@x.test', password: 'password123', name: 'admin' }, headers: new Headers() });
+		const { id: inviteId } = insertInvite(db, { spaceSlug: 'site-a', role: 'editor', createdBy: 'admin' });
+		db.run('UPDATE invite SET expires_at = 0 WHERE id = ?1', [inviteId]);
+		await expect(
+			inviteContext.run({ pendingInviteId: inviteId }, async () => {
+				await auth.api.signUpEmail({ body: { email: 'd@x.test', password: 'password123', name: 'D' }, headers: new Headers() });
+			})
+		).rejects.toThrow();
+		db.close();
+	});
+
+	test('with redeemed invite in context → reject', async () => {
+		const { dbPath, cleanup } = tmpAuthDb();
+		cleanups.push(cleanup);
+		const { auth, db } = await buildAndMigrateAuth({ dbPath, secret: 'x'.repeat(32), publicUrl: 'https://amber.test', google: null });
+		await auth.api.signUpEmail({ body: { email: 'admin@x.test', password: 'password123', name: 'admin' }, headers: new Headers() });
+		const { id: inviteId } = insertInvite(db, { spaceSlug: 'site-a', role: 'editor', createdBy: 'admin' });
+		db.run('UPDATE invite SET redeemed_at = ?1, redeemed_by = ?2 WHERE id = ?3', [
+			Date.now(),
+			'someone-else',
+			inviteId
+		]);
+		await expect(
+			inviteContext.run({ pendingInviteId: inviteId }, async () => {
+				await auth.api.signUpEmail({ body: { email: 'e@x.test', password: 'password123', name: 'E' }, headers: new Headers() });
+			})
+		).rejects.toThrow();
 		db.close();
 	});
 });

@@ -33,6 +33,9 @@ import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { getRequestEvent } from '$app/server';
 import type { Database } from 'bun:sqlite';
 import { authDbPath, openAuthDb } from '$lib/server/auth-db';
+import { applyAmberAuthMigrations } from '$lib/server/auth-migrations';
+import { inviteContext } from '$lib/server/invite-context';
+import { verifyInviteState } from '$lib/server/google-invite-state';
 
 export interface BuildAuthOptions {
 	dbPath?: string;
@@ -138,21 +141,58 @@ export function buildAuth(opts: BuildAuthOptions = {}): { auth: Auth; db: Databa
 			user: {
 				create: {
 					before: async () => {
-						// Single-admin subsystem (spec §1, §5). The first creation is
-						// allowed; everything after is rejected. SQLite is single-writer
-						// under WAL, so by the time the second hook fires the first row
-						// is committed and the count returns ≥ 1.
 						const row = db.query('SELECT COUNT(*) AS n FROM user').get() as
 							| { n: number }
 							| undefined;
 						const n = row?.n ?? 0;
-						if (n >= 1) {
-							throw new APIError('FORBIDDEN', {
-								message:
-									'Sign-up is disabled. Amber is single-admin in this version; ' +
-									'the admin account has already been claimed.'
-							});
+						if (n === 0) return; // setup path — first claim always allowed.
+
+						// Multi-user path (spec §4, §6): allow creation when the calling
+						// stack established an inviteContext with a still-valid invite id.
+						const ctx = inviteContext.getStore();
+						if (ctx?.pendingInviteId) {
+							const invite = db
+								.query(
+									`SELECT redeemed_at, expires_at FROM invite WHERE id = ?1`
+								)
+								.get(ctx.pendingInviteId) as
+								| { redeemed_at: number | null; expires_at: number }
+								| undefined;
+							if (
+								invite &&
+								invite.redeemed_at == null &&
+								invite.expires_at >= Date.now()
+							) {
+								return; // accept — the redemption action owns the post-state mutations.
+							}
 						}
+
+						// Google-OAuth path fallback: better-auth's social-callback runs outside
+						// the redemption action, so inviteContext.getStore() is null. Detect the
+						// gstate query param via SvelteKit's getRequestEvent() and verify it
+						// server-side; on success we allow the user-row creation.
+						try {
+							const ev = getRequestEvent();
+							const gstate = new URL(ev.request.url).searchParams.get('gstate');
+							if (gstate) {
+								const inviteId = verifyInviteState(gstate);
+								if (inviteId) {
+									const invite = db
+										.query('SELECT redeemed_at, expires_at FROM invite WHERE id = ?1')
+										.get(inviteId) as { redeemed_at: number | null; expires_at: number } | undefined;
+									if (invite && invite.redeemed_at == null && invite.expires_at >= Date.now()) {
+										return; // allow — finalization happens in the redemption load's gstate branch
+									}
+								}
+							}
+						} catch {
+							// Outside a request? Fall through to the existing rejection.
+						}
+
+						throw new APIError('FORBIDDEN', {
+							message:
+								'Sign-up requires a valid invite. Open the invite URL you were sent, or contact your administrator.'
+						});
 					}
 				}
 			}
@@ -171,6 +211,10 @@ export async function getAuth(): Promise<Auth> {
 	if (!_migrated) {
 		const { runMigrations } = await getMigrations(_singleton.auth.options);
 		await runMigrations();
+		// Amber-side schema (isInstallAdmin column, member, invite). Must run
+		// AFTER better-auth's migrations because migration 0001 ALTERs better-
+		// auth's `user` table.
+		applyAmberAuthMigrations(_singleton.db);
 		_migrated = true;
 	}
 	return _singleton.auth;

@@ -104,6 +104,15 @@ covers `.amber/` as a whole, so any sensible backup of either the space
 directory (single-space) or the install-root parent directory
 (multi-space) picks `auth.db` up automatically.
 
+`auth.db` holds better-auth's own `user` / `account` / `session` /
+`verification` tables plus three Amber-owned tables added in subsystem 4:
+`member` (per-space access rows: `user_id`, `space_slug`, `role`),
+`invite` (pending bearer-URL invites with hashed tokens), and
+`amber_migrations` (applied-migration registry). The `user` table also
+carries an `isInstallAdmin` column added by subsystem 4. Backup guidance
+is unchanged: any sensible backup of the install-root `.amber/` directory
+covers all of it.
+
 - TOML for the manifest, YAML for frontmatter.
 - Manifest is authoritative for **nav order**. Filesystem is authoritative
   for **what exists**.
@@ -297,14 +306,24 @@ up from a working content pipeline; the substrate is in place.
      changes / Google link-unlink, and an offline reset-password CLI for
      self-hosters who already have shell access. `AMBER_DEV_UNSAFE` is
      **removed**; the `.amber/auth.db` and `better-auth` dependency scope
-     guards were revised with this subsystem.
+     guards were revised with this subsystem. Subsystem 2's single-admin
+     model is the floor; subsystem 4 layers install-admin + per-space
+     owner/editor on top without rewriting it.
   3. **Multi-space routing (shipped)** — host/path resolution via a
      per-request resolver. The v0.4 registry made the runtime path-keyed;
      subsystem 3 lit it up with `AMBER_SPACES_DIR` discovery, per-space
      `space.toml` routing fields (`host`, `prefix`, `default`), and a
      per-space admin surface at `/admin/spaces/[slug]/…`. Single-space
      mode (`AMBER_SPACE_PATH`) keeps every v0.4 observable behaviour.
-  4. **Invites + per-space permissions** — opt-in multi-user.
+  4. **Invites and per-space permissions (shipped)** — `member` and
+     `invite` tables landed in `auth.db`; an `isInstallAdmin` column
+     splits the operator tier from per-space owner/editor roles. Bearer
+     URL invites (7-day expiry, single-use, SHA-256 hashed at rest)
+     generated from `/admin/spaces/[slug]/members`. A new permission
+     seam (`lib/server/permissions.ts`) carries the per-space gate;
+     `canEdit()` scopes the public render path's inline edit link. The
+     offline `bin/grant-ownership.ts` CLI mirrors `reset-password.ts`
+     as the operator escape hatch.
   5. **Space-creation UI** — writes `amber.toml`.
   6. **Theme-picker UI** — writes `space.toml`.
 

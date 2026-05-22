@@ -51,7 +51,7 @@ afterAll(async () => {
 // tests reach into the process-global singleton to mirror that.
 const stubEvent = (
 	params: Record<string, string>,
-	user: { id: string; email: string; name?: string | null } | null = null,
+	user: { id: string; email: string; name?: string | null; isInstallAdmin: boolean } | null = null,
 	mountPrefix: string = ''
 ) =>
 	({
@@ -150,20 +150,30 @@ describe('catch-all +page.server load', () => {
 		);
 	});
 
-	test('emits an editHref only when locals.user is set, anchored to the active slug', async () => {
-		const data1 = pageLoad(stubEvent({ path: 'about' }, null)) as { editHref: string | null };
+	test('emits an editHref for install-admin, null for signed-out, anchored to active slug', async () => {
+		// Signed-out: no editHref, canEdit false (no DB call needed — short-circuits on null user).
+		const data1 = pageLoad(stubEvent({ path: 'about' }, null)) as {
+			editHref: string | null;
+			canEdit: boolean;
+		};
 		expect(data1.editHref).toBeNull();
+		expect(data1.canEdit).toBe(false);
 
-		const user = { id: 'u1', email: 'a@x' };
-		const data2 = pageLoad(stubEvent({ path: 'about' }, user)) as { editHref: string | null };
+		// Install-admin: canEdit returns true before any DB lookup (short-circuits on isInstallAdmin).
+		const admin = { id: 'u2', email: 'admin@x', isInstallAdmin: true };
+		const data2 = pageLoad(stubEvent({ path: 'about' }, admin)) as {
+			editHref: string | null;
+			canEdit: boolean;
+		};
 		// The link is namespaced under the active space's slug — for the
 		// fixture, the directory basename `example-space`. Without this, a
 		// prefix-mounted space's link would silently land in the default space
 		// (the v0.5 subsystem 3 followup #5 regression).
+		expect(data2.canEdit).toBe(true);
 		expect(data2.editHref).toBe('/admin/spaces/example-space/edit/about');
 		// Root URL: `/` must produce `…/edit` (no trailing slash) — the
 		// invariant the editor's `[...path]` resolver relies on.
-		const data3 = pageLoad(stubEvent({ path: '' }, user)) as { editHref: string | null };
+		const data3 = pageLoad(stubEvent({ path: '' }, admin)) as { editHref: string | null };
 		expect(data3.editHref).toBe('/admin/spaces/example-space/edit');
 	});
 });

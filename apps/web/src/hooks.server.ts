@@ -24,7 +24,8 @@ import { building } from '$app/environment';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { logger } from '$lib/server/logger';
 import { getSpace, getRegistryEntries } from '$lib/server/space';
-import { getAuth } from '$lib/server/auth-config';
+import { getAuth, getAuthDb } from '$lib/server/auth-config';
+import { sweepExpiredInvites, scanOrphans, logOrphans } from '$lib/server/auth-boot';
 import { resolve as resolveRoute, type ResolverIndex } from '$lib/server/resolver';
 import { discoverSpaces } from '$lib/server/spaces-dir';
 import { readSpaceConfig } from '$lib/space/config';
@@ -171,6 +172,23 @@ function auth() {
 	return authPromise;
 }
 
+let bootSweepPromise: Promise<void> | null = null;
+async function runBootSweeps(): Promise<void> {
+	await auth(); // ensure migrations have run, singleton is built
+	const db = getAuthDb();
+	const removed = sweepExpiredInvites(db);
+	if (removed > 0) {
+		logger.child({ subsystem: 'permissions' }).info({ removed }, 'invite_sweep_completed');
+	}
+	const slugs = new Set(getRegistryEntries().map((e) => path.basename(e.path)));
+	const orphans = scanOrphans(db, slugs);
+	logOrphans(logger.child({ subsystem: 'permissions' }), orphans);
+}
+function ensureBootSweeps(): Promise<void> {
+	if (!bootSweepPromise) bootSweepPromise = runBootSweeps();
+	return bootSweepPromise;
+}
+
 function newRequestId(): string {
 	return crypto.randomUUID().replace(/-/g, '').slice(0, 8);
 }
@@ -184,6 +202,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.space = null;
 	event.locals.mountPath = null;
 	event.locals.mountPrefix = null;
+	event.locals.access = null;
+	event.locals.role = null;
 
 	const method = event.request.method;
 	const path = event.url.pathname;
@@ -231,22 +251,46 @@ export const handle: Handle = async ({ event, resolve }) => {
 		try {
 			const result = await (await auth()).api.getSession({ headers: event.request.headers });
 			if (result?.user) {
+				const flagRow = getAuthDb()
+					.query('SELECT isInstallAdmin FROM user WHERE id = ?')
+					.get(result.user.id) as { isInstallAdmin: number } | undefined;
 				event.locals.user = {
 					id: result.user.id,
 					email: result.user.email,
-					name: result.user.name
+					name: result.user.name,
+					isInstallAdmin: !!flagRow?.isInstallAdmin
 				};
 				event.locals.session = {
 					id: result.session.id,
 					userId: result.session.userId,
 					expiresAt: new Date(result.session.expiresAt)
 				};
+				// Spec §3 / §5.1 — Google bootstrap path safety net. If the first-
+				// ever sign-in lands here without `isInstallAdmin` set (the setup
+				// action's explicit call is the happy path; the Google callback
+				// route doesn't run our setup action), and this is the only user
+				// row, treat it as the install-admin claim and set the flag.
+				// Idempotent — subsequent requests find the flag already set.
+				if (!event.locals.user.isInstallAdmin) {
+					const db = getAuthDb();
+					const count = (
+						db.query('SELECT COUNT(*) AS n FROM user').get() as { n: number }
+					).n;
+					if (count === 1) {
+						db.run('UPDATE user SET isInstallAdmin = 1 WHERE id = ?', [
+							event.locals.user.id
+						]);
+						event.locals.user.isInstallAdmin = true;
+					}
+				}
 			}
 		} catch (e) {
 			// A bad/expired cookie just means "no session"; the better-auth
 			// handler will clean up downstream.
 			log.debug({ err: (e as Error)?.message }, 'session resolve failed');
 		}
+
+		await ensureBootSweeps();
 
 		const response = await svelteKitHandler({ auth: await auth(), event, resolve, building });
 		status = response.status;

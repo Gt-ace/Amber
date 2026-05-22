@@ -14,7 +14,7 @@ import { error, redirect } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { renderPageBody } from '$lib/render/page';
 import { readSiteUrl } from '$lib/server/sitemap';
-import { isAuthor } from '$lib/server/auth';
+import { canEdit } from '$lib/server/permissions';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = (event) => {
@@ -48,7 +48,8 @@ export const load: PageServerLoad = (event) => {
 	// space-relative page URL; the editor lives under the active space's
 	// admin slug so the link stays inside the matched space.
 	const slug = path.basename(space.root);
-	const editHref = isAuthor(event)
+	const userCanEdit = canEdit(event, slug);
+	const editHref = userCanEdit
 		? `/admin/spaces/${slug}/edit${url === '/' ? '' : url}`
 		: null;
 
@@ -62,6 +63,7 @@ export const load: PageServerLoad = (event) => {
 		bodyHtml,
 		site: space.manifest.site ?? null,
 		siteUrl: readSiteUrl(),
+		canEdit: userCanEdit,
 		editHref
 	};
 };

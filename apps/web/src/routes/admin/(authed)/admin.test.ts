@@ -5,7 +5,7 @@ import { load } from './+layout.server.ts';
 type LoadEvent = Parameters<LayoutServerLoad>[0];
 
 function eventFor(
-	user: { id: string; email: string; name?: string | null } | null,
+	user: { id: string; email: string; name?: string | null; isInstallAdmin: boolean } | null,
 	pathname = '/admin/edit/about',
 	search = ''
 ): LoadEvent {
@@ -38,7 +38,7 @@ describe('(authed) layout guard', () => {
 	});
 
 	test('returns the user when locals.user is set', () => {
-		const user = { id: 'u1', email: 'a@x', name: 'Admin' };
+		const user = { id: 'u1', email: 'a@x', name: 'Admin', isInstallAdmin: false };
 		expect(load(eventFor(user))).toEqual({ user });
 	});
 });
