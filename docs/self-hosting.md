@@ -247,6 +247,30 @@ who already has shell access. If both options fail, the only remaining
 recovery is to delete `.amber/auth.db` and re-bootstrap an admin (you
 lose nothing else — content lives on the filesystem).
 
+## Granting space ownership offline
+
+When the install-admin needs to hand owner access on a space to another
+user without going through the invite UI — e.g. recovering from a "the
+only owner removed themselves" race, or pre-seeding owners across spaces
+during a migration — the offline CLI is the escape hatch.
+
+```bash
+bun run --cwd apps/web bin/grant-ownership.ts --email <user@example.com> --space <slug>
+```
+
+The CLI opens `.amber/auth.db` directly, looks up the user by email, and
+either inserts a fresh `member` row with role `owner` or upgrades the
+existing row from `editor` to `owner`. It refuses to act on the
+install-admin (their access is implicit and needs no row).
+
+The `--space` slug is the **directory name** of the space, as it appears
+under `AMBER_SPACES_DIR` (or as `basename` of `AMBER_SPACE_PATH` in
+single-space mode).
+
+Like `reset-password`, this is for self-hosters with shell access. There
+is no in-app equivalent — owners invite through the UI, the install-admin
+uses the CLI when the UI isn't enough.
+
 ## Backing up `.amber/auth.db`
 
 `.amber/cache.db` is regenerable: the loader rebuilds it from the
@@ -260,6 +284,23 @@ account across every loaded space). Your backup needs to cover whichever
 The default `restic`/`rsync`/`tar` pattern over the space directory
 (single-space) or the install-root parent directory (multi-space) picks
 this up automatically.
+
+## Multi-user (v0.5 subsystem 4)
+
+The user claimed at `/admin/setup` is the **install-admin** — the
+operator. They implicitly own every loaded space and cannot be removed
+through the UI (only via direct DB edit + the grant-ownership CLI to
+restore an alternate owner).
+
+Invite additional users from any space's `/admin/spaces/<slug>/members`
+page. Two roles per space: **owner** can manage members and (in future
+subsystems) space settings; **editor** can edit content. Invites are
+single-use bearer URLs valid for 7 days; deliver them out-of-band
+(email, chat) — Amber has no SMTP.
+
+Removed users keep their account; they just lose access to that space.
+Users with no remaining memberships sign in to an empty picker. To
+permanently delete a user, the install-admin uses `/admin/users`.
 
 ## Beyond this doc
 
