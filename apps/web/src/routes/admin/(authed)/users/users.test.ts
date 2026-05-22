@@ -66,3 +66,75 @@ describe('/admin/users load', () => {
 		await expect(load(loadEvent(null))).rejects.toMatchObject({ status: 401 });
 	});
 });
+
+function actionEvent(
+	user: { id: string; isInstallAdmin: boolean } | null,
+	fields: Record<string, string>
+) {
+	const fd = new FormData();
+	for (const [k, v] of Object.entries(fields)) fd.set(k, v);
+	return {
+		locals: { user, access: null, role: null },
+		request: { formData: async () => fd, headers: new Headers() }
+	} as unknown as Parameters<
+		NonNullable<typeof import('./+page.server.ts').actions.deleteUser>
+	>[0];
+}
+
+describe('deleteUser action', () => {
+	test('happy path: cascades member + session + account + user rows', async () => {
+		await getAuth();
+		const db = getAuthDb();
+		db.run(
+			"INSERT INTO user (id, email, name, emailVerified, createdAt, updatedAt, isInstallAdmin) VALUES ('admin-1', 'a@x.test', 'A', 1, ?1, ?1, 1), ('u-1', 'b@x.test', 'B', 1, ?1, ?1, 0)",
+			[Date.now()]
+		);
+		db.run(
+			"INSERT INTO member (id, user_id, space_slug, role, created_at, created_by) VALUES ('m-1', 'u-1', 'example-space', 'editor', ?1, 'admin-1')",
+			[Date.now()]
+		);
+		const { actions } = await import('./+page.server.ts');
+		await actions.deleteUser!(
+			actionEvent({ id: 'admin-1', isInstallAdmin: true }, {
+				userId: 'u-1',
+				confirmEmail: 'b@x.test'
+			})
+		);
+		expect(db.query('SELECT COUNT(*) AS n FROM user WHERE id = ?1').get('u-1')).toEqual({ n: 0 });
+		expect(db.query('SELECT COUNT(*) AS n FROM member WHERE user_id = ?1').get('u-1')).toEqual({ n: 0 });
+	});
+
+	test('refuses to delete install-admin', async () => {
+		await getAuth();
+		const db = getAuthDb();
+		db.run(
+			"INSERT INTO user (id, email, name, emailVerified, createdAt, updatedAt, isInstallAdmin) VALUES ('admin-1', 'a@x.test', 'A', 1, ?1, ?1, 1)",
+			[Date.now()]
+		);
+		const { actions } = await import('./+page.server.ts');
+		const r = await actions.deleteUser!(
+			actionEvent({ id: 'admin-1', isInstallAdmin: true }, {
+				userId: 'admin-1',
+				confirmEmail: 'a@x.test'
+			})
+		);
+		expect((r as { status: number }).status).toBe(400);
+	});
+
+	test('refuses on email mismatch', async () => {
+		await getAuth();
+		const db = getAuthDb();
+		db.run(
+			"INSERT INTO user (id, email, name, emailVerified, createdAt, updatedAt, isInstallAdmin) VALUES ('admin-1', 'a@x.test', 'A', 1, ?1, ?1, 1), ('u-1', 'b@x.test', 'B', 1, ?1, ?1, 0)",
+			[Date.now()]
+		);
+		const { actions } = await import('./+page.server.ts');
+		const r = await actions.deleteUser!(
+			actionEvent({ id: 'admin-1', isInstallAdmin: true }, {
+				userId: 'u-1',
+				confirmEmail: 'wrong@x.test'
+			})
+		);
+		expect((r as { status: number }).status).toBe(400);
+	});
+});
