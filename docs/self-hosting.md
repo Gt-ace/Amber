@@ -105,6 +105,10 @@ authorized redirect URI in the Google Cloud Console OAuth credentials.
 Both vars must be set together — half-configured OAuth is a boot error,
 not a partial feature.
 
+A full step-by-step walkthrough — Google Cloud project, consent screen,
+client creation, redirect URI, troubleshooting — lives in
+[`docs/oauth.md`](oauth.md).
+
 ## Step 5 — Start the stack
 
 From the repo root, on the server:

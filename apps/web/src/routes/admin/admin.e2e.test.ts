@@ -84,6 +84,11 @@ beforeAll(async () => {
 			AMBER_SPACE_PATH: workDir,
 			AMBER_AUTH_SECRET: 'e2e-secret-' + 'x'.repeat(32),
 			AMBER_PUBLIC_URL: base,
+			// Half-configured OAuth refuses to boot; pair fake values so the
+			// "Continue with Google" button renders for href assertions. We
+			// never actually traverse the OAuth dance.
+			AMBER_GOOGLE_CLIENT_ID: 'e2e-fake-client-id',
+			AMBER_GOOGLE_CLIENT_SECRET: 'e2e-fake-client-secret',
 			// SvelteKit's adapter-node defaults event.url.protocol to https
 			// when ORIGIN is unset, which breaks better-auth's origin check
 			// against an http:// AMBER_PUBLIC_URL. Pinning ORIGIN to the
@@ -154,6 +159,39 @@ describe('admin surface smoke (AMBER_E2E)', () => {
 		expect(res.status).toBe(200);
 		const out = (await res.json()) as { hash: string };
 		expect(out.hash).toMatch(/^[0-9a-f]{64}$/);
+	}, 60_000);
+
+	test('login page Google button carries callbackURL — defaults to /admin and threads validated ?next=', async () => {
+		const context = await browser.newContext();
+		const page = await context.newPage();
+		try {
+			await page.goto(base + '/admin/login', { waitUntil: 'networkidle' });
+			const plain = await page.locator('a.amber-oauth-button').getAttribute('href');
+			expect(plain).toBe(
+				`/api/auth/sign-in/social/google?callbackURL=${encodeURIComponent('/admin')}`
+			);
+
+			await page.goto(
+				base + '/admin/login?next=' + encodeURIComponent('/admin/edit/about'),
+				{ waitUntil: 'networkidle' }
+			);
+			const withNext = await page.locator('a.amber-oauth-button').getAttribute('href');
+			expect(withNext).toBe(
+				`/api/auth/sign-in/social/google?callbackURL=${encodeURIComponent('/admin/edit/about')}`
+			);
+
+			// Open-redirect attempt must be sanitised to /admin before reaching the OAuth callback.
+			await page.goto(
+				base + '/admin/login?next=' + encodeURIComponent('//evil.example.com/'),
+				{ waitUntil: 'networkidle' }
+			);
+			const sanitised = await page.locator('a.amber-oauth-button').getAttribute('href');
+			expect(sanitised).toBe(
+				`/api/auth/sign-in/social/google?callbackURL=${encodeURIComponent('/admin')}`
+			);
+		} finally {
+			await context.close();
+		}
 	}, 60_000);
 
 	test('sign-out then login round-trip preserves ?next=', async () => {
