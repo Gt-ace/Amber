@@ -16,7 +16,7 @@
  * Sign-out is a separate POST to /api/auth/sign-out from the admin chrome.
  */
 
-import { fail, redirect } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getAuth, resolveGoogleEnv, getAuthDb } from '$lib/server/auth-config';
 import { APIError } from 'better-auth/api';
@@ -46,6 +46,7 @@ export const load: PageServerLoad = async (event) => {
 	const user = event.locals.user!;
 	return {
 		user,
+		isInstallAdmin: user.isInstallAdmin,
 		googleEnabled: resolveGoogleEnv() != null,
 		googleLinked: googleLinked(user.id),
 		hasPassword: hasPassword(user.id)
@@ -123,5 +124,37 @@ export const actions: Actions = {
 		// via /api/auth/sign-in/social/google with the current session set; on
 		// callback it links to the live user. A simple redirect does it.
 		redirect(302, '/api/auth/sign-in/social/google?callbackURL=/admin/account');
+	},
+
+	deleteSelf: async (event) => {
+		const user = event.locals.user;
+		if (!user) error(401, 'Unauthorized.');
+		const db = getAuthDb();
+		const row = db.query('SELECT isInstallAdmin FROM user WHERE id = ?1').get(user.id) as
+			| { isInstallAdmin: number }
+			| undefined;
+		if (row?.isInstallAdmin) {
+			return fail(400, {
+				deleteSelf: {
+					ok: false as const,
+					error:
+						'The install-admin cannot self-delete. Use bin/grant-ownership.ts to hand the role over, then run a CLI to clear the install-admin flag.'
+				}
+			});
+		}
+		const form = await event.request.formData();
+		const confirmEmail = String(form.get('confirmEmail') ?? '').trim();
+		if (confirmEmail !== user.email) {
+			return fail(400, {
+				deleteSelf: { ok: false as const, error: 'Confirmation email does not match.' }
+			});
+		}
+		db.transaction(() => {
+			db.run('DELETE FROM member WHERE user_id = ?1', [user.id]);
+			db.run('DELETE FROM session WHERE userId = ?1', [user.id]);
+			db.run('DELETE FROM account WHERE userId = ?1', [user.id]);
+			db.run('DELETE FROM user WHERE id = ?1', [user.id]);
+		})();
+		redirect(302, '/');
 	}
 };

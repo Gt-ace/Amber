@@ -61,6 +61,25 @@
 	</section>
 {/if}
 
+{#if !data.isInstallAdmin}
+	<section class="danger-zone">
+		<h2>Delete my account</h2>
+		<p>This permanently removes your access to every space and erases your account.</p>
+		<form method="POST" action="?/deleteSelf" use:enhance>
+			<label>
+				Type your email to confirm:
+				<input name="confirmEmail" type="email" required />
+			</label>
+			<button type="submit">Delete my account</button>
+		</form>
+		{#if form?.deleteSelf?.ok === false}
+			<p role="alert">{form.deleteSelf.error}</p>
+		{/if}
+	</section>
+{:else}
+	<p><em>The install-admin cannot self-delete through the UI.</em></p>
+{/if}
+
 <style>
 	.amber-card {
 		border: 1px solid #ddd;
