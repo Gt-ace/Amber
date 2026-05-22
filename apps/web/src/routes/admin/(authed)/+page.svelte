@@ -10,14 +10,20 @@
 
 <h1>Spaces</h1>
 
-<ul class="amber-space-list">
-	{#each data.spaces as s (s.slug)}
-		<li>
-			<a href={resolve(`/admin/spaces/${s.slug}` as '/admin/spaces/[slug]')}>{s.title}</a>
-			<code>/{s.slug}</code>
-		</li>
-	{/each}
-</ul>
+{#if data.emptyState === 'no-memberships'}
+	<p>You don't have access to any spaces yet. Ask your administrator to invite you.</p>
+{:else if data.emptyState === 'no-spaces-loaded'}
+	<p>No spaces loaded. Ask your administrator to add one.</p>
+{:else}
+	<ul class="amber-space-list">
+		{#each data.spaces as s (s.slug)}
+			<li>
+				<a href={resolve(`/admin/spaces/${s.slug}` as '/admin/spaces/[slug]')}>{s.title}</a>
+				<code>/{s.slug}</code>
+			</li>
+		{/each}
+	</ul>
+{/if}
 
 <style>
 	.amber-space-list {
