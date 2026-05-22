@@ -1,7 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { fileURLToPath } from 'node:url';
 
-const FIXTURE = fileURLToPath(new URL('../../../../fixtures/example-space/', import.meta.url));
+const FIXTURE = fileURLToPath(
+	new URL('../../../../../../fixtures/example-space/', import.meta.url)
+);
 
 let load: typeof import('./+page.server.ts').load;
 
@@ -19,12 +21,18 @@ afterAll(async () => {
  * return type, so the tests get a fully-typed `data` object.
  */
 async function loadData() {
-	const data = await load({} as unknown as Parameters<typeof load>[0]);
+	const { getSpace } = await import('$lib/server/space');
+	const space = getSpace();
+	const event = {
+		locals: { space },
+		params: { slug: 'example-space' }
+	} as unknown as Parameters<typeof load>[0];
+	const data = await load(event);
 	if (!data) throw new Error('load unexpectedly returned void');
 	return data;
 }
 
-describe('admin index +page.server load', () => {
+describe('per-space admin index +page.server load', () => {
 	test('lists every page sorted by URL, drafts marked', async () => {
 		const data = await loadData();
 		const urls = data.pages.map((p) => p.url);
@@ -42,5 +50,10 @@ describe('admin index +page.server load', () => {
 		const data = await loadData();
 		expect(data.pages.find((p) => p.url === '/')?.apiPath).toBe('');
 		expect(data.pages.find((p) => p.url === '/about')?.apiPath).toBe('about');
+	});
+
+	test('passes slug through from params', async () => {
+		const data = await loadData();
+		expect(data.slug).toBe('example-space');
 	});
 });

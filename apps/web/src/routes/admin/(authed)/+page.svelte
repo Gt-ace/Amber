@@ -4,40 +4,35 @@
 	let { data }: { data: PageData } = $props();
 </script>
 
-<h1>Pages</h1>
-<p><a href={resolve('/admin/new')}>+ New page</a></p>
+<svelte:head>
+	<title>Spaces — Amber admin</title>
+</svelte:head>
 
-<ul class="amber-page-list">
-	{#each data.pages as page (page.url)}
+<h1>Spaces</h1>
+
+<ul class="amber-space-list">
+	{#each data.spaces as s (s.slug)}
 		<li>
-			<a href={resolve(`/admin/edit/${page.apiPath}` as '/admin/edit')}>{page.title}</a>
-			<code>{page.url}</code>
-			{#if page.draft}<span class="amber-draft">draft</span>{/if}
+			<a href={resolve(`/admin/spaces/${s.slug}` as '/admin/spaces/[slug]')}>{s.title}</a>
+			<code>/{s.slug}</code>
 		</li>
 	{/each}
 </ul>
 
 <style>
-	.amber-page-list {
+	.amber-space-list {
 		list-style: none;
 		padding: 0;
 	}
-	.amber-page-list li {
+	.amber-space-list li {
 		padding: 0.4rem 0;
 		border-bottom: 1px solid #eee;
 		display: flex;
 		gap: 0.6rem;
 		align-items: baseline;
 	}
-	.amber-page-list code {
+	.amber-space-list code {
 		color: #777;
 		font-size: 0.85rem;
-	}
-	.amber-draft {
-		font-size: 0.75rem;
-		background: #ffe6b3;
-		color: #663c00;
-		padding: 0.05rem 0.4rem;
-		border-radius: 3px;
 	}
 </style>

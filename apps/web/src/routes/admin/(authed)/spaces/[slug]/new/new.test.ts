@@ -5,7 +5,9 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { Actions } from './$types';
 
-const FIXTURE = fileURLToPath(new URL('../../../../../fixtures/example-space/', import.meta.url));
+const FIXTURE = fileURLToPath(
+	new URL('../../../../../../../fixtures/example-space/', import.meta.url)
+);
 
 let workDir: string;
 let actions: Actions;
@@ -23,18 +25,22 @@ afterEach(async () => {
 	rmSync(workDir, { recursive: true, force: true });
 });
 
-function formEvent(fields: Record<string, string>) {
+async function formEvent(fields: Record<string, string>) {
 	const fd = new FormData();
 	for (const [k, v] of Object.entries(fields)) fd.set(k, v);
+	const { getSpace } = await import('$lib/server/space');
+	const space = getSpace();
 	return {
-		request: { formData: async () => fd }
+		request: { formData: async () => fd },
+		locals: { space },
+		params: { slug: 'example-space' }
 	} as unknown as Parameters<NonNullable<Actions['default']>>[0];
 }
 
 /** The create action redirects on success — assert by catching the redirect. */
 async function runExpectingRedirect(fields: Record<string, string>): Promise<string> {
 	try {
-		await actions.default!(formEvent(fields));
+		await actions.default!(await formEvent(fields));
 		throw new Error('expected a redirect, got none');
 	} catch (e) {
 		const r = e as { status?: number; location?: string };
@@ -43,7 +49,7 @@ async function runExpectingRedirect(fields: Record<string, string>): Promise<str
 	}
 }
 
-describe('new-page create action', () => {
+describe('per-space new-page create action', () => {
 	test('creates a file and redirects to its editor', async () => {
 		const location = await runExpectingRedirect({
 			directory: 'notes',
@@ -51,7 +57,7 @@ describe('new-page create action', () => {
 			title: 'Fresh Note',
 			draft: ''
 		});
-		expect(location).toBe('/admin/edit/notes/fresh-note');
+		expect(location).toBe('/admin/spaces/example-space/edit/notes/fresh-note');
 		expect(existsSync(join(workDir, 'notes/fresh-note.md'))).toBe(true);
 	});
 
@@ -62,7 +68,7 @@ describe('new-page create action', () => {
 
 	test('rejects a reserved-prefix filename', async () => {
 		const result = await actions.default!(
-			formEvent({ directory: '', filename: '_secret', title: 'X', draft: '' })
+			await formEvent({ directory: '', filename: '_secret', title: 'X', draft: '' })
 		);
 		expect((result as { status: number }).status).toBe(400);
 		expect(existsSync(join(workDir, '_secret.md'))).toBe(false);
@@ -70,14 +76,14 @@ describe('new-page create action', () => {
 
 	test('rejects an already-existing file', async () => {
 		const result = await actions.default!(
-			formEvent({ directory: '', filename: 'about', title: 'X', draft: '' })
+			await formEvent({ directory: '', filename: 'about', title: 'X', draft: '' })
 		);
 		expect((result as { status: number }).status).toBe(400);
 	});
 
 	test('rejects a directory not in the content tree', async () => {
 		const result = await actions.default!(
-			formEvent({ directory: 'made-up-dir', filename: 'x', title: 'X', draft: '' })
+			await formEvent({ directory: 'made-up-dir', filename: 'x', title: 'X', draft: '' })
 		);
 		expect((result as { status: number }).status).toBe(400);
 	});
@@ -86,7 +92,7 @@ describe('new-page create action', () => {
 		// `projects/index.md` already serves `/projects`; a new `projects.md`
 		// would resolve to `/projects` too.
 		const result = await actions.default!(
-			formEvent({ directory: '', filename: 'projects', title: 'X', draft: '' })
+			await formEvent({ directory: '', filename: 'projects', title: 'X', draft: '' })
 		);
 		expect((result as { status: number }).status).toBe(400);
 	});

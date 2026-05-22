@@ -1,16 +1,17 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { RequestHandler } from './$types';
 import { hashContent, splitRaw, recombine } from '$lib/server/editor';
 
 const FIXTURE = fileURLToPath(
-	new URL('../../../../../../fixtures/example-space/', import.meta.url)
+	new URL('../../../../../../../../../fixtures/example-space/', import.meta.url)
 );
 
 let workDir: string;
+let workSlug: string;
 let PUT: RequestHandler;
 
 beforeEach(async () => {
@@ -18,14 +19,18 @@ beforeEach(async () => {
 	cpSync(FIXTURE, workDir, { recursive: true });
 	rmSync(join(workDir, '.amber'), { recursive: true, force: true });
 	process.env.AMBER_SPACE_PATH = workDir;
+	workSlug = basename(workDir);
+	// Prime the registry so the +server.ts handler finds the space by slug.
+	const { getSpace } = await import('$lib/server/space');
+	getSpace();
 	// Import deferred so AMBER_SPACE_PATH is set before getSpace() runs.
 	const mod = await import('./+server.ts');
 	PUT = mod.PUT;
 });
 
 afterEach(async () => {
-	const { getSpace } = await import('$lib/server/space');
-	getSpace().close();
+	const { __resetRegistryForTests } = await import('$lib/server/space');
+	await __resetRegistryForTests();
 	rmSync(workDir, { recursive: true, force: true });
 });
 
@@ -34,19 +39,19 @@ function event(path: string, init: RequestInit & { ifMatch?: string }) {
 	const headers = new Headers(init.headers);
 	headers.set('Content-Type', 'application/json');
 	if (init.ifMatch !== undefined) headers.set('If-Match', init.ifMatch);
-	const request = new Request(`http://x/admin/api/page/${path}`, {
+	const request = new Request(`http://x/admin/spaces/${workSlug}/api/page/${path}`, {
 		method: 'PUT',
 		headers,
 		body: init.body
 	});
 	return {
-		params: { path },
+		params: { path, slug: workSlug },
 		request,
 		locals: { user: { id: 'test-admin', email: 'admin@x', name: 'admin' } }
 	} as unknown as Parameters<RequestHandler>[0];
 }
 
-describe('PUT /admin/api/page/[...path]', () => {
+describe('PUT /admin/spaces/[slug]/api/page/[...path]', () => {
 	test('404 for an unknown page', async () => {
 		try {
 			await PUT(event('no-such-page', { body: JSON.stringify({ body: 'x' }), ifMatch: '*' }));
@@ -138,5 +143,25 @@ describe('PUT /admin/api/page/[...path]', () => {
 			expect((e as { status: number }).status).toBe(422);
 		}
 		expect(readFileSync(file, 'utf8')).toContain('broken: : :');
+	});
+
+	test('404 for an unknown slug', async () => {
+		const headers = new Headers({ 'Content-Type': 'application/json', 'If-Match': '*' });
+		const req = new Request(`http://x/admin/spaces/does-not-exist/api/page/about`, {
+			method: 'PUT',
+			headers,
+			body: JSON.stringify({ body: 'x' })
+		});
+		const ev = {
+			params: { path: 'about', slug: 'does-not-exist' },
+			request: req,
+			locals: { user: { id: 'test-admin', email: 'admin@x', name: 'admin' } }
+		} as unknown as Parameters<RequestHandler>[0];
+		try {
+			await PUT(ev);
+			expect.unreachable('should have thrown 404');
+		} catch (e) {
+			expect((e as { status: number }).status).toBe(404);
+		}
 	});
 });

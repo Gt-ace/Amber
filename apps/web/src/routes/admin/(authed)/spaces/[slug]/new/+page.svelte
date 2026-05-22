@@ -8,7 +8,9 @@
 	<title>New page — Amber admin</title>
 </svelte:head>
 
-<p><a href={resolve('/admin')}>← All pages</a></p>
+<p>
+	<a href={resolve(`/admin/spaces/${data.slug}` as '/admin/spaces/[slug]')}>← All pages</a>
+</p>
 <h1>New page</h1>
 
 {#if form?.error}
