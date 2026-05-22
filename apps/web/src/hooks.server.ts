@@ -42,12 +42,13 @@ function adminHostFromPublicUrl(): string {
 // Spike-stage index: degenerate single-space, no host, no prefix, the lone
 // space is the default. Subsystem 3 step 4 replaces this with a real builder
 // that reads the registry + space.toml routing fields.
-const _spike_space = getSpace();
+// TODO(v0.5 subsystem 3, Task 6): replace with buildResolverIndex(registry)
+const bootSpace = getSpace();
 const resolverIndex: ResolverIndex<Space> = {
 	adminHost: adminHostFromPublicUrl(),
 	byHost: new Map(),
 	prefixes: [],
-	default: _spike_space
+	default: bootSpace
 };
 
 // Build the auth instance and run better-auth's migrations on first request.
@@ -82,29 +83,31 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	log.info({ method, path }, 'request start');
 
-	const decision = resolveRoute(
-		resolverIndex,
-		event.url.host,
-		event.url.pathname,
-		event.url.search
-	);
-
-	if (decision.kind === 'admin-elsewhere') {
-		log.info({ host: event.url.host, path: event.url.pathname }, 'admin-elsewhere → redirect');
-		return Response.redirect(decision.redirectTo, 302);
-	}
-	if (decision.kind === 'not-found') {
-		log.info({ host: event.url.host, path: event.url.pathname }, 'no space matched');
-		return new Response('Not Found', { status: 404 });
-	}
-	if (decision.kind === 'space') {
-		event.locals.space = decision.space;
-		event.locals.mountPath = decision.mountPath;
-	}
-	// kind === 'admin' falls through to the regular handler.
-
 	let status = 500;
 	try {
+		const decision = resolveRoute(
+			resolverIndex,
+			event.url.host,
+			event.url.pathname,
+			event.url.search
+		);
+
+		if (decision.kind === 'admin-elsewhere') {
+			log.info({ host: event.url.host, path: event.url.pathname }, 'admin-elsewhere → redirect');
+			status = 302;
+			return Response.redirect(decision.redirectTo, 302);
+		}
+		if (decision.kind === 'not-found') {
+			log.info({ host: event.url.host, path: event.url.pathname }, 'no space matched');
+			status = 404;
+			return new Response('Not Found', { status: 404 });
+		}
+		if (decision.kind === 'space') {
+			event.locals.space = decision.space;
+			event.locals.mountPath = decision.mountPath;
+		}
+		// kind === 'admin' falls through to the regular handler.
+
 		try {
 			const result = await (await auth()).api.getSession({ headers: event.request.headers });
 			if (result?.user) {

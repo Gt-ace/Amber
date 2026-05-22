@@ -126,18 +126,19 @@ describe('resolve()', () => {
 		);
 	});
 
-	test('single-space-mode degenerate index: default-only, any host → default', () => {
+	test('single-space-mode degenerate index: default-only, non-admin paths fall through to lone space', () => {
 		const d: FakeSpace = { id: 'only' };
 		const idx = index({ default: d });
 		for (const host of ['admin.example.com', 'random.example.com', '127.0.0.1']) {
 			const r = resolve(idx, host, '/foo');
-			// /admin still short-circuits even when there's a default; that's the
-			// spec — admin always wins on the admin host.
-			if (host === 'admin.example.com') {
-				expect(r.kind).toBe('space'); // /foo is not /admin
-			} else {
-				expect(r.kind).toBe('space');
-			}
+			expect(r.kind).toBe('space');
+			if (r.kind === 'space') expect(r.space.id).toBe('only');
 		}
+	});
+
+	test('single-space-mode degenerate index: /admin on the admin host still short-circuits', () => {
+		const d: FakeSpace = { id: 'only' };
+		const r = resolve(index({ default: d }), 'admin.example.com', '/admin');
+		expect(r.kind).toBe('admin');
 	});
 });

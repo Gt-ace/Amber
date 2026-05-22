@@ -14,7 +14,7 @@ declare global {
 			session: { id: string; userId: string; expiresAt: Date } | null;
 			/** Resolved space for the current request, or null on admin/auth paths. */
 			space: import('$lib/space/space').Space | null;
-			/** Pathname after stripping the space's mount prefix; null on admin/auth. */
+			/** Pathname after stripping the space's mount prefix; null unless event.locals.space is set. */
 			mountPath: string | null;
 		}
 		// interface PageData {}

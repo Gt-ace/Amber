@@ -11,6 +11,8 @@
  * `Space` member; it only carries the value through.
  */
 
+// Admin and auth endpoints are host-locked to AMBER_PUBLIC_URL so better-auth's
+// session cookie + OAuth callback round-trip on one host (spec §3 step 1).
 const ADMIN_PATH_RE = /^\/admin(?:\/|$)/;
 const AUTH_PATH_RE = /^\/api\/auth(?:\/|$)/;
 
