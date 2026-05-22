@@ -132,4 +132,20 @@ describe('/admin/setup action', () => {
 		expect(r.status).toBe(409);
 		expect(r.data.error).toMatch(/already complete/i);
 	});
+
+	test('sets isInstallAdmin = 1 on the created user row', async () => {
+		await Promise.resolve(
+			actions.default!(
+				formEvent({ email: 'first@x.test', password: 'password123', name: 'First' })
+			)
+		).catch((e: unknown) => {
+			if ((e as { status?: number }).status !== 302) throw e;
+		});
+
+		const { getAuthDb } = await import('$lib/server/auth-config');
+		const row = getAuthDb()
+			.query('SELECT isInstallAdmin FROM user WHERE email = ?')
+			.get('first@x.test') as { isInstallAdmin: number } | undefined;
+		expect(row?.isInstallAdmin).toBe(1);
+	});
 });

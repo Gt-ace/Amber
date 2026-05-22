@@ -18,6 +18,7 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getAuth, resolveGoogleEnv } from '$lib/server/auth-config';
 import { adminCount } from '$lib/server/auth-queries';
+import { markInstallAdmin } from '$lib/server/permissions';
 import { APIError } from 'better-auth/api';
 
 export const load: PageServerLoad = async () => {
@@ -63,6 +64,11 @@ export const actions: Actions = {
 			}
 			throw e;
 		}
+		// Spec §3, §5.1: the row created by the setup action is the install-
+		// admin row. Set the flag exactly here; subsystem 4's user-create hook
+		// (extended in Task 15) leaves `isInstallAdmin` at its default 0 for
+		// every subsequent (invite-redemption) creation.
+		markInstallAdmin(email);
 		redirect(302, '/admin');
 	}
 };

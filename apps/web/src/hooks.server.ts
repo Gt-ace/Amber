@@ -265,6 +265,24 @@ export const handle: Handle = async ({ event, resolve }) => {
 					userId: result.session.userId,
 					expiresAt: new Date(result.session.expiresAt)
 				};
+				// Spec §3 / §5.1 — Google bootstrap path safety net. If the first-
+				// ever sign-in lands here without `isInstallAdmin` set (the setup
+				// action's explicit call is the happy path; the Google callback
+				// route doesn't run our setup action), and this is the only user
+				// row, treat it as the install-admin claim and set the flag.
+				// Idempotent — subsequent requests find the flag already set.
+				if (!event.locals.user.isInstallAdmin) {
+					const db = getAuthDb();
+					const count = (
+						db.query('SELECT COUNT(*) AS n FROM user').get() as { n: number }
+					).n;
+					if (count === 1) {
+						db.run('UPDATE user SET isInstallAdmin = 1 WHERE id = ?', [
+							event.locals.user.id
+						]);
+						event.locals.user.isInstallAdmin = true;
+					}
+				}
 			}
 		} catch (e) {
 			// A bad/expired cookie just means "no session"; the better-auth
