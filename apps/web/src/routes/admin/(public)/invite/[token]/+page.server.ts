@@ -168,5 +168,85 @@ export const actions: Actions = {
 		);
 
 		redirect(302, `/admin/spaces/${row.space_slug}`);
+	},
+
+	redeemAsCurrent: async (event) => {
+		if (!event.locals.user) {
+			return fail(401, { redeem: { ok: false as const, error: 'Sign in first.' } });
+		}
+		if (event.locals.user.isInstallAdmin) {
+			return fail(400, {
+				redeem: {
+					ok: false as const,
+					error:
+						'You are the install-admin and already have access. Use "Revoke this invite" to clean up.'
+				}
+			});
+		}
+
+		const db = getAuthDb();
+		const row = loadValidByTokenHash(db, hashToken(event.params.token));
+		if (!row) {
+			return fail(410, { redeem: { ok: false as const, error: 'This invite is no longer valid.' } });
+		}
+
+		// Already-member: refuse to consume the invite.
+		const existing = db
+			.query('SELECT role FROM member WHERE user_id = ?1 AND space_slug = ?2')
+			.get(event.locals.user.id, row.space_slug) as { role: string } | undefined;
+		if (existing) {
+			return fail(409, {
+				redeem: {
+					ok: false as const,
+					error: `You already have ${existing.role} access to this space.`
+				}
+			});
+		}
+
+		const userId = event.locals.user.id;
+		let raced = false;
+		try {
+			db.transaction(() => {
+				const fresh = db
+					.query('SELECT redeemed_at, expires_at FROM invite WHERE id = ?1')
+					.get(row.id) as { redeemed_at: number | null; expires_at: number } | undefined;
+				if (!fresh || fresh.redeemed_at != null || fresh.expires_at < Date.now()) {
+					raced = true;
+					throw new Error('invite_raced');
+				}
+				upsertMember(userId, row.space_slug, row.role, row.created_by);
+				markRedeemed(db, { id: row.id, userId });
+			})();
+		} catch (e) {
+			if (raced) {
+				return fail(410, { redeem: { ok: false as const, error: 'This invite is no longer valid.' } });
+			}
+			throw e;
+		}
+
+		log.info(
+			{ code: 'invite_redeemed', inviteId: row.id, userId, slug: row.space_slug, role: row.role },
+			'invite redeemed (existing user)'
+		);
+		log.info(
+			{ code: 'member_added', actorId: row.created_by, userId, slug: row.space_slug, role: row.role, via: 'invite' },
+			'member added via invite'
+		);
+		redirect(302, `/admin/spaces/${row.space_slug}`);
+	},
+
+	revokeIfAdmin: async (event) => {
+		if (!event.locals.user?.isInstallAdmin) {
+			return fail(403, { revoke: { ok: false as const, error: 'Install-admin only.' } });
+		}
+		const db = getAuthDb();
+		const row = lookupByTokenHash(db, hashToken(event.params.token));
+		if (!row) return fail(404, { revoke: { ok: false as const, error: 'Unknown invite.' } });
+		db.run('DELETE FROM invite WHERE id = ?1 AND redeemed_at IS NULL', [row.id]);
+		log.info(
+			{ code: 'invite_revoked', actorId: event.locals.user.id, inviteId: row.id, slug: row.space_slug },
+			'invite revoked by install-admin from redemption page'
+		);
+		return { revoke: { ok: true as const } };
 	}
 };

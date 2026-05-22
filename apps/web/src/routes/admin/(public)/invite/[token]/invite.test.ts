@@ -207,3 +207,90 @@ describe('redeemAsNew', () => {
 		expect((r as { status: number }).status).toBe(400);
 	});
 });
+
+function actionEventWithUser(
+	token: string,
+	user: { id: string; email: string; isInstallAdmin: boolean },
+	fields: Record<string, string> = {}
+) {
+	const fd = new FormData();
+	for (const [k, v] of Object.entries(fields)) fd.set(k, v);
+	return {
+		params: { token },
+		locals: { user, access: null, role: null },
+		request: { formData: async () => fd, headers: new Headers() },
+		setHeaders: () => {},
+		url: new URL(`https://amber.test/admin/invite/${token}`)
+	} as unknown as Parameters<
+		NonNullable<typeof import('./+page.server.ts').actions.redeemAsCurrent>
+	>[0];
+}
+
+describe('redeemAsCurrent', () => {
+	test('signed-in non-member: inserts member + redeems invite', async () => {
+		const token = await freshInvite('editor');
+		const db = getAuthDb();
+		db.run(
+			"INSERT INTO user (id, email, name, emailVerified, createdAt, updatedAt, isInstallAdmin) VALUES ('u-1', 'u@x.test', 'U', 1, ?1, ?1, 0)",
+			[Date.now()]
+		);
+		const { actions } = await import('./+page.server.ts');
+		await Promise.resolve(
+			actions.redeemAsCurrent!(
+				actionEventWithUser(token, { id: 'u-1', email: 'u@x.test', isInstallAdmin: false })
+			)
+		).catch((e: unknown) => {
+			if ((e as { status?: number }).status !== 302) throw e;
+		});
+		const m = db.query('SELECT role FROM member WHERE user_id = ?1').get('u-1');
+		expect((m as { role: string }).role).toBe('editor');
+	});
+
+	test('signed-in already-member: 409, no double-membership', async () => {
+		const token = await freshInvite('editor');
+		const db = getAuthDb();
+		db.run(
+			"INSERT INTO user (id, email, name, emailVerified, createdAt, updatedAt, isInstallAdmin) VALUES ('u-1', 'u@x.test', 'U', 1, ?1, ?1, 0)",
+			[Date.now()]
+		);
+		db.run(
+			"INSERT INTO member (id, user_id, space_slug, role, created_at, created_by) VALUES ('m-1', 'u-1', ?1, 'editor', ?2, 'admin')",
+			[slug, Date.now()]
+		);
+		const { actions } = await import('./+page.server.ts');
+		const r = await actions.redeemAsCurrent!(
+			actionEventWithUser(token, { id: 'u-1', email: 'u@x.test', isInstallAdmin: false })
+		);
+		expect((r as { status: number }).status).toBe(409);
+	});
+
+	test('install-admin: refuses (no-op)', async () => {
+		const token = await freshInvite();
+		const { actions } = await import('./+page.server.ts');
+		const r = await actions.redeemAsCurrent!(
+			actionEventWithUser(token, { id: 'admin-1', email: 'a@x.test', isInstallAdmin: true })
+		);
+		expect((r as { status: number }).status).toBe(400);
+	});
+});
+
+describe('revokeIfAdmin', () => {
+	test('install-admin can revoke from the redemption page', async () => {
+		const token = await freshInvite();
+		const { actions } = await import('./+page.server.ts');
+		await actions.revokeIfAdmin!(
+			actionEventWithUser(token, { id: 'admin-1', email: 'a@x.test', isInstallAdmin: true })
+		);
+		const n = getAuthDb().query('SELECT COUNT(*) AS n FROM invite').get() as { n: number };
+		expect(n.n).toBe(0);
+	});
+
+	test('non-admin: 403', async () => {
+		const token = await freshInvite();
+		const { actions } = await import('./+page.server.ts');
+		const r = await actions.revokeIfAdmin!(
+			actionEventWithUser(token, { id: 'u-1', email: 'u@x.test', isInstallAdmin: false })
+		);
+		expect((r as { status: number }).status).toBe(403);
+	});
+});
