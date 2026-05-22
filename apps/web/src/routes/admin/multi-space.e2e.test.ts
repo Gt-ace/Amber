@@ -161,4 +161,26 @@ describe('multi-space routing smoke (AMBER_E2E)', () => {
 		expect([302, 303]).toContain(r.status);
 		expect(r.headers.get('location') ?? '').toMatch(/\/admin\/(setup|login)/);
 	}, 30_000);
+
+	test('prefix-mode: GET /scratch/notes serves the prefix-owning space (not default)', async () => {
+		// Unclaimed host so the host-byHost branch misses; the prefix must
+		// win over the default fallback for paths under /scratch.
+		const r = await fetch(base + '/scratch/notes', {
+			headers: forwardedHeaders(RANDOM_HOST)
+		});
+		expect(r.status).toBe(200);
+		const body = await r.text();
+		expect(body).toContain('Scratch notes page.');
+		expect(body).not.toContain('Default home');
+	}, 30_000);
+
+	test('prefix-mode: GET /scratch (exact) serves the prefix-owning index', async () => {
+		const r = await fetch(base + '/scratch', {
+			headers: forwardedHeaders(RANDOM_HOST)
+		});
+		expect(r.status).toBe(200);
+		const body = await r.text();
+		expect(body).toContain('This is the scratch space.');
+		expect(body).not.toContain('Default home');
+	}, 30_000);
 });

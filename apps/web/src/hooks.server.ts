@@ -172,6 +172,17 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	let status = 500;
 	try {
+		// Two-URL contract with SvelteKit's `reroute` hook:
+		//   - `event.url` is the **original** request URL. SvelteKit builds it from
+		//     `request.url` once and never mutates it (see kit/src/runtime/server/
+		//     respond.js: `const url = new URL(request.url)` is what lands on the
+		//     event; reroute is handed a *copy*, and its return value goes into a
+		//     separate `resolved_path` variable used only for route matching).
+		//   - Downstream handlers (`+page.server.ts` params.path, etc.) reflect
+		//     the rerouted/mounted path because the route matcher consumed
+		//     `resolved_path`, not because `event.url` changed.
+		// So the resolver here must run against `event.url` (the original) to
+		// pick the prefix-owning space — exactly what we want.
 		const decision = resolveRoute(
 			resolverIndex,
 			event.url.host,
