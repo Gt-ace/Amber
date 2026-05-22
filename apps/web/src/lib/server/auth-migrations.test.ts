@@ -81,3 +81,51 @@ describe('applyAmberAuthMigrations()', () => {
 		expect(ids).toEqual([...ids].sort());
 	});
 });
+
+describe('migration 0001 — isInstallAdmin', () => {
+	test('adds column with default 0 on a pre-existing user row', () => {
+		const db = new Database(':memory:');
+		db.exec(`
+			CREATE TABLE user (
+				id TEXT PRIMARY KEY,
+				email TEXT NOT NULL UNIQUE,
+				name TEXT,
+				emailVerified INTEGER NOT NULL DEFAULT 0,
+				createdAt INTEGER NOT NULL,
+				updatedAt INTEGER NOT NULL
+			);
+		`);
+		db.run(
+			'INSERT INTO user (id, email, name, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)',
+			['u1', 'a@x.test', 'A', Date.now(), Date.now()]
+		);
+
+		applyAmberAuthMigrations(db);
+
+		const row = db.query('SELECT isInstallAdmin FROM user WHERE id = ?').get('u1') as
+			| { isInstallAdmin: number }
+			| undefined;
+		expect(row?.isInstallAdmin).toBe(0);
+	});
+
+	test('column is queryable on a fresh insert with the flag set', () => {
+		const db = new Database(':memory:');
+		db.exec(`
+			CREATE TABLE user (
+				id TEXT PRIMARY KEY,
+				email TEXT NOT NULL UNIQUE,
+				createdAt INTEGER NOT NULL,
+				updatedAt INTEGER NOT NULL
+			);
+		`);
+		applyAmberAuthMigrations(db);
+		db.run(
+			'INSERT INTO user (id, email, isInstallAdmin, createdAt, updatedAt) VALUES (?, ?, 1, ?, ?)',
+			['u2', 'b@x.test', Date.now(), Date.now()]
+		);
+		const row = db.query('SELECT isInstallAdmin FROM user WHERE id = ?').get('u2') as {
+			isInstallAdmin: number;
+		};
+		expect(row.isInstallAdmin).toBe(1);
+	});
+});
