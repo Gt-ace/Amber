@@ -35,7 +35,7 @@ import type { Space } from '$lib/space/space';
 
 const bootLog = logger.child({ subsystem: 'resolver' });
 
-function adminHostFromPublicUrl(): string {
+function adminOriginFromPublicUrl(): { host: string; scheme: string } {
 	const u = process.env.AMBER_PUBLIC_URL;
 	if (!u) {
 		throw new Error(
@@ -43,11 +43,12 @@ function adminHostFromPublicUrl(): string {
 				'See lib/server/auth-config.ts for the canonical message.'
 		);
 	}
-	return new URL(u).host;
+	const parsed = new URL(u);
+	return { host: parsed.host, scheme: parsed.protocol };
 }
 
 function bootRegistry(): ResolverIndex<Space> {
-	const adminHost = adminHostFromPublicUrl();
+	const { host: adminHost, scheme: adminScheme } = adminOriginFromPublicUrl();
 	const singleEnv = process.env.AMBER_SPACE_PATH;
 	const multiEnv = process.env.AMBER_SPACES_DIR;
 
@@ -87,6 +88,7 @@ function bootRegistry(): ResolverIndex<Space> {
 		);
 		return {
 			adminHost,
+			adminScheme,
 			byHost: new Map(),
 			prefixes: [],
 			default: space
@@ -117,7 +119,7 @@ function bootRegistry(): ResolverIndex<Space> {
 		loaded.push({ slug: entry.slug, space, routing });
 	}
 
-	const { index, warnings: buildWarnings } = buildResolverIndex(loaded, adminHost);
+	const { index, warnings: buildWarnings } = buildResolverIndex(loaded, adminHost, adminScheme);
 	for (const w of buildWarnings) {
 		bootLog.warn({ code: w.code, source: w.source }, w.message);
 	}

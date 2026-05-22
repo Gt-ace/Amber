@@ -19,6 +19,8 @@ const AUTH_PATH_RE = /^\/api\/auth(?:\/|$)/;
 export interface ResolverIndex<S> {
 	/** Host portion of `AMBER_PUBLIC_URL` — the only host where admin/auth lives. */
 	adminHost: string;
+	/** Scheme portion of `AMBER_PUBLIC_URL`, including the trailing colon (e.g. `"https:"`). */
+	adminScheme: string;
 	/** Exact-match host index. */
 	byHost: Map<string, S>;
 	/** Path prefixes, sorted **longest-first** at index-build time. */
@@ -45,7 +47,7 @@ export function resolve<S>(
 		if (host === index.adminHost) return { kind: 'admin' };
 		return {
 			kind: 'admin-elsewhere',
-			redirectTo: `https://${index.adminHost}${pathname}${search}`
+			redirectTo: `${index.adminScheme}//${index.adminHost}${pathname}${search}`
 		};
 	}
 

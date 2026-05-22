@@ -149,8 +149,9 @@ describe('multi-space routing smoke (AMBER_E2E)', () => {
 		});
 		expect(r.status).toBe(302);
 		const loc = r.headers.get('location') ?? '';
-		// Resolver builds the redirect target as `https://${adminHost}${path}${search}`.
-		expect(loc).toBe(`https://${ADMIN_HOST}/admin/spaces?probe=1`);
+		// Resolver builds the redirect target as `${adminScheme}//${adminHost}${path}${search}`,
+		// preserving the scheme of AMBER_PUBLIC_URL (http in this test, https in prod).
+		expect(loc).toBe(`http://${ADMIN_HOST}/admin/spaces?probe=1`);
 	}, 30_000);
 
 	test('/admin on the admin host without a session → /admin/setup or /admin/login', async () => {

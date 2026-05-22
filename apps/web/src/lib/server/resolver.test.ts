@@ -13,6 +13,7 @@ type FakeSpace = { id: string };
 function index(overrides: Partial<ResolverIndex<FakeSpace>> = {}): ResolverIndex<FakeSpace> {
 	return {
 		adminHost: 'admin.example.com',
+		adminScheme: 'https:',
 		byHost: new Map(),
 		prefixes: [],
 		default: null,

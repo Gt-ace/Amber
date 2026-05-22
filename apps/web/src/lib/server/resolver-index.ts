@@ -28,7 +28,8 @@ export interface BuildResult {
 
 export function buildResolverIndex(
 	loaded: LoadedSpace[],
-	adminHost: string
+	adminHost: string,
+	adminScheme: string = 'https:'
 ): BuildResult {
 	const warnings: LoadWarning[] = [];
 	const byHost = new Map<string, Space>();
@@ -88,7 +89,7 @@ export function buildResolverIndex(
 	prefixes.sort((a, b) => b.prefix.length - a.prefix.length);
 
 	return {
-		index: { adminHost, byHost, prefixes, default: defaultSpace },
+		index: { adminHost, adminScheme, byHost, prefixes, default: defaultSpace },
 		warnings
 	};
 }
