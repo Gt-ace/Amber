@@ -138,3 +138,72 @@ describe('invite load — headers', () => {
 		expect(headers.get('Cache-Control')).toBe('no-store');
 	});
 });
+
+function actionEvent(token: string, fields: Record<string, string>) {
+	const fd = new FormData();
+	for (const [k, v] of Object.entries(fields)) fd.set(k, v);
+	return {
+		params: { token },
+		locals: { user: null, access: null, role: null },
+		request: { formData: async () => fd, headers: new Headers() },
+		setHeaders: () => {},
+		url: new URL(`https://amber.test/admin/invite/${token}`)
+	} as unknown as Parameters<
+		NonNullable<typeof import('./+page.server.ts').actions.redeemAsNew>
+	>[0];
+}
+
+describe('redeemAsNew', () => {
+	test('happy path creates user + member + marks invite redeemed', async () => {
+		const token = await freshInvite('editor');
+		const { actions } = await import('./+page.server.ts');
+		await Promise.resolve(
+			actions.redeemAsNew!(
+				actionEvent(token, { email: 'invitee@x.test', password: 'password123', name: 'Invitee' })
+			)
+		).catch((e: unknown) => {
+			if ((e as { status?: number }).status !== 302) throw e;
+		});
+		const db = getAuthDb();
+		const user = db.query("SELECT id FROM user WHERE email = ?1").get('invitee@x.test');
+		expect(user).toBeTruthy();
+		const member = db.query('SELECT role FROM member WHERE space_slug = ?1').get(slug);
+		expect((member as { role: string }).role).toBe('editor');
+		const inv = db.query('SELECT redeemed_at FROM invite').get() as { redeemed_at: number };
+		expect(inv.redeemed_at).toBeGreaterThan(0);
+	});
+
+	test('race: invite redeemed between load and action → 410', async () => {
+		const token = await freshInvite('editor');
+		const { actions } = await import('./+page.server.ts');
+		getAuthDb().run("UPDATE invite SET redeemed_at = ?1, redeemed_by = 'someone'", [Date.now()]);
+		const r = await actions.redeemAsNew!(
+			actionEvent(token, { email: 'r@x.test', password: 'password123', name: 'R' })
+		);
+		expect((r as { status: number }).status).toBe(410);
+	});
+
+	test('existing-email collision → 409 with sign-in-to-claim copy', async () => {
+		await getAuth();
+		const db = getAuthDb();
+		db.run(
+			"INSERT INTO user (id, email, name, emailVerified, createdAt, updatedAt, isInstallAdmin) VALUES ('u-1', 'taken@x.test', 'T', 1, ?1, ?1, 0)",
+			[Date.now()]
+		);
+		const token = await freshInvite();
+		const { actions } = await import('./+page.server.ts');
+		const r = await actions.redeemAsNew!(
+			actionEvent(token, { email: 'taken@x.test', password: 'password123', name: 'T2' })
+		);
+		expect((r as { status: number }).status).toBe(409);
+		const data = (r as { data: { redeem: { error: string } } }).data;
+		expect(data.redeem.error).toMatch(/sign in/i);
+	});
+
+	test('password too short → 400', async () => {
+		const token = await freshInvite();
+		const { actions } = await import('./+page.server.ts');
+		const r = await actions.redeemAsNew!(actionEvent(token, { email: 'a@x.test', password: 'short' }));
+		expect((r as { status: number }).status).toBe(400);
+	});
+});

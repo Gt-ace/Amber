@@ -7,12 +7,15 @@
  * bearer token in the URL doesn't leak via Referer or shared caches.
  */
 
-import { error } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
-import { getAuthDb } from '$lib/server/auth-config';
-import { hashToken, lookupByTokenHash, type InviteRow } from '$lib/server/invites';
-import { getRole } from '$lib/server/permissions';
+import { error, fail, redirect } from '@sveltejs/kit';
+import type { Actions, PageServerLoad } from './$types';
+import { getAuth, getAuthDb } from '$lib/server/auth-config';
+import { hashToken, loadValidByTokenHash, lookupByTokenHash, markRedeemed, type InviteRow } from '$lib/server/invites';
+import { getRole, upsertMember } from '$lib/server/permissions';
 import { getRegistryEntries } from '$lib/server/space';
+import { inviteContext } from '$lib/server/invite-context';
+import { APIError } from 'better-auth/api';
+import { logger } from '$lib/server/logger';
 import path from 'node:path';
 
 interface PublicInvite {
@@ -73,4 +76,97 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
 		email: locals.user.email
 	};
 	return { state };
+};
+
+const log = logger.child({ subsystem: 'permissions' });
+
+export const actions: Actions = {
+	redeemAsNew: async (event) => {
+		const form = await event.request.formData();
+		const email = String(form.get('email') ?? '').trim();
+		const password = String(form.get('password') ?? '');
+		const name = String(form.get('name') ?? '').trim() || email.split('@')[0] || 'user';
+
+		if (!email || !password) {
+			return fail(400, { redeem: { ok: false as const, error: 'Email and password are required.' } });
+		}
+		if (password.length < 8) {
+			return fail(400, { redeem: { ok: false as const, error: 'Password must be at least 8 characters.' } });
+		}
+
+		const db = getAuthDb();
+		const row = loadValidByTokenHash(db, hashToken(event.params.token));
+		if (!row) {
+			return fail(410, { redeem: { ok: false as const, error: 'This invite is no longer valid.' } });
+		}
+
+		const auth = await getAuth();
+		try {
+			await inviteContext.run({ pendingInviteId: row.id }, async () => {
+				await auth.api.signUpEmail({
+					body: { email, password, name },
+					headers: event.request.headers
+				});
+			});
+		} catch (e) {
+			if (e instanceof APIError) {
+				const msg = (e as APIError & { body?: { message?: string } }).body?.message ?? e.message;
+				if (msg.toLowerCase().includes('email')) {
+					return fail(409, {
+						redeem: {
+							ok: false as const,
+							error:
+								'This email already has an account. Sign in to claim this invite instead.'
+						}
+					});
+				}
+				return fail(400, { redeem: { ok: false as const, error: msg } });
+			}
+			throw e;
+		}
+
+		// Re-fetch the freshly-created user id by email and finalize.
+		const user = db.query('SELECT id FROM user WHERE email = ?1').get(email) as
+			| { id: string }
+			| undefined;
+		if (!user) {
+			return fail(500, {
+				redeem: { ok: false as const, error: 'User row not found after sign-up; please try again.' }
+			});
+		}
+
+		// Race re-check + atomic finalization. If the invite was redeemed
+		// or expired between the load above and now, the transaction throws
+		// out of `db.transaction()` and we return 410.
+		let raced = false;
+		try {
+			db.transaction(() => {
+				const fresh = db
+					.query('SELECT redeemed_at, expires_at FROM invite WHERE id = ?1')
+					.get(row.id) as { redeemed_at: number | null; expires_at: number } | undefined;
+				if (!fresh || fresh.redeemed_at != null || fresh.expires_at < Date.now()) {
+					raced = true;
+					throw new Error('invite_raced');
+				}
+				upsertMember(user.id, row.space_slug, row.role, row.created_by);
+				markRedeemed(db, { id: row.id, userId: user.id });
+			})();
+		} catch (e) {
+			if (raced) {
+				return fail(410, { redeem: { ok: false as const, error: 'This invite is no longer valid.' } });
+			}
+			throw e;
+		}
+
+		log.info(
+			{ code: 'invite_redeemed', inviteId: row.id, userId: user.id, slug: row.space_slug, role: row.role },
+			'invite redeemed (new user)'
+		);
+		log.info(
+			{ code: 'member_added', actorId: row.created_by, userId: user.id, slug: row.space_slug, role: row.role, via: 'invite' },
+			'member added via invite'
+		);
+
+		redirect(302, `/admin/spaces/${row.space_slug}`);
+	}
 };
