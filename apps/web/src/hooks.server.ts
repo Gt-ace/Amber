@@ -24,7 +24,8 @@ import { building } from '$app/environment';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { logger } from '$lib/server/logger';
 import { getSpace, getRegistryEntries } from '$lib/server/space';
-import { getAuth } from '$lib/server/auth-config';
+import { getAuth, getAuthDb } from '$lib/server/auth-config';
+import { sweepExpiredInvites, scanOrphans, logOrphans } from '$lib/server/auth-boot';
 import { resolve as resolveRoute, type ResolverIndex } from '$lib/server/resolver';
 import { discoverSpaces } from '$lib/server/spaces-dir';
 import { readSpaceConfig } from '$lib/space/config';
@@ -171,6 +172,21 @@ function auth() {
 	return authPromise;
 }
 
+let bootSweepDone = false;
+async function ensureBootSweeps(): Promise<void> {
+	if (bootSweepDone) return;
+	await auth(); // ensure migrations have run, singleton is built
+	const db = getAuthDb();
+	const removed = sweepExpiredInvites(db);
+	if (removed > 0) {
+		logger.child({ subsystem: 'permissions' }).info({ removed }, 'invite_sweep_completed');
+	}
+	const slugs = new Set(getRegistryEntries().map((e) => path.basename(e.path)));
+	const orphans = scanOrphans(db, slugs);
+	logOrphans(logger.child({ subsystem: 'permissions' }), orphans);
+	bootSweepDone = true;
+}
+
 function newRequestId(): string {
 	return crypto.randomUUID().replace(/-/g, '').slice(0, 8);
 }
@@ -247,6 +263,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 			// handler will clean up downstream.
 			log.debug({ err: (e as Error)?.message }, 'session resolve failed');
 		}
+
+		await ensureBootSweeps();
 
 		const response = await svelteKitHandler({ auth: await auth(), event, resolve, building });
 		status = response.status;

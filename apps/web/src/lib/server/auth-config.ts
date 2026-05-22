@@ -33,6 +33,7 @@ import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { getRequestEvent } from '$app/server';
 import type { Database } from 'bun:sqlite';
 import { authDbPath, openAuthDb } from '$lib/server/auth-db';
+import { applyAmberAuthMigrations } from '$lib/server/auth-migrations';
 
 export interface BuildAuthOptions {
 	dbPath?: string;
@@ -171,6 +172,10 @@ export async function getAuth(): Promise<Auth> {
 	if (!_migrated) {
 		const { runMigrations } = await getMigrations(_singleton.auth.options);
 		await runMigrations();
+		// Amber-side schema (isInstallAdmin column, member, invite). Must run
+		// AFTER better-auth's migrations because migration 0001 ALTERs better-
+		// auth's `user` table.
+		applyAmberAuthMigrations(_singleton.db);
 		_migrated = true;
 	}
 	return _singleton.auth;
