@@ -89,6 +89,10 @@ AMBER_AUTH_SECRET=<a fresh `openssl rand -hex 32`>
 AMBER_PUBLIC_URL=https://your-domain.example
 ```
 
+`AMBER_PUBLIC_URL` should be a bare host with scheme (no port, no path) —
+the host portion is compared against per-space `host` fields in multi-space
+mode, which only accept bare host strings.
+
 Compose reads `.env` automatically. Treat the secret like an SSH key: don't
 commit it, don't reuse it across deployments.
 
