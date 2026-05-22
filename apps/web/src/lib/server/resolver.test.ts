@@ -51,6 +51,7 @@ describe('resolve()', () => {
 		if (r.kind !== 'space') throw new Error('unreachable');
 		expect(r.space.id).toBe('a');
 		expect(r.mountPath).toBe('/about');
+		expect(r.mountPrefix).toBe('');
 	});
 
 	test('prefix match (longest-first) on default host', () => {
@@ -69,6 +70,7 @@ describe('resolve()', () => {
 		if (r.kind !== 'space') throw new Error('unreachable');
 		expect(r.space.id).toBe('scratch-archive');
 		expect(r.mountPath).toBe('/post-1');
+		expect(r.mountPrefix).toBe('/scratch-archive');
 	});
 
 	test('prefix exact match strips to /', () => {
@@ -83,6 +85,15 @@ describe('resolve()', () => {
 		if (r.kind !== 'space') throw new Error('unreachable');
 		expect(r.space.id).toBe('scratch');
 		expect(r.mountPath).toBe('/');
+		expect(r.mountPrefix).toBe('/scratch');
+	});
+
+	test('default-space match exposes empty mountPrefix', () => {
+		const d: FakeSpace = { id: 'default' };
+		const r = resolve(index({ default: d }), 'random.example.com', '/foo');
+		expect(r.kind).toBe('space');
+		if (r.kind !== 'space') throw new Error('unreachable');
+		expect(r.mountPrefix).toBe('');
 	});
 
 	test('unclaimed host + no default → not-found', () => {

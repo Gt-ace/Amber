@@ -16,6 +16,13 @@ declare global {
 			space: import('$lib/space/space').Space | null;
 			/** Pathname after stripping the space's mount prefix; null unless event.locals.space is set. */
 			mountPath: string | null;
+			/**
+			 * The active mount prefix for this request — e.g. `/scratch` for a
+			 * prefix-mounted space, `''` for the default or a host-matched space.
+			 * Null unless `event.locals.space` is set. Consumers prepend this to
+			 * generated URLs so links stay inside the matched space.
+			 */
+			mountPrefix: string | null;
 		}
 		// interface PageData {}
 		// interface PageState {}

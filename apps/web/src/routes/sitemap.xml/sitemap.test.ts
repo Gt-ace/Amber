@@ -62,6 +62,27 @@ describe('buildSitemapXml()', () => {
 		space.close();
 	});
 
+	test('prepends mountPrefix and collapses root URL', () => {
+		const { space } = Space.load(FIXTURE, { cache: false });
+		// Without siteUrl, every URL is the mountPrefix + space-relative
+		// pageUrl, with `/` collapsing into the prefix (no trailing slash).
+		const relative = buildSitemapXml(space.pages.values(), null, '/scratch');
+		expect(relative).toContain('<loc>/scratch</loc>');
+		expect(relative).toContain('<loc>/scratch/about</loc>');
+		expect(relative).not.toContain('<loc>/scratch/</loc>');
+
+		// With siteUrl, the prefix sits between the host and the page URL.
+		const absolute = buildSitemapXml(space.pages.values(), 'https://amber.example', '/scratch');
+		expect(absolute).toContain('<loc>https://amber.example/scratch</loc>');
+		expect(absolute).toContain('<loc>https://amber.example/scratch/about</loc>');
+		expect(absolute).not.toContain('https://amber.example/scratch/</loc>');
+		// And the un-prefixed pre-existing form is gone — links must not silently
+		// route to the default space.
+		expect(absolute).not.toContain('<loc>https://amber.example/about</loc>');
+
+		space.close();
+	});
+
 	test('escapes XML special chars in <loc>', () => {
 		const fakePage = {
 			filePath: '/x',

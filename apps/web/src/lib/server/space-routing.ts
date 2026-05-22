@@ -26,6 +26,22 @@ export interface ParseSpaceRoutingResult {
 const BARE_HOST_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/i;
 const PREFIX_RE = /^\/[A-Za-z0-9._~!$&'()*+,;=:@%-]+(?:\/[A-Za-z0-9._~!$&'()*+,;=:@%-]+)*$/;
 
+// Path segments owned by the install (admin UI, auth, theme assets, the
+// well-known files). A prefix landing on or under any of these would be
+// stripped by the `reroute` hook before SvelteKit could route the request —
+// e.g. `prefix = "/admin"` rewrites `/admin/login` to `/login`, leaving the
+// admin UI unreachable. Recovery would need shell access to edit
+// `space.toml`.
+const RESERVED_PREFIX_ROOTS = ['/admin', '/api', '/themes'];
+const RESERVED_PREFIX_EXACT = ['/sitemap.xml', '/robots.txt', '/favicon.ico'];
+
+function isReservedPrefix(p: string): boolean {
+	for (const root of RESERVED_PREFIX_ROOTS) {
+		if (p === root || p.startsWith(root + '/')) return true;
+	}
+	return RESERVED_PREFIX_EXACT.includes(p);
+}
+
 export function parseSpaceRouting(
 	config: SpaceConfig,
 	slug: string,
@@ -81,6 +97,12 @@ export function parseSpaceRouting(
 			warnings.push({
 				code: 'space_routing_invalid_prefix',
 				message: `space.toml \`prefix\` must be a clean leading-slash path with no trailing slash, query, or fragment; got "${p}"`,
+				source
+			});
+		} else if (isReservedPrefix(p)) {
+			warnings.push({
+				code: 'space_routing_reserved_prefix',
+				message: `space.toml \`prefix = "${p}"\` collides with a reserved install-level path (\`/admin\`, \`/api\`, \`/themes\`, or a well-known file). The reroute hook would strip the prefix off every matching request before SvelteKit routed it, leaving the admin UI unreachable. \`prefix\` dropped.`,
 				source
 			});
 		} else {

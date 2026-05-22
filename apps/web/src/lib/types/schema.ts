@@ -348,6 +348,13 @@ export interface LoadWarning {
 	 *     this warning surfaces the misconfiguration loudly.
 	 *   - `space_routing_invalid_prefix`: `prefix` not starting with `/`,
 	 *     equal to `/`, ending in `/`, or containing `?`/`#`.
+	 *   - `space_routing_reserved_prefix`: `prefix` collides with a reserved
+	 *     install-level path (`/admin`, `/api`, `/themes`, or one of the
+	 *     well-known files). The `reroute` hook would strip the prefix off
+	 *     every `/admin/...` request before SvelteKit routed it, leaving the
+	 *     admin UI unreachable. The prefix is dropped; the space stays in the
+	 *     registry. Mirrors `space_routing_admin_host_collision` on the host
+	 *     side.
 	 *   - `space_routing_invalid_slug`: directory name doesn't satisfy
 	 *     `^[a-z0-9][a-z0-9-]{0,62}$`. Unlike the others, this one drops the
 	 *     space from the registry entirely (no slug → no admin URL → no way
@@ -355,6 +362,10 @@ export interface LoadWarning {
 	 *   - `space_routing_unreachable` (info): a space has no `host`, no
 	 *     `prefix`, and is not `default`. Loaded and listed in the admin
 	 *     picker, but never serves a public request.
+	 *   - `space_dir_stat_failed`: `discoverSpaces` called `statSync` on a
+	 *     spaces-dir entry (broken symlink, permission error, transient I/O)
+	 *     and it threw. The entry is skipped — emit this so the operator can
+	 *     tell silent dirs from dropped ones.
 	 */
 	code:
 		| 'frontmatter_parse_error'
@@ -371,8 +382,10 @@ export interface LoadWarning {
 		| 'space_routing_invalid_host'
 		| 'space_routing_admin_host_collision'
 		| 'space_routing_invalid_prefix'
+		| 'space_routing_reserved_prefix'
 		| 'space_routing_invalid_slug'
-		| 'space_routing_unreachable';
+		| 'space_routing_unreachable'
+		| 'space_dir_stat_failed';
 	message: string;
 	/** Space-relative path or manifest pointer, where applicable. */
 	source?: string;

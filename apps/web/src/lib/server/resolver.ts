@@ -32,7 +32,7 @@ export interface ResolverIndex<S> {
 export type ResolveResult<S> =
 	| { kind: 'admin' }
 	| { kind: 'admin-elsewhere'; redirectTo: string }
-	| { kind: 'space'; space: S; mountPath: string }
+	| { kind: 'space'; space: S; mountPath: string; mountPrefix: string }
 	| { kind: 'not-found' };
 
 export function resolve<S>(
@@ -52,7 +52,8 @@ export function resolve<S>(
 	}
 
 	const hostMatch = index.byHost.get(host);
-	if (hostMatch) return { kind: 'space', space: hostMatch, mountPath: pathname };
+	if (hostMatch)
+		return { kind: 'space', space: hostMatch, mountPath: pathname, mountPrefix: '' };
 
 	if (index.default == null && index.prefixes.length === 0) {
 		return { kind: 'not-found' };
@@ -60,15 +61,16 @@ export function resolve<S>(
 
 	// Longest-first prefix match: `prefixes` is pre-sorted by the index builder.
 	for (const { prefix, space } of index.prefixes) {
-		if (pathname === prefix) return { kind: 'space', space, mountPath: '/' };
+		if (pathname === prefix)
+			return { kind: 'space', space, mountPath: '/', mountPrefix: prefix };
 		if (pathname.startsWith(prefix + '/')) {
 			const mount = pathname.slice(prefix.length);
-			return { kind: 'space', space, mountPath: mount };
+			return { kind: 'space', space, mountPath: mount, mountPrefix: prefix };
 		}
 	}
 
 	if (index.default) {
-		return { kind: 'space', space: index.default, mountPath: pathname };
+		return { kind: 'space', space: index.default, mountPath: pathname, mountPrefix: '' };
 	}
 	return { kind: 'not-found' };
 }

@@ -53,7 +53,17 @@ export function discoverSpaces(spacesDir: string): DiscoveryResult {
 		let s;
 		try {
 			s = statSync(childAbs); // follows symlinks per spec §5.1
-		} catch {
+		} catch (err) {
+			// Broken symlinks, permission errors, transient I/O. Skip the entry
+			// (the rest of the directory still loads) but surface the failure —
+			// silent drops make "where did my space go?" unanswerable.
+			warnings.push({
+				code: 'space_dir_stat_failed',
+				message: `could not stat "${name}" under AMBER_SPACES_DIR; the entry is skipped (${
+					err instanceof Error ? err.message : String(err)
+				})`,
+				source: name
+			});
 			continue;
 		}
 		if (!s.isDirectory()) continue;

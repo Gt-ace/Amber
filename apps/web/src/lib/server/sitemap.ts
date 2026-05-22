@@ -45,14 +45,23 @@ export function readSiteUrlOrWarn(): string | null {
 
 /**
  * Build a sitemap XML document. Pure: takes pages (already-loaded `Page`
- * objects) and a base URL, returns a string. Filters drafts.
+ * objects), an optional base URL, and an optional mount prefix; returns a
+ * string. Filters drafts.
  *
  * - `siteUrl` should already be sanitized (no trailing slash). When `null`,
  *   `<loc>` is the page URL alone (e.g. `/about`); when set, it's
  *   `${siteUrl}${page.url}` with the root URL `/` collapsing to `${siteUrl}/`.
+ * - `mountPrefix` is the active mount prefix for prefix-mounted spaces
+ *   (e.g. `/scratch`); `''` for default and host-matched spaces. Root URL
+ *   collapses into the prefix — `/` under `/scratch` is `/scratch`, not
+ *   `/scratch/`.
  * - `<lastmod>` is the page's mtime as `YYYY-MM-DD`.
  */
-export function buildSitemapXml(pages: Iterable<Page>, siteUrl: string | null): string {
+export function buildSitemapXml(
+	pages: Iterable<Page>,
+	siteUrl: string | null,
+	mountPrefix: string = ''
+): string {
 	const lines: string[] = [];
 	lines.push('<?xml version="1.0" encoding="UTF-8"?>');
 	lines.push('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
@@ -60,7 +69,7 @@ export function buildSitemapXml(pages: Iterable<Page>, siteUrl: string | null): 
 	for (const page of pages) {
 		if (page.frontmatter.draft === true) continue;
 
-		const loc = formatLoc(page.url, siteUrl);
+		const loc = formatLoc(page.url, siteUrl, mountPrefix);
 		const lastmod = formatLastmod(page.mtime);
 		lines.push('\t<url>');
 		lines.push(`\t\t<loc>${escapeXml(loc)}</loc>`);
@@ -72,9 +81,15 @@ export function buildSitemapXml(pages: Iterable<Page>, siteUrl: string | null): 
 	return lines.join('\n') + '\n';
 }
 
-function formatLoc(pageUrl: string, siteUrl: string | null): string {
-	if (siteUrl === null) return pageUrl;
-	return siteUrl + pageUrl;
+function formatLoc(pageUrl: string, siteUrl: string | null, mountPrefix: string): string {
+	const effective =
+		mountPrefix === ''
+			? pageUrl
+			: pageUrl === '/'
+				? mountPrefix
+				: mountPrefix + pageUrl;
+	if (siteUrl === null) return effective;
+	return siteUrl + effective;
 }
 
 function formatLastmod(mtimeMs: number): string | null {

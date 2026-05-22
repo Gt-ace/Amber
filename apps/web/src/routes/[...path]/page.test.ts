@@ -51,11 +51,12 @@ afterAll(async () => {
 // tests reach into the process-global singleton to mirror that.
 const stubEvent = (
 	params: Record<string, string>,
-	user: { id: string; email: string; name?: string | null } | null = null
+	user: { id: string; email: string; name?: string | null } | null = null,
+	mountPrefix: string = ''
 ) =>
 	({
 		params,
-		locals: { user, space: testSpace }
+		locals: { user, space: testSpace, mountPrefix }
 	}) as unknown as Parameters<typeof pageLoad>[0];
 
 const stubLayoutEvent = () =>
@@ -106,6 +107,21 @@ describe('catch-all +page.server load', () => {
 		}
 	});
 
+	test('redirect target is remounted under the active prefix', () => {
+		// For a prefix-mounted space, the manifest redirect target stays
+		// space-relative on disk — the handler must prepend the mount prefix
+		// so `/old-portfolio` → `/projects` lands at `/scratch/projects`,
+		// not the default space's `/projects`. v0.5 subsystem 3 followup #10.
+		try {
+			pageLoad(stubEvent({ path: 'old-portfolio' }, null, '/scratch'));
+			throw new Error('expected pageLoad to throw a redirect');
+		} catch (e) {
+			const r = e as { status?: number; location?: string };
+			expect(r.status).toBe(308);
+			expect(r.location).toBe('/scratch/projects');
+		}
+	});
+
 	test('returns bodyHtml rendered through the active theme', () => {
 		const result = pageLoad(stubEvent({ path: 'about' })) as {
 			bodyHtml: string;
@@ -134,17 +150,21 @@ describe('catch-all +page.server load', () => {
 		);
 	});
 
-	test('emits an editHref only when locals.user is set', async () => {
+	test('emits an editHref only when locals.user is set, anchored to the active slug', async () => {
 		const data1 = pageLoad(stubEvent({ path: 'about' }, null)) as { editHref: string | null };
 		expect(data1.editHref).toBeNull();
 
 		const user = { id: 'u1', email: 'a@x' };
 		const data2 = pageLoad(stubEvent({ path: 'about' }, user)) as { editHref: string | null };
-		expect(data2.editHref).toBe('/admin/edit/about');
-		// Root URL: `/` must produce `/admin/edit` (no trailing slash) — the
+		// The link is namespaced under the active space's slug — for the
+		// fixture, the directory basename `example-space`. Without this, a
+		// prefix-mounted space's link would silently land in the default space
+		// (the v0.5 subsystem 3 followup #5 regression).
+		expect(data2.editHref).toBe('/admin/spaces/example-space/edit/about');
+		// Root URL: `/` must produce `…/edit` (no trailing slash) — the
 		// invariant the editor's `[...path]` resolver relies on.
 		const data3 = pageLoad(stubEvent({ path: '' }, user)) as { editHref: string | null };
-		expect(data3.editHref).toBe('/admin/edit');
+		expect(data3.editHref).toBe('/admin/spaces/example-space/edit');
 	});
 });
 

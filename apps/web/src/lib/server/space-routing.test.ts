@@ -91,6 +91,30 @@ describe('parseSpaceRouting()', () => {
 		expect(r.warnings).toEqual([]);
 	});
 
+	test.each([
+		'/admin',
+		'/admin/elsewhere',
+		'/api',
+		'/api/auth',
+		'/themes',
+		'/themes/foo',
+		'/sitemap.xml',
+		'/robots.txt',
+		'/favicon.ico'
+	])('reserved prefix %s → reserved_prefix, dropped', (p) => {
+		const r = parseSpaceRouting({ prefix: p }, 'site', ADMIN);
+		expect(r.routing.prefix).toBeNull();
+		expect(r.warnings.map((w) => w.code)).toContain('space_routing_reserved_prefix');
+	});
+
+	test('prefix that only shares a name root with a reserved path is fine', () => {
+		// `/adminstrative` does not start with `/admin/` and is not equal to
+		// `/admin`, so it should be kept.
+		const r = parseSpaceRouting({ prefix: '/adminstrative' }, 'site', ADMIN);
+		expect(r.routing.prefix).toBe('/adminstrative');
+		expect(r.warnings).toEqual([]);
+	});
+
 	test('default = true alone → kept, no warning', () => {
 		const r = parseSpaceRouting({ default: true }, 'site', ADMIN);
 		expect(r.routing.default).toBe(true);
