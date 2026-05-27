@@ -8,13 +8,18 @@
 
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { requireSpaceAccess, listMembers, removeMember, upsertMember } from '$lib/server/permissions';
+import {
+	requireSpaceAccess,
+	listMembers,
+	removeMember,
+	upsertMember,
+	type SpaceRole
+} from '$lib/server/permissions';
 import {
 	insertInvite,
 	listPendingForSpace,
 	revokeInvite,
-	lookupById,
-	type InviteRole
+	lookupById
 } from '$lib/server/invites';
 import { getAuthDb } from '$lib/server/auth-config';
 import { logger } from '$lib/server/logger';
@@ -36,7 +41,7 @@ export const actions: Actions = {
 	generateInvite: async (event) => {
 		requireSpaceAccess(event, event.params.slug, 'owner');
 		const form = await event.request.formData();
-		const role = String(form.get('role') ?? '') as InviteRole;
+		const role = String(form.get('role') ?? '') as SpaceRole;
 		if (role !== 'owner' && role !== 'editor') {
 			return fail(400, { generate: { ok: false as const, error: 'Pick a role.' } });
 		}
@@ -76,7 +81,7 @@ export const actions: Actions = {
 		requireSpaceAccess(event, event.params.slug, 'owner');
 		const form = await event.request.formData();
 		const userId = String(form.get('userId') ?? '');
-		const role = String(form.get('role') ?? '') as InviteRole;
+		const role = String(form.get('role') ?? '') as SpaceRole;
 		if (!userId || (role !== 'owner' && role !== 'editor')) {
 			return fail(400, { change: { ok: false as const, error: 'Missing fields.' } });
 		}

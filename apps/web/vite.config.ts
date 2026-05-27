@@ -31,7 +31,15 @@ export default defineConfig({
 					include: ['src/**/*.{test,spec}.{js,ts}', 'bin/**/*.{test,spec}.{js,ts}'],
 					// `.svelte.test.ts` are component tests (none yet); `.e2e.test.ts`
 					// is the opt-in browser smoke (its own project, below).
-					exclude: ['src/**/*.svelte.{test,spec}.{js,ts}', 'src/**/*.e2e.{test,spec}.{js,ts}']
+					exclude: ['src/**/*.svelte.{test,spec}.{js,ts}', 'src/**/*.e2e.{test,spec}.{js,ts}'],
+					// Process-isolate workers. The `getSpace()` registry and the
+					// better-auth singleton in `$lib/server/auth-config` are
+					// module-level state; under the default threads pool they
+					// leak across test files in the same worker and race on
+					// shared `bun:sqlite` handles in temp dirs. Forks give each
+					// worker its own process so the singletons reset cleanly
+					// per file.
+					pool: 'forks'
 				}
 			},
 			{

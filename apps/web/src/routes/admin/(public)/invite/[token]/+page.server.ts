@@ -11,7 +11,7 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getAuth, getAuthDb, resolveGoogleEnv } from '$lib/server/auth-config';
 import { hashToken, loadValidByTokenHash, lookupById, lookupByTokenHash, markRedeemed, type InviteRow } from '$lib/server/invites';
-import { getRole, upsertMember } from '$lib/server/permissions';
+import { getRole, upsertMember, type SpaceRole } from '$lib/server/permissions';
 import { getRegistryEntries } from '$lib/server/space';
 import { inviteContext } from '$lib/server/invite-context';
 import { signInviteState, verifyInviteState } from '$lib/server/google-invite-state';
@@ -22,7 +22,7 @@ import path from 'node:path';
 interface PublicInvite {
 	id: string;
 	slug: string;
-	role: 'owner' | 'editor';
+	role: SpaceRole;
 	spaceTitle: string | null;
 	expiresAt: number;
 }
@@ -30,7 +30,7 @@ interface PublicInvite {
 type LoadState =
 	| { kind: 'signed-out'; invite: PublicInvite }
 	| { kind: 'install-admin'; invite: PublicInvite }
-	| { kind: 'already-member'; invite: PublicInvite; currentRole: 'owner' | 'editor' }
+	| { kind: 'already-member'; invite: PublicInvite; currentRole: SpaceRole }
 	| { kind: 'accept-as-current'; invite: PublicInvite; email: string };
 
 function shape(row: InviteRow): PublicInvite {

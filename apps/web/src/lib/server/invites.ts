@@ -9,14 +9,13 @@
 
 import { createHash, randomBytes } from 'node:crypto';
 import type { Database } from 'bun:sqlite';
-
-export type InviteRole = 'owner' | 'editor';
+import type { SpaceRole } from '$lib/server/permissions';
 
 export interface InviteRow {
 	id: string;
 	token_hash: string;
 	space_slug: string;
-	role: InviteRole;
+	role: SpaceRole;
 	expires_at: number;
 	created_at: number;
 	created_by: string;
@@ -42,7 +41,7 @@ function newInviteId(): string {
 
 export function insertInvite(
 	db: Database,
-	args: { spaceSlug: string; role: InviteRole; createdBy: string }
+	args: { spaceSlug: string; role: SpaceRole; createdBy: string }
 ): { id: string; token: string; expiresAt: number } {
 	const token = generateInviteToken();
 	const id = newInviteId();
