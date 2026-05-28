@@ -61,14 +61,14 @@ describe('getDiscoveryMode()', () => {
 		delete process.env.AMBER_SPACE_PATH;
 		delete process.env.AMBER_SPACES_DIR;
 		const { getDiscoveryMode } = await import('./space');
-		expect(() => getDiscoveryMode()).toThrow();
+		expect(() => getDiscoveryMode()).toThrow(/neither AMBER_SPACE_PATH nor AMBER_SPACES_DIR is set/);
 	});
 
 	test('throws if both are set', async () => {
 		process.env.AMBER_SPACE_PATH = '/tmp/a';
 		process.env.AMBER_SPACES_DIR = '/tmp/b';
 		const { getDiscoveryMode } = await import('./space');
-		expect(() => getDiscoveryMode()).toThrow();
+		expect(() => getDiscoveryMode()).toThrow(/both AMBER_SPACE_PATH and AMBER_SPACES_DIR are set/);
 	});
 });
 
