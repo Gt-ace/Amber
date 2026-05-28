@@ -159,6 +159,12 @@ export function validateCreateInput(
 		}
 	}
 
+	// `routing === null` with no errors can only happen if `raw.routingKind`
+	// arrives outside the `RoutingKind` union at runtime (tampered POST,
+	// future refactor leaving a stale value). The route action narrows the
+	// formData value to `RoutingKind` before calling us; this guard is
+	// defense-in-depth so a slipped boundary surfaces as `valid: null`
+	// rather than silently building a `Routing` from missing data.
 	if (errors.length > 0 || routing === null) {
 		return { valid: null, errors };
 	}

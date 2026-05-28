@@ -147,6 +147,14 @@ describe('validateCreateInput', () => {
 		expect(r.errors).toContainEqual({ field: 'prefix', code: 'prefix_reserved' });
 	});
 
+	test('prefix_reserved: /sitemap.xml (exact-match path)', () => {
+		const r = validateCreateInput(
+			{ title: 'X', slug: 'x', routingKind: 'prefix', host: '', prefix: '/sitemap.xml' },
+			snapshot()
+		);
+		expect(r.errors).toContainEqual({ field: 'prefix', code: 'prefix_reserved' });
+	});
+
 	test('prefix_taken', () => {
 		const r = validateCreateInput(
 			{ title: 'X', slug: 'x', routingKind: 'prefix', host: '', prefix: '/notes' },
