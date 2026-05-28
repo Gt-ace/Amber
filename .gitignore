@@ -6,6 +6,7 @@ data/
 docs/prompt.md
 docs/current-state.md
 docs/superpowers/
+.superpowers/
 spaces/*/.amber/
 apps/web/fixtures/**/.amber/
 notes.md
