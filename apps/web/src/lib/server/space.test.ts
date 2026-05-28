@@ -38,6 +38,40 @@ afterEach(async () => {
 	}
 });
 
+describe('getDiscoveryMode()', () => {
+	afterEach(() => {
+		delete process.env.AMBER_SPACES_DIR;
+	});
+
+	test('returns single-space when AMBER_SPACE_PATH is set', async () => {
+		process.env.AMBER_SPACE_PATH = '/tmp/whatever';
+		delete process.env.AMBER_SPACES_DIR;
+		const { getDiscoveryMode } = await import('./space');
+		expect(getDiscoveryMode()).toBe('single-space');
+	});
+
+	test('returns multi-space when AMBER_SPACES_DIR is set', async () => {
+		delete process.env.AMBER_SPACE_PATH;
+		process.env.AMBER_SPACES_DIR = '/tmp/whatever';
+		const { getDiscoveryMode } = await import('./space');
+		expect(getDiscoveryMode()).toBe('multi-space');
+	});
+
+	test('throws if neither is set', async () => {
+		delete process.env.AMBER_SPACE_PATH;
+		delete process.env.AMBER_SPACES_DIR;
+		const { getDiscoveryMode } = await import('./space');
+		expect(() => getDiscoveryMode()).toThrow();
+	});
+
+	test('throws if both are set', async () => {
+		process.env.AMBER_SPACE_PATH = '/tmp/a';
+		process.env.AMBER_SPACES_DIR = '/tmp/b';
+		const { getDiscoveryMode } = await import('./space');
+		expect(() => getDiscoveryMode()).toThrow();
+	});
+});
+
 describe('getSpace() registry', () => {
 	test('zero-arg form: two calls return the same Space instance', () => {
 		process.env.AMBER_SPACE_PATH = EXAMPLE;

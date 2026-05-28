@@ -132,3 +132,29 @@ export async function __resetRegistryForTests(): Promise<void> {
 	}
 	registry.clear();
 }
+
+/**
+ * Which discovery mode the runtime is in. Mirrors the mutual-exclusion
+ * check in `hooks.server.ts:bootRegistry()` — exactly one of
+ * AMBER_SPACE_PATH (single-space, v0.4 default) or AMBER_SPACES_DIR
+ * (multi-space, v0.5 subsystem 3) must be set. Boot already throws if
+ * the env is misconfigured, so a misconfigured runtime can never reach
+ * a request handler that calls this. The duplicate check here is
+ * defensive — anything calling this from test setup gets the same
+ * shape of error rather than a silent default.
+ *
+ * Consumed by v0.5 subsystem 5's `/admin/new-space` (404s in
+ * single-space mode) and the picker chrome (hides the New space
+ * affordance in single-space mode).
+ */
+export function getDiscoveryMode(): 'single-space' | 'multi-space' {
+	const single = !!process.env.AMBER_SPACE_PATH;
+	const multi = !!process.env.AMBER_SPACES_DIR;
+	if (single && multi) {
+		throw new Error('both AMBER_SPACE_PATH and AMBER_SPACES_DIR are set');
+	}
+	if (!single && !multi) {
+		throw new Error('neither AMBER_SPACE_PATH nor AMBER_SPACES_DIR is set');
+	}
+	return single ? 'single-space' : 'multi-space';
+}
