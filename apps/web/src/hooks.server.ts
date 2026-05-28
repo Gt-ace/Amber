@@ -141,8 +141,9 @@ function bootRegistry(): ResolverIndex<Space> {
 	return index;
 }
 
-setResolverIndex(bootRegistry());
-setReroutePrefixes(getResolverIndex().prefixes.map((p) => p.prefix));
+const bootIndex = bootRegistry();
+setResolverIndex(bootIndex);
+setReroutePrefixes(bootIndex.prefixes.map((p) => p.prefix));
 // The v0.4-compat admin shims (`/admin/edit`, `/admin/new`,
 // `/admin/api/page`) redirect to a default space. Compute that slug here so
 // the shims pick the `routing.default` space (not whichever sorts first).
