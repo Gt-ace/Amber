@@ -33,6 +33,7 @@ import { parseSpaceRouting } from '$lib/server/space-routing';
 import { buildResolverIndex, type LoadedSpace } from '$lib/server/resolver-index';
 import { setReroutePrefixes } from '$lib/reroute-prefixes';
 import { setDefaultSlug } from '$lib/server/default-space';
+import { setResolverIndex, getResolverIndex } from '$lib/server/resolver-index-holder';
 import path from 'node:path';
 import type { Space } from '$lib/space/space';
 
@@ -140,8 +141,8 @@ function bootRegistry(): ResolverIndex<Space> {
 	return index;
 }
 
-const resolverIndex = bootRegistry();
-setReroutePrefixes(resolverIndex.prefixes.map((p) => p.prefix));
+setResolverIndex(bootRegistry());
+setReroutePrefixes(getResolverIndex().prefixes.map((p) => p.prefix));
 // The v0.4-compat admin shims (`/admin/edit`, `/admin/new`,
 // `/admin/api/page`) redirect to a default space. Compute that slug here so
 // the shims pick the `routing.default` space (not whichever sorts first).
@@ -150,9 +151,10 @@ setReroutePrefixes(resolverIndex.prefixes.map((p) => p.prefix));
 function computeDefaultSlug(): string | null {
 	const entries = getRegistryEntries();
 	if (entries.length === 0) return null;
-	if (resolverIndex.default) {
+	const idx = getResolverIndex();
+	if (idx.default) {
 		for (const e of entries) {
-			if (e.space === resolverIndex.default) return path.basename(e.path);
+			if (e.space === idx.default) return path.basename(e.path);
 		}
 	}
 	return path.basename(entries[0].path);
@@ -225,7 +227,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		// So the resolver here must run against `event.url` (the original) to
 		// pick the prefix-owning space — exactly what we want.
 		const decision = resolveRoute(
-			resolverIndex,
+			getResolverIndex(),
 			event.url.host,
 			event.url.pathname,
 			event.url.search
