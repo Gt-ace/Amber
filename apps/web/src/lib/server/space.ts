@@ -33,7 +33,7 @@ import { parseSpaceRouting } from './space-routing';
 import { buildResolverIndex, type LoadedSpace } from './resolver-index';
 import { getResolverIndex, setResolverIndex } from './resolver-index-holder';
 import { setReroutePrefixes } from '$lib/reroute-prefixes';
-import { setDefaultSlug } from './default-space';
+import { setDefaultSlug, computeDefaultSlug } from './default-space';
 
 const log = logger.child({ subsystem: 'server' });
 
@@ -188,7 +188,9 @@ export async function addSpace(absPath: string): Promise<Space> {
 	registerShutdown();
 
 	try {
-		// Rebuild the resolver index from the new full registry.
+		// Compute everything before touching live state. If buildResolverIndex
+		// or the config parsing throws, none of the set* calls have run yet —
+		// the catch only needs to roll back the registry insertion.
 		const idx = getResolverIndex();
 		const adminHost = idx.adminHost;
 		const adminScheme = idx.adminScheme;
@@ -202,26 +204,17 @@ export async function addSpace(absPath: string): Promise<Space> {
 		}
 		const { index: nextIndex } = buildResolverIndex(loaded, adminHost, adminScheme);
 
-		setResolverIndex(nextIndex);
-		setReroutePrefixes(nextIndex.prefixes.map((p) => p.prefix));
-
-		// Re-derive the default-slug (matches hooks.server.ts:computeDefaultSlug).
+		const nextPrefixes = nextIndex.prefixes.map((p) => p.prefix);
 		const entries = [...registry.entries()].map(([p, e]) => ({ path: p, space: e.space }));
-		let defaultSlug: string | null = null;
-		if (nextIndex.default) {
-			for (const e of entries) {
-				if (e.space === nextIndex.default) {
-					defaultSlug = path.basename(e.path);
-					break;
-				}
-			}
-		} else if (entries.length > 0) {
-			defaultSlug = path.basename(entries[0].path);
-		}
+		const defaultSlug = computeDefaultSlug(nextIndex, entries);
+
+		// Tail: apply all three swaps atomically (infallible assignments).
+		setResolverIndex(nextIndex);
+		setReroutePrefixes(nextPrefixes);
 		setDefaultSlug(defaultSlug);
 	} catch (err) {
-		// Index rebuild failure leaves the registry in an inconsistent state.
-		// Roll back the registry insertion so the caller can rm-rf the dir.
+		// buildResolverIndex / config-parsing failure before any live state was
+		// mutated. Roll back the registry insertion so the caller can rm-rf the dir.
 		registry.delete(key);
 		try { await entry.watcher.close(); } catch { /* best-effort */ }
 		entry.space.close();

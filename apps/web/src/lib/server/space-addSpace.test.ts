@@ -4,7 +4,7 @@
  * asserts the swap took effect.
  */
 
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -102,5 +102,38 @@ describe('addSpace()', () => {
 		// First-wins: `one` remains the default. `two` loaded but its
 		// default flag was dropped via the buildResolverIndex warning.
 		expect(getDefaultSlug()).toBe('one');
+	});
+
+	test('rolls back registry, resolver index, reroute-prefixes, and default-slug when buildResolverIndex throws', async () => {
+		// Load a valid space first so the state is non-empty before the throw.
+		const good = writeSpace('existing', { space: 'host = "existing.test"\n' });
+		const resolverMod = await import('./resolver-index');
+		const { addSpace, getRegistryEntries } = await import('./space');
+		const { getResolverIndex } = await import('./resolver-index-holder');
+		const { reroutePrefixes } = await import('$lib/reroute-prefixes');
+		const { getDefaultSlug } = await import('$lib/server/default-space');
+		await addSpace(good);
+
+		// Snapshot state after a successful add.
+		const sizeBefore = getRegistryEntries().length;
+		const hostsBefore = [...getResolverIndex().byHost.keys()];
+		const prefixesBefore = reroutePrefixes();
+		const slugBefore = getDefaultSlug();
+
+		// Now make buildResolverIndex throw for the next call.
+		const spy = vi.spyOn(resolverMod, 'buildResolverIndex').mockImplementationOnce(() => {
+			throw new Error('injected failure');
+		});
+
+		const bad = writeSpace('bad-space', { space: 'host = "bad.test"\n' });
+		await expect(addSpace(bad)).rejects.toThrow('injected failure');
+
+		// All runtime state must be exactly as before the failed add.
+		expect(getRegistryEntries().length).toBe(sizeBefore);
+		expect([...getResolverIndex().byHost.keys()]).toEqual(hostsBefore);
+		expect(reroutePrefixes()).toEqual(prefixesBefore);
+		expect(getDefaultSlug()).toBe(slugBefore);
+
+		spy.mockRestore();
 	});
 });

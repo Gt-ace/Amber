@@ -32,7 +32,7 @@ import { readSpaceConfig } from '$lib/space/config';
 import { parseSpaceRouting } from '$lib/server/space-routing';
 import { buildResolverIndex, type LoadedSpace } from '$lib/server/resolver-index';
 import { setReroutePrefixes } from '$lib/reroute-prefixes';
-import { setDefaultSlug } from '$lib/server/default-space';
+import { setDefaultSlug, computeDefaultSlug } from '$lib/server/default-space';
 import { setResolverIndex, getResolverIndex } from '$lib/server/resolver-index-holder';
 import path from 'node:path';
 import type { Space } from '$lib/space/space';
@@ -145,22 +145,10 @@ const bootIndex = bootRegistry();
 setResolverIndex(bootIndex);
 setReroutePrefixes(bootIndex.prefixes.map((p) => p.prefix));
 // The v0.4-compat admin shims (`/admin/edit`, `/admin/new`,
-// `/admin/api/page`) redirect to a default space. Compute that slug here so
-// the shims pick the `routing.default` space (not whichever sorts first).
-// Falls back to the first registered entry when no default is declared —
-// matches single-space mode and "no default declared in multi-space" alike.
-function computeDefaultSlug(): string | null {
-	const entries = getRegistryEntries();
-	if (entries.length === 0) return null;
-	const idx = getResolverIndex();
-	if (idx.default) {
-		for (const e of entries) {
-			if (e.space === idx.default) return path.basename(e.path);
-		}
-	}
-	return path.basename(entries[0].path);
-}
-setDefaultSlug(computeDefaultSlug());
+// `/admin/api/page`) redirect to a default space. Falls back to the first
+// registered entry when no default is declared — matches single-space mode
+// and "no default declared in multi-space" alike.
+setDefaultSlug(computeDefaultSlug(getResolverIndex(), getRegistryEntries()));
 
 // Build the auth instance and run better-auth's migrations on first request.
 // Doing this lazily (rather than via top-level `await`) avoids a Vite chunk
