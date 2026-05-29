@@ -51,11 +51,13 @@ content on `git pull`.
 from the in-memory nav with a `LoadWarning`. The on-disk `amber.toml` is the
 user's file; we read it, we don't edit it.
 
-> *Authoring-layer revision (v0.5+):* the space-creation and theme-picker
-> subsystems will write `amber.toml`/`space.toml` — but only on explicit
-> user action through the admin UI, never silently, and the result stays
-> hand-editable TOML. This rule is revised *with* those subsystems' code,
-> not before. Until then it holds exactly as written.
+> *Authoring-layer revision (v0.5+):* subsystem 5 (shipped) writes
+> `amber.toml` (and `space.toml` if the operator picks routing at
+> create time) on explicit user action. Subsystem 6 (pending) will
+> write `space.toml` for theme changes. Both write only on explicit
+> user action, never silently; the on-disk result remains hand-
+> editable TOML. This rule was revised *with* subsystem 5's code, in
+> line with the "scope guards" rule above.
 
 **Rendering is not the loader's job.** `Page.body` is raw markdown. HTML
 rendering happens at request time, cached by content hash. The loader
@@ -324,7 +326,9 @@ up from a working content pipeline; the substrate is in place.
      `canEdit()` scopes the public render path's inline edit link. The
      offline `bin/grant-ownership.ts` CLI mirrors `reset-password.ts`
      as the operator escape hatch.
-  5. **Space-creation UI** — writes `amber.toml`.
+  5. **Space-creation UI (shipped)** — writes `amber.toml` and
+     optionally `space.toml` (routing). Hot-adds the new space into the
+     resolver index. Install-admin only; hidden in single-space mode.
   6. **Theme-picker UI** — writes `space.toml`.
 
   Build order is risk-first. Subsystem 1 (the editor) is **spiked before
@@ -355,7 +359,10 @@ no:
   general-purpose framework.)
 - Putting content logic in a `+page.ts` (must be `.server.ts`).
 - Writing through the cache without going through `apply()`.
-- Modifying `amber.toml` from code.
+- Modifying `amber.toml` from code, **except** the space-creation UI
+  (subsystem 5, shipped) and the theme-picker UI (subsystem 6, pending),
+  which write these files only on explicit user action through the
+  admin UI and never silently.
 - Introducing a generic UI component library, an ORM, or a CSS framework.
   (The Milkdown **Crepe** markdown editor is permitted — see "Roadmap
   shape": it is the load-bearing component of v0.5 subsystem 1, proven by
@@ -364,15 +371,15 @@ no:
 - Adding a CI service before there's a release to gate.
 - Designing for future-version features in current code paths.
 
-Two of these guards still sit on the authoring layer's path and will be
-revised as its subsystems land (see "Roadmap shape"): `amber.toml` /
-`space.toml` writes from the space-creation and theme-picker UIs, and a
-UI component library if the editor needs one. The `better-auth`
-dependency was revised with v0.5 subsystem 2's code, in line with this
-section's "the rule gets revised here first, then the change lands" rule.
-The remaining guards hold until the subsystem that revises each one ships
+One of these guards still sits on the authoring layer's path and will
+be revised as its subsystem lands (see "Roadmap shape"): a UI component
+library if the theme picker needs one. The `better-auth` dependency
+was revised with v0.5 subsystem 2's code, in line with this section's
+"the rule gets revised here first, then the change lands" rule.
+Subsystem 5's `amber.toml` / `space.toml` write rule was revised with
+this section above. The remaining guard holds until subsystem 6 ships
 *with* its rule revision — the authoring layer does not get to
-pre-emptively waive them.
+pre-emptively waive it.
 
 If the change is genuinely needed and breaks one of these, the rule gets
 revised here first, then the change lands. Not the other way around.
