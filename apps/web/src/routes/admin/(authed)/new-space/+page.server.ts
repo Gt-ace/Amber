@@ -39,21 +39,22 @@ function gateOrThrow(locals: App.Locals): void {
 function buildSnapshot(): RegistrySnapshot {
 	const idx = getResolverIndex();
 	const entries = getRegistryEntries();
+	// Build a Space → slug lookup once so the per-(host, prefix, default)
+	// reverse lookups don't scan `entries` linearly each time.
+	const spaceToSlug = new Map<unknown, string>(
+		entries.map((e) => [e.space, path.basename(e.path)])
+	);
 	const hosts = new Map<string, string>();
 	for (const [host, space] of idx.byHost) {
-		const entry = entries.find((e) => e.space === space);
-		if (entry) hosts.set(host, path.basename(entry.path));
+		const slug = spaceToSlug.get(space);
+		if (slug) hosts.set(host, slug);
 	}
 	const prefixes = new Map<string, string>();
 	for (const { prefix, space } of idx.prefixes) {
-		const entry = entries.find((e) => e.space === space);
-		if (entry) prefixes.set(prefix, path.basename(entry.path));
+		const slug = spaceToSlug.get(space);
+		if (slug) prefixes.set(prefix, slug);
 	}
-	const defaultOwner = idx.default
-		? path.basename(
-				entries.find((e) => e.space === idx.default)?.path ?? ''
-			) || null
-		: null;
+	const defaultOwner = idx.default ? spaceToSlug.get(idx.default) ?? null : null;
 	// Slugs already on disk under AMBER_SPACES_DIR. Includes spaces that
 	// failed to load (e.g. invalid slug regex) — we don't want to silently
 	// re-mkdir over them.

@@ -99,6 +99,9 @@ describe('/admin/new-space load', () => {
 		const { load } = await import('./+page.server.ts');
 		const data = await load(loadEvent({ id: 'admin', isInstallAdmin: true }));
 		expect(data.discoveryMode).toBe('multi-space');
+		// multi-space-fixture/site-default declares `default = true`, so the
+		// form should see it and disable the "make this the default" option.
+		expect(data.defaultOwner).toBe('site-default');
 	});
 
 	test('non-admin editor: 403', async () => {
