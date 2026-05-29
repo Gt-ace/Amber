@@ -86,7 +86,7 @@
 			bind:value={slug}
 			oninput={() => (slugDirty = true)}
 			required
-			pattern="^[a-z0-9][a-z0-9-]{{0,62}}$"
+			pattern={"^[a-z0-9][a-z0-9-]{0,62}$"}
 			aria-invalid={errorFor('slug') ? 'true' : undefined}
 		/>
 		<p class="hint">Becomes the directory name and <code>/admin/spaces/{slug || '<slug>'}</code>.</p>

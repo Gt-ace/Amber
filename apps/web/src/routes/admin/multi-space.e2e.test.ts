@@ -29,7 +29,7 @@ import { spawn, execFileSync, type ChildProcess } from 'node:child_process';
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { resolve, join } from 'node:path';
-import { cpSync, mkdtempSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 
 const APP_ROOT = fileURLToPath(new URL('../../../', import.meta.url)); // apps/web/
@@ -184,4 +184,106 @@ describe('multi-space routing smoke (AMBER_E2E)', () => {
 		expect(body).toContain('This is the scratch space.');
 		expect(body).not.toContain('Default home');
 	}, 30_000);
+
+	test('install-admin creates a new space via /admin/new-space and the new prefix serves immediately', async () => {
+		// Helper to thread a cookie jar through fetch calls.
+		const cookies = new Map<string, string>();
+		function cookieHeader(): string {
+			return [...cookies.entries()].map(([k, v]) => `${k}=${v}`).join('; ');
+		}
+		function ingestSetCookie(res: Response): void {
+			// Bun's fetch exposes setCookie() (plural) for multi-Set-Cookie headers.
+			// Fall back to a single get('set-cookie') for environments without it.
+			const all = (res.headers as unknown as { getSetCookie?: () => string[] }).getSetCookie?.()
+				?? (res.headers.get('set-cookie') ? [res.headers.get('set-cookie')!] : []);
+			for (const raw of all) {
+				const first = raw.split(';')[0];
+				const eq = first.indexOf('=');
+				if (eq > 0) cookies.set(first.slice(0, eq).trim(), first.slice(eq + 1).trim());
+			}
+		}
+		async function fetchWith(url: string, init: RequestInit = {}): Promise<Response> {
+			const headers = new Headers(init.headers);
+			// Always run against the admin host for admin/auth endpoints; the
+			// caller overrides this header when probing public URLs on other hosts.
+			if (!headers.has('X-Forwarded-Host')) {
+				headers.set('X-Forwarded-Host', ADMIN_HOST);
+				headers.set('X-Forwarded-Proto', 'http');
+			}
+			if (cookies.size > 0) headers.set('cookie', cookieHeader());
+			const res = await fetch(url, { ...init, headers, redirect: 'manual' });
+			ingestSetCookie(res);
+			return res;
+		}
+
+		// (a) Claim install-admin via /admin/setup. Fetch the page first so
+		// the cookie jar is primed with any cookies the GET issues.
+		const setupGet = await fetchWith(`${base}/admin/setup`);
+		expect(setupGet.status).toBe(200);
+
+		// Submit setup. /admin/setup is a SvelteKit form action — POST to the
+		// same URL with form-encoded body.
+		const setupRes = await fetchWith(`${base}/admin/setup`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded',
+				'X-Sveltekit-Action': 'true'
+			},
+			body: new URLSearchParams({
+				email: 'admin@x.test',
+				password: 'password123'
+			}).toString()
+		});
+		// SvelteKit's form action returns 200 with JSON {type:"redirect",...} on
+		// success (when X-Sveltekit-Action is set), or a 3xx if not. Both mean
+		// the user row was created.
+		expect([200, 204, 302, 303]).toContain(setupRes.status);
+
+		// (b) Submit the create form. The action redirects to
+		// /admin/spaces/<slug> on success.
+		const createRes = await fetchWith(`${base}/admin/new-space`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded',
+				'X-Sveltekit-Action': 'true'
+			},
+			body: new URLSearchParams({
+				title: 'Hot Notes',
+				slug: 'hot-notes',
+				routingKind: 'prefix',
+				prefix: '/hot-notes',
+				host: ''
+			}).toString()
+		});
+		// SvelteKit form actions return JSON with the redirect info under type:
+		// "redirect" + location; the raw HTTP status is 200 (or 204) for the
+		// action invocation itself. Verify the action succeeded, then read the
+		// response body for the redirect target.
+		expect([200, 204, 302, 303]).toContain(createRes.status);
+		if (createRes.status === 200 || createRes.status === 204) {
+			const text = await createRes.text();
+			// The action's redirect-to path appears verbatim in the response.
+			expect(text).toContain('/admin/spaces/hot-notes');
+		} else {
+			expect(createRes.headers.get('location') ?? '').toMatch(/\/admin\/spaces\/hot-notes/);
+		}
+
+		// (c) Verify the directory exists on disk and the new prefix serves.
+		const newDir = join(workDir, 'hot-notes');
+		expect(existsSync(join(newDir, 'amber.toml'))).toBe(true);
+		expect(existsSync(join(newDir, 'space.toml'))).toBe(true);
+		expect(existsSync(join(newDir, 'index.md'))).toBe(true);
+
+		// (d) The new prefix /hot-notes on the default host (any unclaimed
+		// host falls through to site-default which is `default = true`) MUST
+		// serve the scaffolded index.md — no restart. The prefix wins over
+		// the default fallback because the resolver prefers prefix match for
+		// pathnames under /hot-notes.
+		const publicRes = await fetch(`${base}/hot-notes`, {
+			headers: forwardedHeaders(RANDOM_HOST)
+		});
+		expect(publicRes.status).toBe(200);
+		const body = await publicRes.text();
+		expect(body).toContain('Hot Notes');
+	}, 90_000);
 });
