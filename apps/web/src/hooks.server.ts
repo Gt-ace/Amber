@@ -32,7 +32,8 @@ import { readSpaceConfig } from '$lib/space/config';
 import { parseSpaceRouting } from '$lib/server/space-routing';
 import { buildResolverIndex, type LoadedSpace } from '$lib/server/resolver-index';
 import { setReroutePrefixes } from '$lib/reroute-prefixes';
-import { setDefaultSlug } from '$lib/server/default-space';
+import { setDefaultSlug, computeDefaultSlug } from '$lib/server/default-space';
+import { setResolverIndex, getResolverIndex } from '$lib/server/resolver-index-holder';
 import path from 'node:path';
 import type { Space } from '$lib/space/space';
 
@@ -140,24 +141,14 @@ function bootRegistry(): ResolverIndex<Space> {
 	return index;
 }
 
-const resolverIndex = bootRegistry();
-setReroutePrefixes(resolverIndex.prefixes.map((p) => p.prefix));
+const bootIndex = bootRegistry();
+setResolverIndex(bootIndex);
+setReroutePrefixes(bootIndex.prefixes.map((p) => p.prefix));
 // The v0.4-compat admin shims (`/admin/edit`, `/admin/new`,
-// `/admin/api/page`) redirect to a default space. Compute that slug here so
-// the shims pick the `routing.default` space (not whichever sorts first).
-// Falls back to the first registered entry when no default is declared —
-// matches single-space mode and "no default declared in multi-space" alike.
-function computeDefaultSlug(): string | null {
-	const entries = getRegistryEntries();
-	if (entries.length === 0) return null;
-	if (resolverIndex.default) {
-		for (const e of entries) {
-			if (e.space === resolverIndex.default) return path.basename(e.path);
-		}
-	}
-	return path.basename(entries[0].path);
-}
-setDefaultSlug(computeDefaultSlug());
+// `/admin/api/page`) redirect to a default space. Falls back to the first
+// registered entry when no default is declared — matches single-space mode
+// and "no default declared in multi-space" alike.
+setDefaultSlug(computeDefaultSlug(getResolverIndex(), getRegistryEntries()));
 
 // Build the auth instance and run better-auth's migrations on first request.
 // Doing this lazily (rather than via top-level `await`) avoids a Vite chunk
@@ -225,7 +216,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		// So the resolver here must run against `event.url` (the original) to
 		// pick the prefix-owning space — exactly what we want.
 		const decision = resolveRoute(
-			resolverIndex,
+			getResolverIndex(),
 			event.url.host,
 			event.url.pathname,
 			event.url.search

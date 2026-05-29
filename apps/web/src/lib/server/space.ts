@@ -28,6 +28,12 @@ import path from 'node:path';
 import { Space } from '$lib/space/space';
 import { SpaceWatcher } from '$lib/space/watcher';
 import { logger } from './logger';
+import { readSpaceConfig } from '$lib/space/config';
+import { parseSpaceRouting } from './space-routing';
+import { buildResolverIndex, type LoadedSpace } from './resolver-index';
+import { getResolverIndex, setResolverIndex } from './resolver-index-holder';
+import { setReroutePrefixes } from '$lib/reroute-prefixes';
+import { setDefaultSlug, computeDefaultSlug } from './default-space';
 
 const log = logger.child({ subsystem: 'server' });
 
@@ -131,4 +137,89 @@ export async function __resetRegistryForTests(): Promise<void> {
 		}
 	}
 	registry.clear();
+}
+
+/**
+ * Which discovery mode the runtime is in. Mirrors the mutual-exclusion
+ * check in `hooks.server.ts:bootRegistry()` — exactly one of
+ * AMBER_SPACE_PATH (single-space, v0.4 default) or AMBER_SPACES_DIR
+ * (multi-space, v0.5 subsystem 3) must be set. Boot already throws if
+ * the env is misconfigured, so a misconfigured runtime can never reach
+ * a request handler that calls this. The duplicate check here is
+ * defensive — anything calling this from test setup gets the same
+ * shape of error rather than a silent default.
+ *
+ * Consumed by v0.5 subsystem 5's `/admin/new-space` (404s in
+ * single-space mode) and the picker chrome (hides the New space
+ * affordance in single-space mode).
+ */
+export function getDiscoveryMode(): 'single-space' | 'multi-space' {
+	const single = !!process.env.AMBER_SPACE_PATH;
+	const multi = !!process.env.AMBER_SPACES_DIR;
+	if (single && multi) {
+		throw new Error('both AMBER_SPACE_PATH and AMBER_SPACES_DIR are set');
+	}
+	if (!single && !multi) {
+		throw new Error('neither AMBER_SPACE_PATH nor AMBER_SPACES_DIR is set');
+	}
+	return single ? 'single-space' : 'multi-space';
+}
+
+/**
+ * Hot-add a newly-created space directory to the registry and rebuild
+ * the resolver index in place. Called by v0.5 subsystem 5's
+ * `/admin/new-space` action after the writer has produced the on-disk
+ * files. The new space appears in the picker, the resolver, and (if
+ * its `space.toml` declares routing) on the public web — no restart.
+ *
+ * Throws if the path is already loaded (caller bug) or if
+ * `Space.load()` rejects (corrupt files; the caller is responsible
+ * for cleaning up the partial directory). On either throw, runtime
+ * state is unchanged.
+ */
+export async function addSpace(absPath: string): Promise<Space> {
+	const key = path.resolve(absPath);
+	if (registry.has(key)) {
+		throw new Error(`addSpace: path already in registry: ${key}`);
+	}
+
+	const entry = loadEntry(key); // throws on corrupt amber.toml
+	registry.set(key, entry);
+	registerShutdown();
+
+	try {
+		// Compute everything before touching live state. If buildResolverIndex
+		// or the config parsing throws, none of the set* calls have run yet —
+		// the catch only needs to roll back the registry insertion.
+		const idx = getResolverIndex();
+		const adminHost = idx.adminHost;
+		const adminScheme = idx.adminScheme;
+
+		const loaded: LoadedSpace[] = [];
+		for (const [absKey, e] of registry) {
+			const slug = path.basename(absKey);
+			const { config } = readSpaceConfig(e.space.root);
+			const { routing } = parseSpaceRouting(config ?? {}, slug, adminHost);
+			loaded.push({ slug, space: e.space, routing });
+		}
+		const { index: nextIndex } = buildResolverIndex(loaded, adminHost, adminScheme);
+
+		const nextPrefixes = nextIndex.prefixes.map((p) => p.prefix);
+		const entries = [...registry.entries()].map(([p, e]) => ({ path: p, space: e.space }));
+		const defaultSlug = computeDefaultSlug(nextIndex, entries);
+
+		// Tail: apply all three swaps atomically (infallible assignments).
+		setResolverIndex(nextIndex);
+		setReroutePrefixes(nextPrefixes);
+		setDefaultSlug(defaultSlug);
+	} catch (err) {
+		// buildResolverIndex / config-parsing failure before any live state was
+		// mutated. Roll back the registry insertion so the caller can rm-rf the dir.
+		registry.delete(key);
+		try { await entry.watcher.close(); } catch { /* best-effort */ }
+		entry.space.close();
+		throw err;
+	}
+
+	return entry.space;
 }
