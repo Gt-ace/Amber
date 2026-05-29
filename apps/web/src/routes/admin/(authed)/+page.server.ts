@@ -10,17 +10,22 @@
  * Empty-state copy is two-variant per spec §13:
  *   - install has spaces, user has no memberships → "ask your admin to invite you".
  *   - install has zero spaces → "no spaces loaded".
+ *
+ * canCreate is true only when the user is an install-admin in multi-space mode
+ * (spec §7).
  */
 
 import { redirect } from '@sveltejs/kit';
 import path from 'node:path';
 import type { PageServerLoad } from './$types';
-import { getRegistryEntries } from '$lib/server/space';
+import { getRegistryEntries, getDiscoveryMode } from '$lib/server/space';
 import { getAuthDb } from '$lib/server/auth-config';
 
 export const load = (({ locals }) => {
 	const allEntries = getRegistryEntries();
 	const user = locals.user!; // (authed) layout has already redirected null users
+	const discoveryMode = getDiscoveryMode();
+	const canCreate = user.isInstallAdmin && discoveryMode === 'multi-space';
 
 	const visible = user.isInstallAdmin
 		? allEntries
@@ -50,6 +55,8 @@ export const load = (({ locals }) => {
 	return {
 		spaces: list,
 		user,
+		canCreate,
+		discoveryMode,
 		// Two-variant empty copy (spec §13).
 		emptyState:
 			visible.length === 0

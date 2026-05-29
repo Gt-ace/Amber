@@ -8,12 +8,21 @@
 	<title>Spaces — Amber admin</title>
 </svelte:head>
 
-<h1>Spaces</h1>
+<header class="head">
+	<h1>Spaces</h1>
+	{#if data.canCreate}
+		<a class="new-btn" href={resolve('/admin/new-space')}>New space</a>
+	{/if}
+</header>
 
 {#if data.emptyState === 'no-memberships'}
 	<p>You don't have access to any spaces yet. Ask your administrator to invite you.</p>
 {:else if data.emptyState === 'no-spaces-loaded'}
-	<p>No spaces loaded. Ask your administrator to add one.</p>
+	{#if data.canCreate}
+		<p>No spaces loaded yet. <a href={resolve('/admin/new-space')}>Create the first space</a> to get started.</p>
+	{:else}
+		<p>No spaces loaded. Ask your administrator to add one.</p>
+	{/if}
 {:else}
 	<ul class="amber-space-list">
 		{#each data.spaces as s (s.slug)}
@@ -26,6 +35,28 @@
 {/if}
 
 <style>
+	.head {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 1rem;
+		margin-bottom: 0.5rem;
+	}
+	.new-btn {
+		font: inherit;
+		font-weight: 500;
+		padding: 0.4rem 0.8rem;
+		border: 1px solid #333;
+		border-radius: 4px;
+		background: #333;
+		color: #fff;
+		text-decoration: none;
+		min-height: 2rem;
+		transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+	}
+	.new-btn:active {
+		transform: scale(0.97);
+	}
 	.amber-space-list {
 		list-style: none;
 		padding: 0;
