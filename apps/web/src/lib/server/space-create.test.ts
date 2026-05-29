@@ -86,7 +86,12 @@ describe('createSpace()', () => {
 		if (r.kind === 'error') expect(r.code).toBe('dir_already_exists');
 	});
 
-	test('permission_denied surfaces from a read-only parent', async () => {
+	// Root bypasses chmod restrictions, so the read-only parent doesn't
+	// actually block mkdir when tests run as root (e.g. inside a default
+	// Docker container without USER). Skip the case rather than mark it
+	// as flaky.
+	const isRoot = process.getuid?.() === 0;
+	test.skipIf(isRoot)('permission_denied surfaces from a read-only parent', async () => {
 		chmodSync(parentDir, 0o555);
 		const r = await createSpace({
 			parentDir,

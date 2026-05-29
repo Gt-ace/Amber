@@ -18,12 +18,9 @@ import type { ValidatedCreateInput } from './space-create-validate';
 
 export type WriteErrorCode = 'dir_already_exists' | 'write_failed' | 'permission_denied';
 
-export interface CreateSpaceResult {
-	kind: 'ok' | 'error';
-	absPath?: string;
-	code?: WriteErrorCode;
-	detail?: string;
-}
+export type CreateSpaceResult =
+	| { kind: 'ok'; absPath: string }
+	| { kind: 'error'; code: WriteErrorCode; detail?: string };
 
 interface CreateSpaceArgs {
 	parentDir: string;
