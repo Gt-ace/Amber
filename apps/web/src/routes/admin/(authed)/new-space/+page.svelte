@@ -4,16 +4,6 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	let title = $state(form?.raw?.title ?? '');
-	let slug = $state(form?.raw?.slug ?? '');
-	let slugDirty = $state(false);
-	let routingKind = $state<'prefix' | 'host' | 'default' | 'admin-only'>(
-		(form?.raw?.routingKind as 'prefix' | 'host' | 'default' | 'admin-only') ?? 'prefix'
-	);
-	let host = $state(form?.raw?.host ?? '');
-	let prefix = $state(form?.raw?.prefix ?? '');
-	let submitting = $state(false);
-
 	function derive(t: string): string {
 		return t
 			.toLowerCase()
@@ -22,6 +12,22 @@
 			.replace(/^-+/, '')
 			.slice(0, 63);
 	}
+
+	let title = $state(form?.raw?.title ?? '');
+	let slug = $state(form?.raw?.slug ?? '');
+	// If the form's previous submission had a slug that didn't match what
+	// the title would have derived, the user hand-edited it — preserve
+	// `slugDirty: true` across the re-render so the next title edit doesn't
+	// silently overwrite their slug choice.
+	let slugDirty = $state(
+		form?.raw?.slug != null && form.raw.slug !== derive(form.raw.title ?? '')
+	);
+	let routingKind = $state<'prefix' | 'host' | 'default' | 'admin-only'>(
+		(form?.raw?.routingKind as 'prefix' | 'host' | 'default' | 'admin-only') ?? 'prefix'
+	);
+	let host = $state(form?.raw?.host ?? '');
+	let prefix = $state(form?.raw?.prefix ?? '');
+	let submitting = $state(false);
 
 	$effect(() => {
 		if (!slugDirty) slug = derive(title);
