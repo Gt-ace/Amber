@@ -114,6 +114,9 @@
 				<label for="prefix" class="sublabel">Prefix</label>
 				<input id="prefix" name="prefix" type="text" bind:value={prefix} aria-invalid={errorFor('prefix') ? 'true' : undefined} />
 				<p class="hint">Path the space is mounted at, e.g. <code>/notes</code>.</p>
+				{#if prefix.startsWith('/') && prefix.length > 1}
+					<p class="preview">Will serve at <code>{data.adminScheme}//{data.adminHost}{prefix}</code></p>
+				{/if}
 				{#if errorFor('prefix')}
 					<p class="err" role="alert" aria-live="polite">{errorFor('prefix')}</p>
 				{/if}
@@ -130,6 +133,9 @@
 				<label for="host" class="sublabel">Host</label>
 				<input id="host" name="host" type="text" bind:value={host} placeholder="notes.example.com" aria-invalid={errorFor('host') ? 'true' : undefined} />
 				<p class="hint">Bare host, no scheme or port.</p>
+				{#if host}
+					<p class="preview">Will serve at <code>{data.adminScheme}//{host}</code></p>
+				{/if}
 				{#if errorFor('host')}
 					<p class="err" role="alert" aria-live="polite">{errorFor('host')}</p>
 				{/if}
@@ -147,6 +153,11 @@
 				{/if}
 			</span>
 		</label>
+		{#if routingKind === 'default' && data.defaultOwner === null}
+			<div class="reveal">
+				<p class="preview">Will serve at <code>{data.adminScheme}//{data.adminHost}/</code></p>
+			</div>
+		{/if}
 		{#if errorFor('default')}
 			<p class="err" role="alert" aria-live="polite">{errorFor('default')}</p>
 		{/if}
@@ -261,6 +272,16 @@
 		color: #b00020;
 		font-size: 0.88rem;
 		margin: 0;
+	}
+	.preview {
+		color: #555;
+		font-size: 0.88rem;
+		margin: 0;
+	}
+	.preview code {
+		background: #f4f4f4;
+		padding: 0.05rem 0.35rem;
+		border-radius: 3px;
 	}
 	.form-err {
 		color: #b00020;
