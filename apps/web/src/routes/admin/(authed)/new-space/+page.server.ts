@@ -73,9 +73,15 @@ function buildSnapshot(): RegistrySnapshot {
 export const load: PageServerLoad = async (event) => {
 	gateOrThrow(event.locals);
 	const snap = buildSnapshot();
+	const idx = getResolverIndex();
 	return {
 		discoveryMode: 'multi-space' as const,
-		defaultOwner: snap.defaultOwner
+		defaultOwner: snap.defaultOwner,
+		// Exposed for the form's URL preview affordance — admin host +
+		// scheme are the natural "this space will serve …" template
+		// inputs (spec §11 follow-up).
+		adminHost: idx.adminHost,
+		adminScheme: idx.adminScheme
 	};
 };
 

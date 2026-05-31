@@ -4,7 +4,7 @@
  * directly (no HTTP).
  */
 
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync, cpSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -160,6 +160,42 @@ describe('/admin/new-space action', () => {
 		expect(res.status).toBe(400);
 		expect(res.data.errors.some((e) => e.code === 'slug_taken')).toBe(true);
 		expect(existsSync(join(workDir, 'site-a', 'space.toml'))).toBe(true); // untouched
+	});
+
+	test('addSpace fails after write: route rmSyncs partial dir, returns write_failed', async () => {
+		// Spec §8 / followups: the writer's failure modes are unit-tested in
+		// space-create.test.ts. The route-side path where the writer succeeded
+		// but addSpace threw — and the route does its own rmSync cleanup — is
+		// exercised here. Spy mid-call so we can confirm the directory existed
+		// on disk *before* throwing, then assert the route's rollback ran.
+		const spaceMod = await import('$lib/server/space');
+		const spy = vi
+			.spyOn(spaceMod, 'addSpace')
+			.mockImplementationOnce(async (absPath: string) => {
+				// Writer just finished; the partial directory should exist.
+				expect(existsSync(absPath)).toBe(true);
+				throw new Error('injected addSpace failure');
+			});
+
+		const { actions } = await import('./+page.server.ts');
+		const r = await actions.default!(
+			actionEvent({ id: 'admin', isInstallAdmin: true }, {
+				title: 'Doomed',
+				slug: 'doomed',
+				routingKind: 'admin-only',
+				host: '',
+				prefix: ''
+			})
+		);
+		const res = r as { status: number; data: { writeError: string } };
+
+		expect(res.status).toBe(500);
+		expect(res.data.writeError).toBe('write_failed');
+		// Route's rmSync cleanup wiped the partial dir.
+		expect(existsSync(join(workDir, 'doomed'))).toBe(false);
+		expect(spy).toHaveBeenCalledTimes(1);
+
+		spy.mockRestore();
 	});
 
 	test('non-admin action: 403', async () => {

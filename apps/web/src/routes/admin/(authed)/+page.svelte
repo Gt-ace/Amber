@@ -19,7 +19,7 @@
 	<p>You don't have access to any spaces yet. Ask your administrator to invite you.</p>
 {:else if data.emptyState === 'no-spaces-loaded'}
 	{#if data.canCreate}
-		<p>No spaces loaded yet. <a href={resolve('/admin/new-space')}>Create the first space</a> to get started.</p>
+		<p>No spaces yet. <a href={resolve('/admin/new-space')}>Create the first one</a>.</p>
 	{:else}
 		<p>No spaces loaded. Ask your administrator to add one.</p>
 	{/if}

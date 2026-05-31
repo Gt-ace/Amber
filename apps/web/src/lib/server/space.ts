@@ -34,12 +34,20 @@ import { buildResolverIndex, type LoadedSpace } from './resolver-index';
 import { getResolverIndex, setResolverIndex } from './resolver-index-holder';
 import { setReroutePrefixes } from '$lib/reroute-prefixes';
 import { setDefaultSlug, computeDefaultSlug } from './default-space';
+import type { LoadWarning } from '$lib/types/schema';
 
 const log = logger.child({ subsystem: 'server' });
+// Second module-level logger: `addSpace()` participates in the space-create
+// flow (sub-5 spec §10) even though it's lexically the registry's hot-add
+// entry point. Re-emitting load warnings under this tag lets a chronological
+// log read make the "operator submitted → load warned → space added" chain
+// visible.
+const createLog = logger.child({ subsystem: 'space-create' });
 
 interface Entry {
 	space: Space;
 	watcher: SpaceWatcher;
+	warnings: LoadWarning[];
 }
 
 const registry = new Map<string, Entry>();
@@ -48,18 +56,16 @@ let shutdownRegistered = false;
 function loadEntry(spacePath: string): Entry {
 	log.info({ path: spacePath }, 'space singleton init');
 	const { space, warnings } = Space.load(spacePath);
-	if (warnings.length) {
-		for (const w of warnings) {
-			log.warn({ code: w.code, source: w.source }, w.message);
-		}
-	}
 
 	const watcher = new SpaceWatcher(space);
 	log.info({ root: space.root }, 'watcher started');
 	// Don't await ready() — the initial index is already populated by load().
 	// The watcher only matters for subsequent edits.
 
-	return { space, watcher };
+	// Warnings are returned rather than logged here so the caller can pick
+	// the right subsystem tag — `getSpace` (boot) re-emits under `server`;
+	// `addSpace` (hot-add) re-emits under `space-create`.
+	return { space, watcher, warnings };
 }
 
 function registerShutdown(): void {
@@ -102,6 +108,9 @@ export function getSpace(spacePath?: string): Space {
 	if (existing) return existing.space;
 
 	const entry = loadEntry(key);
+	for (const w of entry.warnings) {
+		log.warn({ code: w.code, source: w.source }, w.message);
+	}
 	registry.set(key, entry);
 	registerShutdown();
 	return entry.space;
@@ -186,6 +195,18 @@ export async function addSpace(absPath: string): Promise<Space> {
 	const entry = loadEntry(key); // throws on corrupt amber.toml
 	registry.set(key, entry);
 	registerShutdown();
+
+	// Re-emit load warnings under the space-create subsystem tag (spec §10).
+	// The slug is the actionable identifier; the original warning message
+	// is preserved as msg so a chronological log read still surfaces the
+	// human-readable text.
+	const slug = path.basename(key);
+	for (const w of entry.warnings) {
+		createLog.warn(
+			{ event: 'addSpace-load-warning', slug, code: w.code, source: w.source },
+			w.message
+		);
+	}
 
 	try {
 		// Compute everything before touching live state. If buildResolverIndex
