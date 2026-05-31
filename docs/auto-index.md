@@ -136,9 +136,13 @@ warnings so you can find it in the dev console or the production log:
   instead of `date desc`).
 - `auto_index_invalid_limit` — `limit` isn't a positive integer.
 
-Each warning carries the page that triggered it and a one-line
-explanation, in the same `subsystem: 'space'` log stream as other
-loader output. The rest of the space loads normally.
+Each warning carries the page that triggered it, the warning code,
+and a one-line explanation, and appears in Amber's startup / loader
+log alongside the rest of the space's load output. The exact log
+subsystem tag depends on which entry point loaded the space (cold
+boot vs. a space hot-added through the admin UI emit under different
+tags); grep the log for the warning code rather than a fixed tag.
+The rest of the space loads normally.
 
 ## Limits and non-goals
 
