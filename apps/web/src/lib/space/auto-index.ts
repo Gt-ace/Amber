@@ -11,11 +11,11 @@
  *     the sorted, limited `{href,title,date,updated}` array from the *live*
  *     page set (so it stays reactive to watcher updates). Pure — no filesystem.
  *
- * Filtering rules (see docs/p1.md): the host page is always excluded (a page
- * can't list itself even if it lives under `path`); only pages whose relative
- * path is *inside* the directory (`<path>/...`) are listed; drafts are
- * excluded. (Drafts aren't named in docs/p1.md — excluding them mirrors the
- * nav builder and the page handler, which also hide drafts from public
+ * Filtering rules (see docs/auto-index.md for the author-facing contract):
+ * the host page is always excluded (a page can't list itself even if it
+ * lives under `path`); only pages whose relative path is *inside* the
+ * directory (`<path>/...`) are listed; drafts are excluded. (Drafts mirror
+ * the nav builder and the page handler, which also hide drafts from public
  * surfaces while dev still serves them as standalone pages.) There is no tag
  * or prefix filtering — out of scope.
  */

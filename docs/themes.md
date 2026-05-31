@@ -410,8 +410,10 @@ yet — a self-hosted canvas shouldn't phone a font CDN on every page load.
 ## Auto-index and partials
 
 `auto_index` is a frontmatter directive a page declares to list other
-pages in a directory. The full spec lives in `docs/p1.md`; the theming
-surface is:
+pages in a directory. The content-author reference (what `path` /
+`sort` / `limit` accept, what gets filtered, what shows up in the log
+when it goes wrong) lives in [`auto-index.md`](auto-index.md); the
+theming surface is:
 
 1. A page declares `auto_index` in its frontmatter:
 
