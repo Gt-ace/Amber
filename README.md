@@ -77,6 +77,8 @@ presentation. Each space picks its own theme. See
 
 - [`docs/themes.md`](docs/themes.md) — building themes: file contract, CSS
   tokens, template runtime.
+- [`docs/auto-index.md`](docs/auto-index.md) — the `auto_index`
+  frontmatter directive (path/sort/limit, filtering rules, warnings).
 - [`docs/self-hosting.md`](docs/self-hosting.md) — production deploy
   (TLS, systemd, backups, claiming the admin, recovery via the offline
   reset-password CLI).
