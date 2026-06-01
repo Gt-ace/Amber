@@ -34,7 +34,6 @@ interface CreateSpaceArgs {
 	__forceFailAfter?: 'mkdir' | 'amber' | 'space' | 'index';
 }
 
-
 function amberToml(title: string): string {
 	return `amber_version = "0.1"\n\n[site]\ntitle = "${escapeTomlBasic(title)}"\n`;
 }
