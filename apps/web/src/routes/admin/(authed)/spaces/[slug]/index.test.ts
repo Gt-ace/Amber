@@ -9,6 +9,7 @@ let load: typeof import('./+page.server.ts').load;
 
 beforeAll(async () => {
 	process.env.AMBER_SPACE_PATH = FIXTURE.replace(/\/$/, '');
+	process.env.AMBER_PUBLIC_URL = 'http://localhost:5173';
 	load = (await import('./+page.server.ts')).load;
 });
 
@@ -20,11 +21,11 @@ afterAll(async () => {
  * Await the load and narrow away the `void` half of PageServerLoad's declared
  * return type, so the tests get a fully-typed `data` object.
  */
-async function loadData() {
+async function loadData(role: 'install-admin' | 'owner' | 'editor' = 'install-admin') {
 	const { getSpace } = await import('$lib/server/space');
 	const space = getSpace();
 	const event = {
-		locals: { space },
+		locals: { space, role },
 		params: { slug: 'example-space' }
 	} as unknown as Parameters<typeof load>[0];
 	const data = await load(event);
@@ -55,5 +56,23 @@ describe('per-space admin index +page.server load', () => {
 	test('passes slug through from params', async () => {
 		const data = await loadData();
 		expect(data.slug).toBe('example-space');
+	});
+});
+
+describe('per-space admin index — theme affordance fields', () => {
+	test('install-admin: canPickTheme true, activeThemeName set, publicUrl is the single-space origin', async () => {
+		const data = await loadData('install-admin');
+		expect(data.canPickTheme).toBe(true);
+		expect(typeof data.activeThemeName).toBe('string');
+		expect(data.activeThemeName.length).toBeGreaterThan(0);
+		expect(data.publicUrl).toBe('http://localhost:5173/');
+	});
+
+	test('owner: canPickTheme true', async () => {
+		expect((await loadData('owner')).canPickTheme).toBe(true);
+	});
+
+	test('editor: canPickTheme false', async () => {
+		expect((await loadData('editor')).canPickTheme).toBe(false);
 	});
 });
