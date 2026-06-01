@@ -10,10 +10,6 @@ label = "Home"
 href = "/"
 
 [[nav]]
-label = "About"
-href = "/about"
-
-[[nav]]
 label = "Colophon"
 href = "/colophon"
 
