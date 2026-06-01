@@ -100,9 +100,6 @@ h2.display{font-variation-settings:'opsz' 72,'SOFT' 30,'WONK' 0;letter-spacing:-
 .foot-links a{color:var(--amber-ink-muted);font-size:.95rem;font-weight:500;}
 .foot-links a:hover{color:var(--amber-ink);}
 
-/* ── Reserved for later tasks ───────────────────────────────────────────── */
-.gem--bet{display:none;} /* the bet gem is styled in the next task */
-
 /* ── Hero ─────────────────────────────────────────────────────────────────
    The signature moment: the jewel is the hero; everything around it is quiet.
    The gem is a crisp raster anchor; its glow is a CSS radial-gradient on the
@@ -182,3 +179,121 @@ h2.display{font-variation-settings:'opsz' 72,'SOFT' 30,'WONK' 0;letter-spacing:-
 .btn--ghost{color:var(--amber-accent);border-color:var(--amber-rule);background:transparent;}
 .btn--ghost:hover{border-color:var(--amber-accent);}
 .micro{font-size:.88rem;color:var(--amber-ink-muted);margin:0;letter-spacing:.01em;}
+
+/* ── Section rhythm ─────────────────────────────────────────────────────────
+   Mid-page beats share a vertical cadence and a hairline rule between them.
+   The hero (no .beat class) is untouched. .reveal/.rise scroll-state lives in
+   Task 9 — deliberately unstyled here so all content is visible at rest. */
+/* Scoped to the landing sections so a positioning context isn't forced onto
+   <section> elements an author might use in article-page content. */
+.hero,.bet,.themes,.editor{position:relative;}
+.beat{padding:104px 0;}
+.beat--rule{border-top:1px solid var(--amber-rule);}
+
+/* ── ② The bet ──────────────────────────────────────────────────────────────
+   A calm claim with a large, faint gem drifting off the right edge — an
+   ambient brand mark, not a focal one. The earlier hero task hid .gem--bet;
+   that rule is removed and the gem now renders here at low opacity. */
+.bet{position:relative;overflow:hidden;}
+.gem--bet{
+	position:absolute;right:-90px;top:50%;transform:translateY(-50%);
+	width:340px;height:auto;opacity:.10;pointer-events:none;z-index:0;
+}
+.bet__in{position:relative;z-index:1;max-width:720px;}
+.bet h2{font-size:clamp(2rem,4.4vw,3rem);margin:0 0 26px;max-width:16ch;}
+.bet p{font-size:1.2rem;line-height:1.65;color:var(--amber-ink-muted);margin:0;max-width:50ch;}
+.bet p strong{color:var(--amber-ink);font-weight:500;} /* emphasis: ink on muted body */
+
+/* ── ③ Theme windows ────────────────────────────────────────────────────────
+   Two browser-chrome mockups showing the SAME content under two themes:
+   amber-default (warm serif) and amber-editorial (sans magazine). The visible
+   difference is the proof of "one space, any look" — not a generic card grid. */
+.themes h2{font-size:clamp(2rem,4.4vw,3rem);margin:0 0 16px;}
+.themes .lede{max-width:52ch;margin-bottom:54px;font-size:1.15rem;}
+.window-grid{display:grid;grid-template-columns:1fr 1fr;gap:30px;align-items:start;}
+@media (max-width:780px){.window-grid{grid-template-columns:1fr;gap:26px;}}
+
+.win{
+	border-radius:14px;overflow:hidden;border:1px solid var(--amber-rule);
+	background:var(--amber-surface-sunken);
+	box-shadow:0 24px 60px -28px rgba(0,0,0,.5),0 2px 0 rgba(255,255,255,.02) inset; /* elevation, not palette */
+}
+.win__chrome{
+	display:flex;align-items:center;gap:14px;padding:11px 14px;
+	border-bottom:1px solid var(--amber-rule);
+	background:color-mix(in srgb,var(--amber-bg) 50%,var(--amber-surface-sunken));
+}
+.win__dots{display:flex;gap:7px;}
+.win__dots i{width:11px;height:11px;border-radius:50%;display:block;background:var(--amber-rule);}
+.win__dots i:nth-child(1){background:#d98b6a;} /* traffic-light metaphor — constant in both modes */
+.win__dots i:nth-child(2){background:#d9b85f;}
+.win__dots i:nth-child(3){background:#7fae8a;}
+.win__url{
+	flex:1;font-family:var(--amber-font-mono);font-size:.78rem;color:var(--amber-ink-muted);
+	background:var(--amber-bg);border:1px solid var(--amber-rule);border-radius:7px;
+	padding:5px 12px;text-align:center;
+}
+.win__body{padding:34px 30px 36px;min-height:248px;background:var(--amber-bg);}
+.win__tag{
+	font-size:.72rem;font-family:var(--amber-font-mono);letter-spacing:.04em;
+	color:var(--amber-ink-muted);margin-top:14px;display:block;
+}
+
+/* theme: amber-default (warm serif) */
+.t-default .pg-title{
+	font-family:var(--amber-font-display);font-variation-settings:'opsz' 80,'SOFT' 30;
+	font-weight:600;font-size:1.9rem;letter-spacing:-0.01em;margin:0 0 12px;color:var(--amber-ink);
+}
+.t-default .pg-prose{font-size:1rem;line-height:1.6;color:var(--amber-ink-muted);margin:0 0 22px;max-width:34ch;}
+.t-default .pg-nav{display:flex;gap:18px;font-size:.95rem;}
+.t-default .pg-nav a{color:var(--amber-accent);}
+
+/* theme: amber-editorial (sans magazine) */
+.t-editorial .pg-kicker{
+	font-family:var(--amber-font-body);font-size:.72rem;font-weight:700;
+	letter-spacing:.18em;text-transform:uppercase;color:var(--amber-accent);margin:0 0 14px;
+}
+.t-editorial .pg-title{
+	font-family:var(--amber-font-body);font-weight:800;font-size:2rem;
+	line-height:1.05;letter-spacing:-0.02em;margin:0 0 14px;color:var(--amber-ink);
+}
+.t-editorial .pg-prose{
+	font-size:.98rem;line-height:1.55;color:var(--amber-ink-muted);
+	margin:0 0 22px;max-width:32ch;padding-top:16px;border-top:1px solid var(--amber-rule);
+}
+.t-editorial .pg-nav{display:flex;gap:22px;font-size:.74rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;}
+.t-editorial .pg-nav a{color:var(--amber-ink);}
+
+/* ── ④ Editor demo (static) ─────────────────────────────────────────────────
+   A real-looking editor window with a markdown document already in it. STATIC
+   in this task: the prototype's typing setup (max-width:0/overflow/border-right
+   on .ed-line, the blinking caret) is deliberately NOT ported — that's Task 9.
+   Here the full document text is visible and the caret is a quiet static bar. */
+.editor h2{font-size:clamp(2rem,4.4vw,3rem);margin:0 0 16px;}
+.editor .lede{max-width:50ch;margin-bottom:50px;font-size:1.15rem;}
+.ed-win{max-width:720px;margin:0 auto;}
+.ed-toolbar{
+	display:flex;align-items:center;gap:6px;padding:9px 14px;
+	border-bottom:1px solid var(--amber-rule);
+	background:color-mix(in srgb,var(--amber-bg) 50%,var(--amber-surface-sunken));
+}
+.ed-tool{
+	font-family:var(--amber-font-body);font-size:.8rem;font-weight:600;color:var(--amber-ink-muted);
+	padding:5px 9px;border-radius:7px;border:1px solid transparent;background:transparent;line-height:1;
+}
+.ed-tool.is-i{font-style:italic;}
+.ed-tool.is-b{font-weight:800;}
+.ed-sep{width:1px;height:18px;background:var(--amber-rule);margin:0 4px;}
+.ed-toolbar .spacer{flex:1;}
+.ed-dot{width:7px;height:7px;border-radius:50%;background:var(--amber-pine);opacity:.7;}
+.ed-saved{font-family:var(--amber-font-mono);font-size:.72rem;color:var(--amber-ink-muted);}
+.ed-doc{padding:40px 42px 52px;background:var(--amber-bg);min-height:210px;}
+.ed-row{display:flex;align-items:baseline;}
+/* Static: full text visible — typing setup (max-width:0/overflow/border-right) is Task 9. */
+.ed-line{font-family:var(--amber-font-mono);white-space:nowrap;}
+.ed-line.l1{font-size:1.25rem;font-weight:600;color:var(--amber-ink);line-height:2;}
+.ed-line.l2{font-size:1rem;color:var(--amber-ink-muted);line-height:2;}
+.ed-caret{
+	display:inline-block;width:2px;height:1.05em;background:var(--amber-accent);
+	margin-left:1px;transform:translateY(2px);visibility:visible; /* static bar; blink is Task 9 */
+}
