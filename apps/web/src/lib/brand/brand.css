@@ -1,0 +1,86 @@
+/*
+ * Amber — brand layer stylesheet.
+ *
+ * This is the BRAND surface only: the admin / authoring UI and the wordmark.
+ * It is imported by routes/admin/+layout.svelte and nowhere else, so the
+ * self-hosted faces below are downloaded on the admin surface only — never on
+ * the public render path, which is theme-driven and uses system font stacks
+ * (see docs/themes.md, "Themes use system font stacks"). Keeping the brand
+ * fonts off public pages is deliberate: a self-hosted canvas shouldn't ship a
+ * webfont on every visitor's first paint.
+ *
+ * Faces (full reference: docs/brand/typography.md):
+ *   Fraunces        variable soft-serif — wordmark, headings. Carries the warmth
+ *                   on its opsz / SOFT / WONK axes, so the variable file ships
+ *                   with all four axes, not a weight-only subset.
+ *   Hanken Grotesk  variable humanist sans — body / UI.
+ * Both are SIL Open Font License; the OFL text ships beside the .woff2 under
+ * static/fonts/ (Fraunces-OFL.txt, HankenGrotesk-OFL.txt). No font CDN.
+ */
+
+@font-face {
+	font-family: 'Fraunces';
+	src: url('/fonts/Fraunces.woff2') format('woff2-variations');
+	font-weight: 100 900;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Hanken Grotesk';
+	src: url('/fonts/HankenGrotesk.woff2') format('woff2-variations');
+	font-weight: 100 900;
+	font-style: normal;
+	font-display: swap;
+}
+
+/*
+ * Brand tokens. Values are the warm-amber system from docs/brand/palette.md —
+ * the same neutrals and amber steps the shipped amber-default theme uses, so
+ * brand and product agree. Defined on :root because this file only ever loads
+ * on the admin surface; they can't leak to a public page.
+ */
+:root {
+	--amber-font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+	--amber-font-body: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+	/* Light — paper & ink */
+	--amber-bg: #faf7f0;
+	--amber-surface-sunken: #efe8d6;
+	--amber-rule: #e4dcc9;
+	--amber-ink-muted: #655d4f;
+	--amber-ink: #2a2622;
+	--amber-accent: #9a6314; /* amber-700 — AA link/text on paper */
+	--amber-accent-hover: #7c4e0f; /* amber-800 */
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--amber-bg: #1a1714;
+		--amber-surface-sunken: #232019;
+		--amber-rule: #332e27;
+		--amber-ink-muted: #9a8f7d;
+		--amber-ink: #e8e0d2;
+		--amber-accent: #d9a441; /* amber-400 — dark-mode accent */
+		--amber-accent-hover: #ecbb5e;
+	}
+}
+
+/*
+ * Headings across the admin surface take the display face. The body font is
+ * inherited from .amber-admin (set in routes/admin/+layout.svelte); these
+ * rules are global rather than component-scoped so child page headings
+ * (rendered in their own +page.svelte components) pick them up too. SOFT 30 /
+ * WONK 0 per the typography spec — a little less rounding than the wordmark.
+ */
+.amber-admin :is(h1, h2, h3) {
+	font-family: var(--amber-font-display);
+	font-weight: 600;
+	font-variation-settings:
+		'SOFT' 30,
+		'WONK' 0;
+	letter-spacing: -0.005em;
+	line-height: 1.2;
+	color: var(--amber-ink);
+	text-wrap: balance;
+}

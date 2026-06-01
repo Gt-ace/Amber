@@ -1,13 +1,12 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import favicon from '$lib/assets/favicon.svg';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
+	<!-- Favicons + app icons are install-wide; they live in app.html, not here. -->
 	{#if data.themeCssHref}
 		<link rel="stylesheet" href={data.themeCssHref} />
 	{/if}

@@ -4,6 +4,22 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
+
+		<!--
+			Brand identity — install-wide favicons, app icons, and PWA manifest.
+			These live here (not a layout) because they're the same for every space
+			and every surface (admin + public) and don't vary per request. The
+			default theme-color tags below are the calm-paper / soft-charcoal gem
+			chrome; a public space's active theme can override them via its own
+			<meta name="theme-color"> in +layout.svelte, which SvelteKit injects at
+			%sveltekit.head% (after this block, so it wins on matching media).
+		-->
+		<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<link rel="manifest" href="/site.webmanifest" />
+		<meta name="theme-color" content="#faf7f0" media="(prefers-color-scheme: light)" />
+		<meta name="theme-color" content="#1a1714" media="(prefers-color-scheme: dark)" />
+
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
