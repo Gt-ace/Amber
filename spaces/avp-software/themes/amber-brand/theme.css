@@ -39,7 +39,6 @@
 
 /* ── Base ───────────────────────────────────────────────────────────────── */
 *{box-sizing:border-box;}
-html{scroll-behavior:smooth;}
 body{
 	margin:0;min-height:100dvh;display:flex;flex-direction:column;
 	background:var(--amber-bg);color:var(--amber-ink);
@@ -53,7 +52,7 @@ main{flex:1 0 auto;}
 ::selection{background:var(--amber-selection-bg);}
 a{color:var(--amber-accent);text-decoration:none;}
 a:hover{color:var(--amber-accent-hover);}
-:focus-visible{outline:2px solid var(--amber-accent);outline-offset:3px;}
+:focus-visible{outline:2px solid var(--amber-accent);outline-offset:3px;border-radius:4px;}
 
 .wrap{max-width:1080px;margin:0 auto;padding:0 32px;}
 
@@ -176,6 +175,11 @@ h2.display{font-variation-settings:'opsz' 72,'SOFT' 30,'WONK' 0;letter-spacing:-
 .btn:active{transform:scale(.97);}
 .btn--primary{background:var(--amber-brand);color:#2a2622;} /* ink label on amber — never white; #2a2622 is a fixed dark ink in BOTH modes (do not tokenize) */
 .btn--primary:hover{background:#bf831d;color:#2a2622;} /* deeper amber, ink label — AA in both modes (4.63:1) */
+/* The global :focus-visible ring is var(--amber-accent) (amber) — on the amber
+   primary bg that's ~1.4:1, below WCAG 1.4.11's 3:1 non-text threshold. Swap to
+   the ink colour: #2a2622 on #c6871f ≈ 4.9:1, legible in both modes (the amber
+   bg is mode-invariant). Width/offset/border-radius inherit from the global rule. */
+.btn--primary:focus-visible{outline-color:#2a2622;}
 .btn--ghost{color:var(--amber-accent);border-color:var(--amber-rule);background:transparent;}
 .btn--ghost:hover{border-color:var(--amber-accent);}
 .micro{font-size:.88rem;color:var(--amber-ink-muted);margin:0;letter-spacing:.01em;}
@@ -350,6 +354,13 @@ h2.display{font-variation-settings:'opsz' 72,'SOFT' 30,'WONK' 0;letter-spacing:-
 @keyframes caretBlink{0%,49%{opacity:1;}50%,100%{opacity:0;}}
 @keyframes edFade{0%{opacity:0;}5%{opacity:1;}90%{opacity:1;}97%,100%{opacity:0;}}
 
+/* Smooth in-page anchor scrolling — gated behind no-preference so reduced-motion
+   users get instant jumps (WCAG 2.3.3). A second no-preference at-rule is valid
+   CSS; kept separate from the entrance-motion block below for clarity. */
+@media (prefers-reduced-motion: no-preference) {
+	html{scroll-behavior:smooth;}
+}
+
 @media (prefers-reduced-motion: no-preference) {
 	/* 1 · Hero load stagger — plays once on load. Tight stagger (90ms), 14px
 	   travel, strong ease-out. Settled, not flashy. */
@@ -400,4 +411,37 @@ h2.display{font-variation-settings:'opsz' 72,'SOFT' 30,'WONK' 0;letter-spacing:-
 @supports not (animation-timeline: view()){
 	html.js-reveal .reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease, transform .7s var(--amber-ease);}
 	html.js-reveal .reveal.is-in{opacity:1;transform:none;}
+}
+
+/* ── Error page ──────────────────────────────────────────────────────────────
+   Rendered by +error.svelte inside the layout-owned <main> (which has no .wrap),
+   so .error-page supplies its own measure + horizontal padding, mirroring .wrap.
+   Calm and centred: a large amber numeral, a Fraunces title, a quiet line, a
+   link home. Every colour composes from an --amber-* token, so light and dark
+   both hold. Structure modelled on amber-editorial's error block; values are all
+   amber-brand tokens (editorial's --amber-text-… / -ui scale doesn't exist here). */
+.error-page{
+	max-width:1080px;margin:0 auto;padding:96px 32px 104px;text-align:center;
+}
+.error-code{
+	font-family:var(--amber-font-display);font-optical-sizing:auto;
+	font-variation-settings:'opsz' 144,'SOFT' 30,'WONK' 0;
+	font-weight:600;font-size:clamp(4.5rem,16vw,8rem);line-height:1;
+	letter-spacing:-0.02em;color:var(--amber-accent);margin:0 0 .1em;
+}
+.error-title{
+	font-family:var(--amber-font-display);font-optical-sizing:auto;
+	font-variation-settings:'opsz' 72,'SOFT' 30,'WONK' 0;
+	font-weight:600;font-size:clamp(2rem,5vw,3rem);line-height:1.1;
+	letter-spacing:-0.015em;color:var(--amber-ink);text-wrap:balance;margin:0 0 18px;
+}
+/* The descriptive line only (404 branch). Scoped with :not([class]) so it can't
+   override .error-code / .error-back, which are also <p> but carry classes. */
+.error-page p:not([class]){font-size:1.15rem;line-height:1.6;color:var(--amber-ink-muted);margin:0 auto;max-width:42ch;}
+.error-back{margin-top:30px;}
+.error-back a{color:var(--amber-accent);font-weight:600;}
+.error-back a:hover{color:var(--amber-accent-hover);}
+
+@media (prefers-reduced-motion: no-preference){
+	.error-page{animation:rise .6s var(--amber-ease) both;}
 }
