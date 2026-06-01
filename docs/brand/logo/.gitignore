@@ -1,0 +1,4 @@
+# The SVG is the master and regenerates any raster size; keep working/source
+# files local, out of the repo.
+source-*.png
+*-master.png

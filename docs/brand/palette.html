@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amber — Palette</title>
+<style>
+	body {
+		font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+		background: #faf7f0;
+		color: #2a2622;
+		margin: 0;
+		padding: 3rem 1.5rem 5rem;
+		line-height: 1.5;
+	}
+	.wrap { max-width: 60rem; margin: 0 auto; }
+	h1 { font-size: 2rem; margin: 0 0 .25rem; }
+	.sub { color: #655d4f; margin: 0 0 2.5rem; }
+	h2 { font-size: 1.15rem; margin: 2.5rem 0 1rem; }
+	.row { display: flex; flex-wrap: wrap; gap: .6rem; }
+	.sw {
+		width: 8.5rem; border-radius: 8px; overflow: hidden;
+		border: 1px solid rgba(0,0,0,.08); background: #fff;
+	}
+	.chip { height: 4.5rem; }
+	.meta { padding: .5rem .6rem; font-size: .72rem; }
+	.meta b { display: block; font-size: .8rem; }
+	.meta code { color: #655d4f; font-family: ui-monospace, monospace; }
+	.dark { background: #1a1714; color: #e8e0d2; border-radius: 12px; padding: 1.5rem; margin-top: 1rem; }
+	.dark .sw { background: #232019; border-color: rgba(255,255,255,.1); }
+	.dark .meta code { color: #9a8f7d; }
+	.demo { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
+	.card {
+		flex: 1; min-width: 16rem; border-radius: 12px; padding: 1.5rem;
+		border: 1px solid #e4dcc9;
+	}
+	.card.l { background: #faf7f0; color: #2a2622; }
+	.card.d { background: #1a1714; color: #e8e0d2; border-color: #332e27; }
+	.card a.l { color: #9a6314; }
+	.card a.d { color: #d9a441; }
+	.btn { display: inline-block; margin-top: .8rem; padding: .55rem 1.1rem;
+		border-radius: 8px; background: #c6871f; color: #2a2622; font-weight: 600;
+		text-decoration: none; font-size: .9rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+	<h1>Amber — Color Palette</h1>
+	<p class="sub">Calm &amp; sovereign, worn warmly. Amber anchor on warm neutrals.</p>
+
+	<h2>1 · Signature Amber</h2>
+	<div class="row" id="amber"></div>
+
+	<h2>2 · Warm Neutrals — Light</h2>
+	<div class="row" id="neutral-light"></div>
+
+	<h2>2 · Warm Neutrals — Dark</h2>
+	<div class="dark"><div class="row" id="neutral-dark"></div></div>
+
+	<h2>3 · Supporting Pine</h2>
+	<div class="row" id="pine"></div>
+
+	<h2>4 · Semantic</h2>
+	<div class="row" id="semantic"></div>
+
+	<h2>5 · In context</h2>
+	<div class="demo">
+		<div class="card l">
+			<strong>Light</strong>
+			<p style="color:#655d4f;font-size:.9rem;">Warm paper, warm ink. A
+			<a class="l" href="#">deep-amber link</a> sits quietly.</p>
+			<a class="btn" href="#">Primary button</a>
+		</div>
+		<div class="card d">
+			<strong>Dark</strong>
+			<p style="color:#9a8f7d;font-size:.9rem;">Soft charcoal, not black. A
+			<a class="d" href="#">brighter amber link</a> for contrast.</p>
+			<a class="btn" href="#">Primary button</a>
+		</div>
+	</div>
+</div>
+<script>
+	const sets = {
+		amber: [["amber-50","#FBF4E4"],["amber-100","#F6E6C4"],["amber-200","#EFD191"],
+			["amber-300","#E6BA60"],["amber-400","#D9A441"],["amber-500 ★","#C6871F"],
+			["amber-600","#A66E14"],["amber-700","#9A6314"],["amber-800","#7C4E0F"],
+			["amber-900","#5A3809"]],
+		"neutral-light": [["paper","#FAF7F0"],["sunken","#EFE8D6"],["rule","#E4DCC9"],
+			["ink-muted","#655D4F"],["ink","#2A2622"]],
+		"neutral-dark": [["paper","#1A1714"],["sunken","#232019"],["rule","#332E27"],
+			["ink-muted","#9A8F7D"],["ink","#E8E0D2"]],
+		pine: [["pine-300","#6E9189"],["pine-500","#2E5A50"],["pine-700","#244A42"]],
+		semantic: [["success","#3F7A52"],["warning","#C2611C"],["error","#B23B2E"],
+			["info","#3C6E8F"]],
+	};
+	for (const [id, items] of Object.entries(sets)) {
+		const host = document.getElementById(id);
+		for (const [name, hex] of items) {
+			const el = document.createElement("div");
+			el.className = "sw";
+			el.innerHTML = '<div class="chip" style="background:'+hex+'"></div>' +
+				'<div class="meta"><b>'+name+'</b><code>'+hex+'</code></div>';
+			host.appendChild(el);
+		}
+	}
+</script>
+</body>
+</html>
