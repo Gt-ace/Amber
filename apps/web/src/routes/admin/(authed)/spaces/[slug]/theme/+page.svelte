@@ -54,7 +54,7 @@
 			<label class="row">
 				<input type="radio" name="theme" value="" bind:group={selected} />
 				<span class="row-main">Use install default</span>
-				{#if initialValue === ''}<span class="chip">Selected</span>{/if}
+				{#if data.declaredTheme === null}<span class="chip">Selected</span>{/if}
 				<span class="row-sub">
 					Falls through to the install-level theme set in <code>amber.toml</code>, then to
 					<code>amber-default</code>.

@@ -59,7 +59,11 @@ export const load: PageServerLoad = async (event) => {
 			version: t.manifest.version ?? null,
 			author: t.manifest.author ?? null
 		}))
-		.sort((a, b) => a.name.localeCompare(b.name));
+		.sort((a, b) => {
+			if (a.name === 'amber-default') return -1;
+			if (b.name === 'amber-default') return 1;
+			return a.name.localeCompare(b.name);
+		});
 
 	return {
 		slug: event.params.slug,

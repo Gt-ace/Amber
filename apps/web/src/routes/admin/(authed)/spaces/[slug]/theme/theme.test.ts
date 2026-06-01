@@ -200,4 +200,18 @@ describe('/admin/spaces/[slug]/theme action', () => {
 		).rejects.toMatchObject({ status: 403 });
 		expect(existsSync(join(workDir, 'space.toml'))).toBe(false);
 	});
+
+	test('owner picks a theme → preserves existing routing (host) in space.toml', async () => {
+		writeFileSync(join(workDir, 'space.toml'), 'host = "example.com"\n');
+		const { actions } = await import('./+page.server.ts');
+		try {
+			await actions.default!(await actionEvent({ id: 'owner', isInstallAdmin: false }, { theme: 'amber-editorial' }));
+			expect.unreachable('action should have redirected');
+		} catch (r) {
+			expect((r as { status: number }).status).toBe(303);
+		}
+		const out = readFileSync(join(workDir, 'space.toml'), 'utf8');
+		expect(out).toContain('host = "example.com"');
+		expect(out).toContain('theme = "amber-editorial"');
+	});
 });
