@@ -98,6 +98,8 @@ export interface ThemeManifest {
 	name?: string;
 	version?: string;
 	author?: string;
+	/** One-line description. Documented in docs/themes.md; used by amber-editorial. */
+	description?: string;
 	/**
 	 * `theme-color` meta values. The theme declares them here instead of route
 	 * code duplicating `--amber-bg` light/dark (SPIKE_NOTES). Rendered into

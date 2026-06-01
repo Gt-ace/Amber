@@ -53,8 +53,8 @@ user's file; we read it, we don't edit it.
 
 > *Authoring-layer revision (v0.5+):* subsystem 5 (shipped) writes
 > `amber.toml` (and `space.toml` if the operator picks routing at
-> create time) on explicit user action. Subsystem 6 (pending) will
-> write `space.toml` for theme changes. Both write only on explicit
+> create time) on explicit user action. Subsystem 6 (shipped) writes
+> `space.toml`'s `theme` field on explicit user action. Both write only on explicit
 > user action, never silently; the on-disk result remains hand-
 > editable TOML. This rule was revised *with* subsystem 5's code, in
 > line with the "scope guards" rule above.
@@ -329,7 +329,11 @@ up from a working content pipeline; the substrate is in place.
   5. **Space-creation UI (shipped)** — writes `amber.toml` and
      optionally `space.toml` (routing). Hot-adds the new space into the
      resolver index. Install-admin only; hidden in single-space mode.
-  6. **Theme-picker UI** — writes `space.toml`.
+  6. **Theme-picker UI (shipped)** — writes `space.toml`'s `theme`
+     field (host/prefix/default remain hand-edited). Hot-reload via the
+     existing `space_config_change` watcher path; no new mutation API
+     needed. Owner-or-install-admin only; works in both single-space and
+     multi-space modes.
 
   Build order is risk-first. Subsystem 1 (the editor) is **spiked before
   any binding rule is revised** — "a WYSIWYG editor that round-trips to
@@ -360,7 +364,7 @@ no:
 - Putting content logic in a `+page.ts` (must be `.server.ts`).
 - Writing through the cache without going through `apply()`.
 - Modifying `amber.toml` from code, **except** the space-creation UI
-  (subsystem 5, shipped) and the theme-picker UI (subsystem 6, pending),
+  (subsystem 5, shipped) and the theme-picker UI (subsystem 6, shipped),
   which write these files only on explicit user action through the
   admin UI and never silently.
 - Introducing a generic UI component library, an ORM, or a CSS framework.
@@ -371,15 +375,12 @@ no:
 - Adding a CI service before there's a release to gate.
 - Designing for future-version features in current code paths.
 
-One of these guards still sits on the authoring layer's path and will
-be revised as its subsystem lands (see "Roadmap shape"): a UI component
-library if the theme picker needs one. The `better-auth` dependency
-was revised with v0.5 subsystem 2's code, in line with this section's
-"the rule gets revised here first, then the change lands" rule.
-Subsystem 5's `amber.toml` / `space.toml` write rule was revised with
-this section above. The remaining guard holds until subsystem 6 ships
-*with* its rule revision — the authoring layer does not get to
-pre-emptively waive it.
+The `better-auth` dependency was revised with v0.5 subsystem 2's code,
+in line with this section's "the rule gets revised here first, then the
+change lands" rule. Subsystem 5's `amber.toml` / `space.toml` write rule
+was revised with this section above. All authoring-layer scope-guard
+revisions have now shipped with their respective subsystems; no
+pre-emptive waivers remain.
 
 If the change is genuinely needed and breaks one of these, the rule gets
 revised here first, then the change lands. Not the other way around.

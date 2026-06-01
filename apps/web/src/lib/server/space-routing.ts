@@ -120,3 +120,28 @@ export function parseSpaceRouting(
 
 	return { routing: { host, prefix, default: isDefault }, warnings };
 }
+
+/**
+ * Derive a space's public URL from its `space.toml` routing fields, the
+ * install's `AMBER_PUBLIC_URL`, and the discovery mode.
+ *
+ * Single-space mode short-circuits to `<publicUrl>/`: the lone space is the
+ * resolver default and `hooks.server.ts` ignores its routing fields, so it
+ * always has a public URL. Multi-space mode returns `null` for an admin-only
+ * space (no host / prefix / default) — there's nowhere it serves yet.
+ *
+ * `publicUrl` supplies the scheme for the `host` case and the base origin for
+ * `prefix` / `default` cases.
+ */
+export function publicUrlForSpace(
+	config: { host?: string; prefix?: string; default?: boolean } | null,
+	publicUrl: string,
+	mode: 'single-space' | 'multi-space'
+): string | null {
+	const base = new URL(publicUrl);
+	if (mode === 'single-space') return `${base.origin}/`;
+	if (config?.host) return `${base.protocol}//${config.host}/`;
+	if (config?.prefix) return `${base.origin}${config.prefix}/`;
+	if (config?.default === true) return `${base.origin}/`;
+	return null;
+}

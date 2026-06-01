@@ -5,6 +5,15 @@
 </script>
 
 <h1>Pages</h1>
+{#if data.canPickTheme}
+	<p class="amber-space-meta">
+		Theme: <strong>{data.activeThemeName}</strong>
+		<a href={resolve(`/admin/spaces/${data.slug}/theme` as '/admin/spaces/[slug]/theme')}>Change</a>
+		{#if data.publicUrl}
+			· <a href={data.publicUrl} target="_blank" rel="noopener">view your site ↗</a>
+		{/if}
+	</p>
+{/if}
 <p><a href={resolve(`/admin/spaces/${data.slug}/new` as '/admin/spaces/[slug]/new')}>+ New page</a></p>
 
 <ul class="amber-page-list">
@@ -22,6 +31,11 @@
 </ul>
 
 <style>
+	.amber-space-meta {
+		color: #555;
+		font-size: 0.9rem;
+		margin: 0.25rem 0 0.75rem;
+	}
 	.amber-page-list {
 		list-style: none;
 		padding: 0;

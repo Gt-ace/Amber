@@ -192,3 +192,39 @@ export function resolveActiveTheme(
 	);
 	return { theme: BUILTIN_THEME, warnings };
 }
+
+export interface ThemeSourceDescription {
+	/**
+	 * `'space-toml'` — the rendering theme is the one this space's `space.toml`
+	 * declares. `'inherited'` — no usable space-level override, so the resolver
+	 * fell through to `amber.toml` / `amber-default` / the built-in floor.
+	 */
+	source: 'space-toml' | 'inherited';
+	/**
+	 * Set to the declared theme name when `space.toml` names a theme that isn't
+	 * a discovered directory (the chain fell through). `null` otherwise.
+	 */
+	staleThemeName: string | null;
+}
+
+/**
+ * Classify where the active theme came from, for the picker's
+ * "Currently rendering" line and "Selected" chip. Pure — no warnings, no
+ * resolution re-run (that would re-emit `space_theme_not_found`).
+ *
+ * Deliberately does NOT distinguish "inherited from `amber.toml`'s `theme`"
+ * from "inherited from the `amber-default` floor": both read as `'inherited'`,
+ * and the resolved theme *name* (held separately by the caller) already tells
+ * the operator what they'll get. This is the deliberate alternative to
+ * widening `resolveActiveTheme`'s return contract (spec §3).
+ */
+export function describeThemeSource(
+	declaredTheme: string | undefined,
+	discovered: Map<string, Theme>
+): ThemeSourceDescription {
+	if (declaredTheme !== undefined) {
+		if (discovered.has(declaredTheme)) return { source: 'space-toml', staleThemeName: null };
+		return { source: 'inherited', staleThemeName: declaredTheme };
+	}
+	return { source: 'inherited', staleThemeName: null };
+}

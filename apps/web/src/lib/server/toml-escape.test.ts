@@ -1,0 +1,38 @@
+import { describe, expect, test } from 'vitest';
+import { parse as parseToml } from 'smol-toml';
+import { escapeTomlBasic } from './toml-escape';
+
+/** Build `key = "<escaped>"`, parse it back, return the parsed value. */
+function roundtrip(raw: string): string {
+	const parsed = parseToml(`key = "${escapeTomlBasic(raw)}"`) as { key: string };
+	return parsed.key;
+}
+
+describe('escapeTomlBasic', () => {
+	// Control-char cases use `\u....` escapes (same runtime bytes as the literal
+	// control chars, but visible in source) so a future editor can see them.
+	test.each([
+		['empty', ''],
+		['plain ascii', 'amber-default'],
+		['backslash', 'a\\b'],
+		['double quote', 'a"b'],
+		['newline', 'a\nb'],
+		['carriage return', 'a\rb'],
+		['tab', 'a\tb'],
+		['NUL control', 'a\u0000b'],
+		['unit separator 0x1f', 'a\u001fb'],
+		['DEL 0x7f', 'a\u007fb'],
+		['emoji (surrogate pair)', 'a😀b'],
+		['RTL + zero-width joiner', 'a‍‮ب']
+	])('round-trips %s through smol-toml', (_name, raw) => {
+		expect(roundtrip(raw)).toBe(raw);
+	});
+
+	test('newline emits the named \\n escape, not a literal newline', () => {
+		expect(escapeTomlBasic('a\nb')).toBe('a\\nb');
+	});
+
+	test('a control char with no named escape uses \\uXXXX', () => {
+		expect(escapeTomlBasic('\u001f')).toBe('\\u001f');
+	});
+});

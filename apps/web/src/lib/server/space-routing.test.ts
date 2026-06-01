@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, test } from 'vitest';
-import { parseSpaceRouting } from './space-routing';
+import { parseSpaceRouting, publicUrlForSpace } from './space-routing';
 import type { SpaceConfig } from '$lib/space/config';
 
 const ADMIN = 'admin.example.com';
@@ -125,5 +125,53 @@ describe('parseSpaceRouting()', () => {
 		const r = parseSpaceRouting({ host: 'a.example.com', default: true }, 'site', ADMIN);
 		expect(r.routing.host).toBe('a.example.com');
 		expect(r.routing.default).toBe(true);
+	});
+});
+
+describe('publicUrlForSpace', () => {
+	test('multi-space host: scheme from publicUrl, host from config', () => {
+		expect(publicUrlForSpace({ host: 'notes.example.com' }, 'https://amber.test', 'multi-space')).toBe(
+			'https://notes.example.com/'
+		);
+	});
+
+	test('multi-space host inherits the dev scheme', () => {
+		expect(publicUrlForSpace({ host: 'notes.example.com' }, 'http://localhost:3000', 'multi-space')).toBe(
+			'http://notes.example.com/'
+		);
+	});
+
+	test('multi-space prefix: publicUrl origin + prefix', () => {
+		expect(publicUrlForSpace({ prefix: '/notes' }, 'https://amber.test', 'multi-space')).toBe(
+			'https://amber.test/notes/'
+		);
+	});
+
+	test('multi-space default: publicUrl origin', () => {
+		expect(publicUrlForSpace({ default: true }, 'https://amber.test', 'multi-space')).toBe(
+			'https://amber.test/'
+		);
+	});
+
+	test('multi-space admin-only ({}) → null', () => {
+		expect(publicUrlForSpace({}, 'https://amber.test', 'multi-space')).toBeNull();
+	});
+
+	test('multi-space null config → null', () => {
+		expect(publicUrlForSpace(null, 'https://amber.test', 'multi-space')).toBeNull();
+	});
+
+	test('single-space {} → publicUrl origin (routing ignored)', () => {
+		expect(publicUrlForSpace({}, 'https://amber.test', 'single-space')).toBe('https://amber.test/');
+	});
+
+	test('single-space null config → publicUrl origin', () => {
+		expect(publicUrlForSpace(null, 'https://amber.test', 'single-space')).toBe('https://amber.test/');
+	});
+
+	test('single-space ignores host routing (matches boot)', () => {
+		expect(
+			publicUrlForSpace({ host: 'ignored.example.com' }, 'https://amber.test', 'single-space')
+		).toBe('https://amber.test/');
 	});
 });
