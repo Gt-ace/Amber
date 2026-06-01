@@ -297,3 +297,83 @@ h2.display{font-variation-settings:'opsz' 72,'SOFT' 30,'WONK' 0;letter-spacing:-
 	display:inline-block;width:2px;height:1.05em;background:var(--amber-accent);
 	margin-left:1px;transform:translateY(2px);visibility:visible; /* static bar; blink is Task 9 */
 }
+
+/* ── Motion ──────────────────────────────────────────────────────────────────
+   CSS-only motion for the landing page. The governing idea: every motion is a
+   well-made object settling, never a product-launch reveal — calm, restrained,
+   mostly unnoticed.
+
+   Accessibility architecture: ALL motion lives inside
+   @media (prefers-reduced-motion: no-preference). The default (and reduced-
+   motion) state — set by Tasks 7/8 above — is the fully-visible static page:
+   .rise/.reveal at full opacity, .ed-line as nowrap visible mono text, the gem
+   halo a static gradient, .ed-caret a quiet visible bar. No opacity:0 /
+   max-width:0 / visibility:hidden start-state exists OUTSIDE this block, so if
+   an animation never runs (older browser, reduced-motion) content is never
+   stuck invisible. Reduced-motion users simply never enter the block — no
+   separate reduce-reset is needed.
+
+   Keyframes are defined outside the media query: they are inert without a
+   referencing animation, and every animation that references them lives inside
+   no-preference. Only transform/opacity (and max-width for the typewriter clip)
+   animate; entrances use --amber-ease. No bounce, neon, parallax, or spin. */
+
+@keyframes rise{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
+
+/* Gem inner-glow breathe — opacity-only (transform on ::after is reserved for
+   Task 10's pointer JS). Long period, low amplitude: always on screen, so it
+   must never nag. */
+@keyframes gemBreathe{0%,100%{opacity:.7;}50%{opacity:1;}}
+
+/* Editor typing demo — a calm ~13s loop demonstrating that the editor types
+   markdown to disk. steps() gives the typewriter feel; max-width clips the line
+   (clipping, not layout thrash). */
+@keyframes type1{
+	0%{max-width:0;border-right-color:transparent;}
+	6%{max-width:0;border-right-color:var(--amber-accent);animation-timing-function:steps(10,end);}
+	17%{max-width:10ch;border-right-color:var(--amber-accent);}
+	20%{border-right-color:transparent;}
+	100%{max-width:10ch;border-right-color:transparent;}
+}
+@keyframes type2{
+	0%{max-width:0;border-right-color:transparent;}
+	22%{max-width:0;border-right-color:var(--amber-accent);animation-timing-function:steps(36,end);}
+	42%{max-width:36ch;border-right-color:var(--amber-accent);}
+	44%{border-right-color:transparent;}
+	100%{max-width:36ch;border-right-color:transparent;}
+}
+@keyframes caretShow{
+	0%,43%{visibility:hidden;}
+	44%,90%{visibility:visible;}
+	91%,100%{visibility:hidden;}
+}
+@keyframes caretBlink{0%,49%{opacity:1;}50%,100%{opacity:0;}}
+@keyframes edFade{0%{opacity:0;}5%{opacity:1;}90%{opacity:1;}97%,100%{opacity:0;}}
+
+@media (prefers-reduced-motion: no-preference) {
+	/* 1 · Hero load stagger — plays once on load. Tight stagger (90ms), 14px
+	   travel, strong ease-out. Settled, not flashy. */
+	.rise{opacity:0;animation:rise .7s var(--amber-ease) forwards;
+		animation-delay:calc(var(--i,0)*90ms + 120ms);}
+
+	/* 2 · Gem inner-glow breathe — barely there. */
+	.gem--hero-wrap::after{animation:gemBreathe 7s ease-in-out infinite;}
+
+	/* 3 · Scroll-driven section reveals — only where scroll timelines exist;
+	   other browsers show content statically (Task 10 adds a JS fallback). The
+	   reveal is inherently reversible and never parallaxes. (The rise keyframe's
+	   from{translateY(14px)} overrides the 24px below under the scroll timeline —
+	   approved prototype behaviour.) */
+	@supports (animation-timeline: view()){
+		.reveal{opacity:0;transform:translateY(24px);
+			animation:rise linear both;animation-timeline:view();animation-range:entry 8% cover 32%;}
+	}
+
+	/* 4 · Editor typing demo — the hidden start-state (clip + invisible caret)
+	   lives ONLY here, so reduced-motion users keep Task 8's full static text. */
+	.ed-line{max-width:0;overflow:hidden;border-right:2px solid transparent;}
+	.ed-doc{animation:edFade 13s ease-in-out infinite;}
+	.ed-line.l1{animation:type1 13s infinite;}
+	.ed-line.l2{animation:type2 13s infinite;}
+	.ed-caret{visibility:hidden;animation:caretShow 13s infinite,caretBlink 1.1s steps(1,end) infinite;}
+}
