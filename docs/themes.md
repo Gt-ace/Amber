@@ -17,8 +17,12 @@ presented. Themes live per-space under `spaces/<space>/themes/<name>/`. Each
 space picks its theme via its own `space.toml`, with fallbacks to the
 install-level `amber.toml`, then `amber-default`, then a built-in floor.
 
-Themes are vanilla CSS and HTML. No build step, no framework, no JavaScript.
-The theme directory you ship is the theme that runs.
+Themes are vanilla CSS and HTML. No build step, no framework. A theme *may*
+ship one optional `theme.js` purely for progressive-enhancement motion — the
+page must be complete and functional without it (see
+[`theme.js`](#themejs) below) — but there is no other scripting hook, and
+nothing the theme ships is bundled or compiled. The theme directory you ship
+is the theme that runs.
 
 ## File contract
 
@@ -32,8 +36,10 @@ spaces/<space>/themes/<your-theme>/
   chrome.html         site shell (header, nav, footer)
   page.html           page template
   error.html          error / 404 template
+  theme.js            (optional) progressive-enhancement motion, ES module
   partials/
     index.html        (optional) auto-index list template
+  fonts/              (optional) self-hosted @font-face files for brand themes
 ```
 
 `theme.toml`, `theme.css`, `chrome.html`, `page.html`, and `error.html` are
@@ -154,6 +160,7 @@ The variables available to `page.html`:
 | Variable | Type | What it is |
 | --- | --- | --- |
 | `is_draft` | boolean | True in dev for pages with `draft: true` frontmatter. Always false in production (drafts 404 there). |
+| `is_home` | boolean | True only for the space's root index (`/`). Lets one `page.html` render a landing layout on the homepage and an article layout elsewhere via `{{#is_home}}…{{/is_home}}` / `{{^is_home}}…{{/is_home}}`. |
 | `has_header` | boolean | True iff the page has either a `title` or a parseable `date`. Wrap your title/date block in `{{#has_header}}` so pages with neither don't render an empty header. |
 | `title` | string or empty | `title` from frontmatter. |
 | `date_iso` | string or empty | The raw ISO 8601 `date` from frontmatter — suitable for a `<time datetime="…">` attribute. |
@@ -199,6 +206,21 @@ Optional. Used when a page has `auto_index` frontmatter to render the
 generated list. If you don't ship one, Amber falls back to a minimal
 built-in partial — adequate but ugly. The contract is described under
 [Auto-index and partials](#auto-index-and-partials) below.
+
+### `theme.js`
+
+Optional. A single ES module for **progressive-enhancement motion only**.
+It's served by Amber's asset route at `/themes/<your-theme>/theme.js` and,
+when present, the root layout loads it on public pages as a deferred module
+script (`<script type="module">`). Theme discovery records its presence
+(`hasScript`); a missing `theme.js` is silent, like an absent `partials/` or
+`fonts/`.
+
+The hard contract: the page must be **visually complete and fully
+functional with `theme.js` removed**, with JavaScript disabled, and under
+`prefers-reduced-motion`. No content, layout, or navigation may depend on
+it — it only layers motion onto a page that already works. This is the one
+scripting seam a theme gets; everything structural stays CSS + HTML.
 
 ## Template runtime
 
@@ -404,8 +426,14 @@ The pattern to copy from `amber-editorial` is:
 --amber-font-ui: var(--amber-font-heading);
 ```
 
-Themes use system font stacks. Amber doesn't ship a fonts/CDN integration
-yet — a self-hosted canvas shouldn't phone a font CDN on every page load.
+Themes default to system font stacks — a self-hosted canvas shouldn't phone
+a font CDN on every page load. A *brand* theme is the exception: it may
+`@font-face` self-hosted faces, keeping the bytes on your own server rather
+than a CDN. Two serving paths exist: install-wide faces shared across themes
+live under the app's static `/fonts/` (e.g. `/fonts/Fraunces.woff2` — this is
+what Amber's own brand theme uses); a theme that ships its *own* faces puts
+them in `themes/<your-theme>/fonts/`, served verbatim at
+`/themes/<your-theme>/fonts/…` by the asset route.
 
 ## Auto-index and partials
 
@@ -482,10 +510,12 @@ These belong to Amber, not the theme. Don't try to override them.
   page is rendered.
 - **Markdown rendering.** Markdown → HTML happens before your template
   runs. You receive `{{{html}}}`; you do not parse markdown.
-- **JavaScript.** Themes are CSS + HTML only. There is no template-level
-  scripting hook. If you need motion, do it in CSS (`amber-default`'s
-  entrance animation and `amber-editorial`'s cobalt rule draw-in are both
-  pure-CSS).
+- **Page logic.** Content, layout, and navigation are CSS + HTML only.
+  There is no template-level scripting hook. Reach for CSS first
+  (`amber-default`'s entrance animation and `amber-editorial`'s cobalt rule
+  draw-in are both pure-CSS). The one exception is an optional `theme.js`
+  for *progressive-enhancement motion* — see [`theme.js`](#themejs) — which
+  may never carry anything the page needs to work.
 - **Build steps.** Themes are plain files. No bundler, no preprocessor.
 
 ## Installing and selecting a theme

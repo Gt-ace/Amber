@@ -382,5 +382,16 @@ was revised with this section above. All authoring-layer scope-guard
 revisions have now shipped with their respective subsystems; no
 pre-emptive waivers remain.
 
+> *amber-brand revision (landing page):* a theme may additionally ship an
+> optional `theme.js`, loaded by the layout as a deferred ES module on public
+> pages, **strictly for progressive-enhancement motion**. The page must be
+> visually complete and fully functional with JavaScript disabled and under
+> `prefers-reduced-motion` — no content, layout, or navigation may depend on
+> it. This revised the theme "no JavaScript" guard with the amber-brand theme's
+> code, in line with this section's "revise the rule here first" rule.
+> Separately: themes default to system font stacks; a *brand* theme may opt
+> into self-hosted `@font-face` faces already present in the install (Amber's
+> own brand page ships Fraunces + Hanken).
+
 If the change is genuinely needed and breaks one of these, the rule gets
 revised here first, then the change lands. Not the other way around.
