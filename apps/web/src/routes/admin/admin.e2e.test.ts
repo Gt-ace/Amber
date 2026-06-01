@@ -22,7 +22,7 @@ import { spawn, execFileSync, type ChildProcess } from 'node:child_process';
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { resolve, join, basename } from 'node:path';
-import { cpSync, mkdtempSync, rmSync } from 'node:fs';
+import { cpSync, mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { chromium, type Browser, type BrowserContext } from 'playwright';
 
@@ -63,6 +63,17 @@ async function waitForServer(url: string, timeoutMs = 15_000): Promise<void> {
 	}
 }
 
+async function waitForBodyContaining(url: string, needle: string, timeoutMs = 10_000): Promise<string> {
+	const deadline = Date.now() + timeoutMs;
+	let body = '';
+	for (;;) {
+		body = await (await fetch(url)).text();
+		if (body.includes(needle)) return body;
+		if (Date.now() > deadline) return body; // return last seen; the assertion reports the miss
+		await new Promise((r) => setTimeout(r, 200));
+	}
+}
+
 let server: ChildProcess;
 let browser: Browser;
 let signedInContext: BrowserContext;
@@ -84,6 +95,9 @@ beforeAll(async () => {
 
 	workDir = mkdtempSync(join(tmpdir(), 'amber-admin-e2e-'));
 	cpSync(FIXTURE, workDir, { recursive: true });
+	const THEMES_SRC = resolve(APP_ROOT, '../../spaces/avp-software/themes');
+	cpSync(join(THEMES_SRC, 'amber-default'), join(workDir, 'themes', 'amber-default'), { recursive: true });
+	cpSync(join(THEMES_SRC, 'amber-editorial'), join(workDir, 'themes', 'amber-editorial'), { recursive: true });
 	spaceSlug = basename(workDir);
 
 	const port = await freePort();
@@ -175,6 +189,41 @@ describe('admin surface smoke (AMBER_E2E)', () => {
 		const out = (await res.json()) as { hash: string };
 		expect(out.hash).toMatch(/^[0-9a-f]{64}$/);
 	}, 60_000);
+
+	test('theme picker writes space.toml and the public site hot-reloads (no restart)', async () => {
+		const page = await signedInContext.newPage();
+		try {
+			// Switch to amber-editorial via the picker.
+			await page.goto(base + '/admin/spaces/' + spaceSlug + '/theme', { waitUntil: 'networkidle' });
+			await page.check('input[name="theme"][value="amber-editorial"]');
+			await page.click('div.actions button[type="submit"]');
+			await page.waitForURL(base + '/admin/spaces/' + spaceSlug + '/theme', { timeout: 15_000 });
+
+			// space.toml on disk carries the theme line.
+			expect(readFileSync(join(workDir, 'space.toml'), 'utf8')).toContain('theme = "amber-editorial"');
+
+			// Public homepage now links amber-editorial's stylesheet (watcher hot-reload).
+			expect(await waitForBodyContaining(base + '/', '/themes/amber-editorial/theme.css')).toContain(
+				'/themes/amber-editorial/theme.css'
+			);
+
+			// Revert to install default.
+			await page.goto(base + '/admin/spaces/' + spaceSlug + '/theme', { waitUntil: 'networkidle' });
+			await page.check('input[name="theme"][value=""]');
+			await page.click('div.actions button[type="submit"]');
+			await page.waitForURL(base + '/admin/spaces/' + spaceSlug + '/theme', { timeout: 15_000 });
+
+			// No routing fields in single-space mode → the file is removed entirely.
+			expect(existsSync(join(workDir, 'space.toml'))).toBe(false);
+
+			// Public homepage reverts to amber-default's stylesheet.
+			expect(await waitForBodyContaining(base + '/', '/themes/amber-default/theme.css')).toContain(
+				'/themes/amber-default/theme.css'
+			);
+		} finally {
+			await page.close();
+		}
+	}, 90_000);
 
 	test('subsystem-2 URLs redirect to per-space URLs (back-compat shims)', async () => {
 		const cookies = await signedInContext.cookies();
