@@ -101,4 +101,84 @@ h2.display{font-variation-settings:'opsz' 72,'SOFT' 30,'WONK' 0;letter-spacing:-
 .foot-links a:hover{color:var(--amber-ink);}
 
 /* ── Reserved for later tasks ───────────────────────────────────────────── */
-.gem--hero,.gem--bet{display:none;} /* shown once styled in later tasks */
+.gem--bet{display:none;} /* the bet gem is styled in the next task */
+
+/* ── Hero ─────────────────────────────────────────────────────────────────
+   The signature moment: the jewel is the hero; everything around it is quiet.
+   The gem is a crisp raster anchor; its glow is a CSS radial-gradient on the
+   wrapping span's ::after (::before/::after don't render on replaced <img>
+   elements). The halo is laid out statically here; Task 9 animates its
+   opacity (a gentle breathe). The headline stays the typographic moment. */
+.hero{padding:88px 0 96px;position:relative;overflow:hidden;}
+.hero__glow{
+	position:absolute;inset:-120px auto auto -160px;width:620px;height:620px;
+	pointer-events:none;z-index:0;
+	background:radial-gradient(circle at center,
+		color-mix(in srgb,var(--amber-brand) 20%,transparent),transparent 62%);
+}
+.hero__in{position:relative;z-index:1;max-width:760px;}
+
+/* Headline + subhead come from {{{html}}} (rendered index.md): <h1> + <p>. */
+.hero__text h1{
+	font-family:var(--amber-font-display);font-optical-sizing:auto;
+	font-variation-settings:'opsz' 144,'SOFT' 30,'WONK' 0;
+	font-weight:600;letter-spacing:-0.015em;line-height:1.04;
+	color:var(--amber-ink);text-wrap:balance;
+	font-size:clamp(2.6rem,6.2vw,4.4rem);margin:0 0 22px;max-width:14ch;
+}
+.hero__text p{
+	font-size:1.2rem;line-height:1.6;color:var(--amber-ink-muted);
+	max-width:48ch;margin:0 0 34px;
+}
+
+/* The real gem + its CSS halo. Image stays sharp (the gradient lives on the
+   wrapper, not the gem); the gem's own drop-shadow composes from the brand
+   token. */
+.gem--hero-wrap{position:relative;display:inline-block;margin:0 0 28px;}
+.gem--hero{
+	display:block;width:clamp(84px,12vw,132px);height:auto;
+	filter:drop-shadow(0 10px 30px color-mix(in srgb,var(--amber-brand) 28%,transparent));
+	position:relative;z-index:1;
+}
+.gem--hero-wrap::after{
+	content:"";position:absolute;inset:-55% -55% -42% -55%;z-index:0;pointer-events:none;
+	background:radial-gradient(circle at 50% 52%,
+		color-mix(in srgb,var(--amber-brand) 34%,transparent),transparent 62%);
+}
+
+/* install block */
+.install{margin:0 0 30px;max-width:30rem;}
+.code{
+	font-family:var(--amber-font-mono);font-size:.86rem;line-height:1.85;
+	background:var(--amber-surface-sunken);border:1px solid var(--amber-rule);
+	border-radius:12px;padding:18px 20px;margin:0;color:var(--amber-ink);
+	overflow-x:auto;
+}
+.code .ln{display:block;white-space:pre;}
+.code .pr{
+	color:var(--amber-accent);opacity:.85; /* bumped from .75 so the prompt clears legibility on sunken in light mode too */
+	-webkit-user-select:none;user-select:none;margin-right:.6em;
+}
+.install__cap{font-size:.88rem;color:var(--amber-ink-muted);margin:12px 2px 0;}
+.kbd{
+	font-family:var(--amber-font-mono);background:var(--amber-surface-sunken);
+	border:1px solid var(--amber-rule);border-radius:5px;padding:1px 6px;
+	font-size:.86em;color:var(--amber-ink);
+}
+
+/* buttons — primary is ALWAYS ink-on-amber (both modes); the hover deepens the
+   amber and keeps the ink label so it never flips to white-on-light in dark. */
+.cta-row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:22px;}
+.btn{
+	font-family:var(--amber-font-body);font-size:1.0625rem;font-weight:600;
+	border-radius:11px;padding:13px 26px;display:inline-flex;align-items:center;gap:.5em;
+	border:1px solid transparent;cursor:pointer;
+	transition:transform .15s var(--amber-ease),background .2s ease,color .2s ease,border-color .2s ease;
+}
+.btn:hover{transform:translateY(-1px);}
+.btn:active{transform:scale(.97);}
+.btn--primary{background:var(--amber-brand);color:#2a2622;} /* ink label on amber — never white; #2a2622 is a fixed dark ink in BOTH modes (do not tokenize) */
+.btn--primary:hover{background:#bf831d;color:#2a2622;} /* deeper amber, ink label — AA in both modes (4.63:1) */
+.btn--ghost{color:var(--amber-accent);border-color:var(--amber-rule);background:transparent;}
+.btn--ghost:hover{border-color:var(--amber-accent);}
+.micro{font-size:.88rem;color:var(--amber-ink-muted);margin:0;letter-spacing:.01em;}
