@@ -57,8 +57,11 @@ export async function writeSpaceConfig(
 	const content = serialize(update);
 	const final = join(spaceRoot, 'space.toml');
 
-	// Empty update → delete space.toml (canonical "no overrides"). A missing
-	// file is already the desired state (ENOENT swallowed).
+	// Empty *serialized* content → delete space.toml (canonical "no overrides").
+	// Note this is keyed on the serialized form, not the update object: a
+	// `{ default: false }` update serializes to nothing (only `default = true`
+	// is ever emitted) and so also deletes. A missing file is already the
+	// desired state (ENOENT swallowed).
 	if (content === '') {
 		try {
 			await unlink(final);
