@@ -80,6 +80,7 @@ export function renderPageBody(
 	const data = {
 		is_draft: isDraft && dev, // the banner is dev-only; prod drafts already 404
 		has_header: Boolean(title || dateDisplay),
+		is_home: page.url === '/', // landing layout only on the space's root index
 		title,
 		date_iso: dateIso,
 		date_display: dateDisplay

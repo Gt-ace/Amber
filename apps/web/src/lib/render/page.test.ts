@@ -79,3 +79,38 @@ describe('renderPageBody', () => {
 		expect(bodyHtml).toContain(html);
 	});
 });
+
+describe('renderPageBody — is_home', () => {
+	let dir: string;
+	let space: Space;
+	beforeEach(() => {
+		dir = mkdtempSync(join(tmpdir(), 'amber-render-ishome-'));
+		writeFileSync(join(dir, 'amber.toml'), 'amber_version = "0.1"\ntheme = "probe"\n');
+		writeFileSync(join(dir, 'index.md'), '---\ntitle: Home\n---\nHome body.\n');
+		writeFileSync(join(dir, 'about.md'), '---\ntitle: About\n---\nAbout body.\n');
+		const t = join(dir, 'themes', 'probe');
+		mkdirSync(t, { recursive: true });
+		writeFileSync(join(t, 'theme.toml'), 'name = "probe"\n');
+		writeFileSync(join(t, 'chrome.html'), '<header></header><!--amber:content--><footer></footer>');
+		writeFileSync(
+			join(t, 'page.html'),
+			'{{#is_home}}LANDING{{/is_home}}{{^is_home}}ARTICLE{{/is_home}}|{{{html}}}'
+		);
+		writeFileSync(join(t, 'error.html'), 'err');
+		({ space } = Space.load(dir, { cache: false }));
+	});
+	afterEach(() => {
+		space.close();
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	test('is_home is true for the root index and false for a sub-page', () => {
+		const home = renderPageBody(space, space.pages.get('/')!, { dev: false });
+		expect(home.bodyHtml).toContain('LANDING');
+		expect(home.bodyHtml).not.toContain('ARTICLE');
+
+		const about = renderPageBody(space, space.pages.get('/about')!, { dev: false });
+		expect(about.bodyHtml).toContain('ARTICLE');
+		expect(about.bodyHtml).not.toContain('LANDING');
+	});
+});
