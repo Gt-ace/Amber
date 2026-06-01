@@ -1,0 +1,12 @@
+name = "amber-brand"
+version = "0.1.0"
+author = "Amber"
+description = "Amber's own brand landing — a calm, premium long-scroll homepage."
+
+[theme_color]
+light = "#faf7f0"
+dark  = "#1a1714"
+
+# No [footer] block: this theme's chrome.html hardcodes its footer links
+# (GitHub / Docs / Self-hosting / License) rather than rendering the single
+# {{footer_label}}/{{footer_href}} slot the simpler themes use.

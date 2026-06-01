@@ -1,0 +1,19 @@
+:root {
+	--amber-bg:#faf7f0; --amber-ink:#2a2622; --amber-ink-muted:#655d4f;
+	--amber-accent:#9a6314; --amber-accent-hover:#7c4e0f; --amber-rule:#e4dcc9;
+	--amber-surface-sunken:#efe8d6; --amber-selection-bg:rgba(154,99,20,.18);
+	--amber-brand:#c6871f;
+	color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+	:root {
+		--amber-bg:#1a1714; --amber-ink:#e8e0d2; --amber-ink-muted:#9a8f7d;
+		--amber-accent:#d9a441; --amber-accent-hover:#ecbb5e; --amber-rule:#332e27;
+		--amber-surface-sunken:#232019; --amber-selection-bg:rgba(217,164,65,.22);
+		--amber-brand:#c6871f;
+		color-scheme: dark;
+	}
+}
+body{background:var(--amber-bg);color:var(--amber-ink);font-family:system-ui,sans-serif;margin:0;}
+.wrap{max-width:1080px;margin:0 auto;padding:0 32px;}
+.gem--hero,.gem--bet{display:none;} /* shown once styled in later tasks */

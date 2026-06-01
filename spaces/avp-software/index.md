@@ -3,8 +3,6 @@ title: Amber
 description: A self-hostable personal canvas.
 ---
 
-Amber is a self-hostable personal canvas: link-in-bio, small site, notebook, blog. Markdown on disk, no database lock-in, AGPL-3.0.
+# A personal canvas you own outright.
 
-This page is rendered by Amber from a markdown file. Source on [GitHub](https://github.com/Gt-ace/Amber).
-
-Status: v0.1 substrate.
+Link-in-bio, a small site, a notebook, a blog — rendered from plain markdown on your own server. No database lock-in. No rent.

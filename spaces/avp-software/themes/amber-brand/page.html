@@ -1,0 +1,96 @@
+{{#is_home}}
+<section class="hero">
+	<div class="hero__glow" aria-hidden="true"></div>
+	<div class="wrap hero__in">
+		<img class="gem gem--hero gem--pulse" src="/icon-512.png" alt="" width="512" height="512" />
+		<div class="hero__text rise" style="--i:1">{{{html}}}</div>
+		<div class="install rise" style="--i:2">
+			<pre class="code"><code><span class="ln"><span class="pr">$</span>git clone https://github.com/Gt-ace/Amber.git</span><span class="ln"><span class="pr">$</span>cd Amber</span><span class="ln"><span class="pr">$</span>docker compose up</span></code></pre>
+			<p class="install__cap">Then open <span class="kbd">localhost:3000</span>.</p>
+		</div>
+		<div class="cta-row rise" style="--i:3">
+			<a class="btn btn--primary" href="https://github.com/Gt-ace/Amber">Get started</a>
+			<a class="btn btn--ghost" href="https://github.com/Gt-ace/Amber/tree/main/docs">Read the docs →</a>
+		</div>
+		<p class="micro rise" style="--i:4">Open source · AGPL-3.0 · self-hostable.</p>
+	</div>
+</section>
+
+<section class="beat beat--rule bet">
+	<img class="gem gem--bet" src="/icon-512.png" alt="" width="512" height="512" />
+	<div class="wrap bet__in reveal">
+		<p class="eyebrow">The bet</p>
+		<h2 class="display">The web rents you space and keeps your work.</h2>
+		<p>Amber is the opposite bet. <strong>Markdown on your own disk, hand-editable config, AGPL.</strong> You can leave anytime — because the files were always yours.</p>
+	</div>
+</section>
+
+<section class="beat beat--rule themes" id="themes">
+	<div class="wrap">
+		<div class="reveal">
+			<p class="eyebrow">Themes</p>
+			<h2 class="display">One space. Any look.</h2>
+			<p class="lede">A theme is just CSS and HTML. Switch the whole look without touching a word of your content.</p>
+		</div>
+		<div class="window-grid">
+			<div class="win reveal" style="--i:1">
+				<div class="win__chrome"><span class="win__dots"><i></i><i></i><i></i></span><span class="win__url">amber.example</span></div>
+				<div class="win__body t-default">
+					<h3 class="pg-title">Mara Ellison</h3>
+					<p class="pg-prose">Designer and gardener in Lisbon. I keep small, careful things here — notes, photographs, a slow log.</p>
+					<nav class="pg-nav"><a href="#themes">Words</a><a href="#themes">Photos</a><a href="#themes">Garden</a></nav>
+					<span class="win__tag">theme · amber-default</span>
+				</div>
+			</div>
+			<div class="win reveal" style="--i:2">
+				<div class="win__chrome"><span class="win__dots"><i></i><i></i><i></i></span><span class="win__url">amber.example</span></div>
+				<div class="win__body t-editorial">
+					<p class="pg-kicker">Field notes</p>
+					<h3 class="pg-title">Mara Ellison</h3>
+					<p class="pg-prose">Designer and gardener in Lisbon. I keep small, careful things here — notes, photographs, a slow log.</p>
+					<nav class="pg-nav"><a href="#themes">Words</a><a href="#themes">Photos</a><a href="#themes">Garden</a></nav>
+					<span class="win__tag">theme · amber-editorial</span>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section class="beat beat--rule editor" id="editor">
+	<div class="wrap">
+		<div class="reveal">
+			<p class="eyebrow">The editor</p>
+			<h2 class="display">Write without a terminal.</h2>
+			<p class="lede">A WYSIWYG editor writes plain markdown to disk for you. What you type is what gets saved — portable, yours, forever.</p>
+		</div>
+		<div class="win ed-win reveal">
+			<div class="ed-toolbar">
+				<button class="ed-tool is-b" type="button" tabindex="-1" aria-hidden="true">B</button>
+				<button class="ed-tool is-i" type="button" tabindex="-1" aria-hidden="true">I</button>
+				<span class="ed-sep"></span>
+				<button class="ed-tool" type="button" tabindex="-1" aria-hidden="true">H1</button>
+				<button class="ed-tool" type="button" tabindex="-1" aria-hidden="true">Quote</button>
+				<button class="ed-tool" type="button" tabindex="-1" aria-hidden="true">List</button>
+				<span class="spacer"></span>
+				<span class="ed-dot" aria-hidden="true"></span>
+				<span class="ed-saved">saved to&nbsp;&nbsp;~/space/index.md</span>
+			</div>
+			<div class="ed-doc" aria-label="Editor typing a markdown document">
+				<div class="ed-row"><span class="ed-line l1"># My space</span></div>
+				<div class="ed-row"><span class="ed-line l2">A quiet place for the things I make.</span><span class="ed-caret" aria-hidden="true"></span></div>
+			</div>
+		</div>
+	</div>
+</section>
+{{/is_home}}
+{{^is_home}}
+{{#is_draft}}<p class="draft-banner" role="status">Draft — visible in development only. This page returns 404 in production.</p>{{/is_draft}}
+<article>
+	{{#has_header}}<header class="article-header">
+		{{#title}}<h1 class="article-title">{{title}}</h1>{{/title}}
+		{{#date_display}}<p class="article-date"><time datetime="{{date_iso}}">{{date_display}}</time></p>{{/date_display}}
+	</header>{{/has_header}}
+	<div class="article-body">{{{html}}}</div>
+	{{{index_html}}}
+</article>
+{{/is_home}}

@@ -1,5 +1,5 @@
 amber_version = "0.3"
-theme = "amber-editorial"
+theme = "amber-brand"
 
 [site]
 title = "Amber"

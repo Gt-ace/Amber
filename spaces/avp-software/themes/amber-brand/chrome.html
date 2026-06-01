@@ -1,0 +1,33 @@
+<header class="site-head">
+	<div class="wrap site-head__in">
+		<a class="wm" href="/" aria-label="Amber — home">
+			<img class="gem gem--wm" src="/icon-192.png" alt="" width="192" height="192" />
+			<span class="wm__txt">amber</span>
+		</a>
+		{{#has_nav}}
+		<nav class="nav" aria-label="Primary">
+			{{#nav}}<a class="nav__txt" href="{{href}}">{{label}}</a>{{/nav}}
+		</nav>
+		{{/has_nav}}
+	</div>
+</header>
+<!--amber:content-->
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="site-foot__top">
+			<div>
+				<a class="wm" href="/" aria-label="Amber — home">
+					<img class="gem gem--wm" src="/icon-192.png" alt="" width="192" height="192" />
+					<span class="wm__txt">amber</span>
+				</a>
+				<p class="foot-tag">Rendered by Amber from a markdown file.</p>
+			</div>
+			<nav class="foot-links" aria-label="Footer">
+				<a href="https://github.com/Gt-ace/Amber">GitHub</a>
+				<a href="https://github.com/Gt-ace/Amber/tree/main/docs">Docs</a>
+				<a href="https://github.com/Gt-ace/Amber/blob/main/docs/self-hosting.md">Self-hosting guide</a>
+				<a href="https://github.com/Gt-ace/Amber/blob/main/LICENSE">License (AGPL-3.0)</a>
+			</nav>
+		</div>
+	</div>
+</footer>
