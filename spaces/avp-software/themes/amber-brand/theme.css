@@ -377,3 +377,27 @@ h2.display{font-variation-settings:'opsz' 72,'SOFT' 30,'WONK' 0;letter-spacing:-
 	.ed-line.l2{animation:type2 13s infinite;}
 	.ed-caret{visibility:hidden;animation:caretShow 13s infinite,caretBlink 1.1s steps(1,end) infinite;}
 }
+
+/* ── Enhancement hooks (theme.js) ──────────────────────────────────────────────
+   Optional progressive enhancement layered by theme.js (which the layout loads
+   as a deferred module when present). The page is complete without it; these
+   hooks are no-ops until the script sets their custom property / class.
+
+   (a) Pointer-glow transform on the hero halo. Defaults to translate(0,0) — a
+   no-op without JS. The breathe animation (above) animates opacity only, so the
+   transform channel is free; this rule MERGES with the base ::after (background/
+   inset/z-index) and the breathe ::after (animation) — no property overlaps.
+   Harmless under reduced-motion: the JS never sets the vars then. */
+.gem--hero-wrap::after{
+	transform:translate(var(--gem-glow-x,0),var(--gem-glow-y,0));
+	transition:transform .25s var(--amber-ease);
+}
+
+/* (b) Reveal fallback for browsers lacking animation-timeline: view(). Scoped
+   under html.js-reveal so the hidden start-state exists ONLY when JS is present
+   AND driving it — no-JS (no class) keeps .reveal fully visible. theme.js only
+   adds the class when motion is allowed, so reduced-motion never sees opacity:0. */
+@supports not (animation-timeline: view()){
+	html.js-reveal .reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease, transform .7s var(--amber-ease);}
+	html.js-reveal .reveal.is-in{opacity:1;transform:none;}
+}
