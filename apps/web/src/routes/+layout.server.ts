@@ -43,6 +43,7 @@ const ADMIN_BLANK = {
 	chromeAfter: '',
 	errorTemplate: '',
 	themeCssHref: null,
+	themeJsHref: null,
 	themeColor: null
 };
 
@@ -86,6 +87,8 @@ export const load: LayoutServerLoad = ({ url, locals }) => {
 	// still receives `params.name`/`params.file` after the prefix is stripped.
 	const mountPrefix = locals.mountPrefix ?? '';
 	const themeCssHref = theme.assetBase ? `${mountPrefix}${theme.assetBase}/theme.css` : null;
+	const themeJsHref =
+		theme.assetBase && theme.hasScript ? `${mountPrefix}${theme.assetBase}/theme.js` : null;
 
 	const notFoundPage = space.pages.get('/404');
 	const notFoundHtml =
@@ -102,6 +105,7 @@ export const load: LayoutServerLoad = ({ url, locals }) => {
 		chromeAfter,
 		errorTemplate: readTemplate(theme, 'error'),
 		themeCssHref,
+		themeJsHref,
 		themeColor
 	};
 };

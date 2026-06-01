@@ -10,6 +10,9 @@
 	{#if data.themeCssHref}
 		<link rel="stylesheet" href={data.themeCssHref} />
 	{/if}
+	{#if data.themeJsHref}
+		<script type="module" src={data.themeJsHref}></script>
+	{/if}
 	{#if data.themeColor?.light}
 		<meta
 			name="theme-color"

@@ -26,6 +26,9 @@ import type { RequestHandler } from './$types';
 
 const CONTENT_TYPES: Record<string, string> = {
 	'.css': 'text/css; charset=utf-8',
+	'.js': 'text/javascript; charset=utf-8',
+	'.mjs': 'text/javascript; charset=utf-8',
+	'.map': 'application/json; charset=utf-8',
 	'.woff2': 'font/woff2',
 	'.woff': 'font/woff',
 	'.ttf': 'font/ttf',

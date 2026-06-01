@@ -16,6 +16,7 @@ beforeAll(async () => {
 	writeFileSync(join(root, 'amber.toml'), 'amber_version = "0.2"\n');
 	writeFileSync(join(root, 'index.md'), '# hi\n');
 	writeFileSync(join(root, 'themes', 'amber-default', 'theme.css'), ':root{--x:1}');
+	writeFileSync(join(root, 'themes', 'amber-default', 'theme.js'), 'console.log(1)');
 	writeFileSync(join(root, 'themes', 'amber-default', 'fonts', 'x.woff2'), 'BINARY');
 	process.env.AMBER_SPACE_PATH = root;
 	GET = (await import('./+server.ts')).GET;
@@ -40,6 +41,12 @@ describe('theme asset route', () => {
 		expect(res.status).toBe(200);
 		expect(res.headers.get('content-type')).toContain('text/css');
 		expect(await res.text()).toBe(':root{--x:1}');
+	});
+	test('serves theme.js with text/javascript so module scripts load', async () => {
+		const res = await call('amber-default', 'theme.js');
+		expect(res.status).toBe(200);
+		expect(res.headers.get('content-type')).toBe('text/javascript; charset=utf-8');
+		expect(await res.text()).toBe('console.log(1)');
 	});
 	test('serves a nested font file with a font content-type', async () => {
 		const res = await call('amber-default', 'fonts/x.woff2');
