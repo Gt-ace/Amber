@@ -1,8 +1,30 @@
+/*
+ * amber-brand — the theme Amber wears for its own landing page.
+ *
+ * Self-hosted brand webfonts (Fraunces display + Hanken Grotesk body), the
+ * amber palette as the design system, warm and calm. Light is the default;
+ * dark is opt-in via prefers-color-scheme. Only the colour tokens remap
+ * between the two — font/spacing tokens are constant, and every literal
+ * colour in this file composes from an --amber-* token so dark mode holds.
+ *
+ * Ported from the approved prototype (amber-claude-design/index(1).html); this
+ * first pass covers @font-face, tokens, base/type, header and footer only.
+ */
+
+/* ── Brand webfonts (self-hosted, served install-wide at /fonts/) ───────── */
+@font-face { font-family:'Fraunces';      src:url('/fonts/Fraunces.woff2') format('woff2-variations');      font-weight:100 900; font-style:normal; font-display:swap; }
+@font-face { font-family:'Hanken Grotesk'; src:url('/fonts/HankenGrotesk.woff2') format('woff2-variations'); font-weight:100 900; font-style:normal; font-display:swap; }
+
+/* ── Tokens — light default; dark remaps colour tokens only ─────────────── */
 :root {
 	--amber-bg:#faf7f0; --amber-ink:#2a2622; --amber-ink-muted:#655d4f;
 	--amber-accent:#9a6314; --amber-accent-hover:#7c4e0f; --amber-rule:#e4dcc9;
 	--amber-surface-sunken:#efe8d6; --amber-selection-bg:rgba(154,99,20,.18);
-	--amber-brand:#c6871f;
+	--amber-brand:#c6871f; --amber-pine:#2e5a50;
+	--amber-font-display:'Fraunces', Georgia, serif;
+	--amber-font-body:'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--amber-font-mono:ui-monospace, SFMono-Regular, Menlo, monospace;
+	--amber-ease: cubic-bezier(0.23, 1, 0.32, 1);
 	color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -10,10 +32,73 @@
 		--amber-bg:#1a1714; --amber-ink:#e8e0d2; --amber-ink-muted:#9a8f7d;
 		--amber-accent:#d9a441; --amber-accent-hover:#ecbb5e; --amber-rule:#332e27;
 		--amber-surface-sunken:#232019; --amber-selection-bg:rgba(217,164,65,.22);
-		--amber-brand:#c6871f;
+		--amber-brand:#c6871f; --amber-pine:#3f7367;
 		color-scheme: dark;
 	}
 }
-body{background:var(--amber-bg);color:var(--amber-ink);font-family:system-ui,sans-serif;margin:0;}
+
+/* ── Base ───────────────────────────────────────────────────────────────── */
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+	margin:0;min-height:100dvh;display:flex;flex-direction:column;
+	background:var(--amber-bg);color:var(--amber-ink);
+	font-family:var(--amber-font-body);font-size:1.0625rem;line-height:1.6;font-weight:400;
+	-webkit-font-smoothing:antialiased;
+}
+/* Amber owns <main> (between the chrome halves); let it grow so the footer
+   sits at the bottom on short pages. Landing sections are full-bleed with
+   their own .wrap, so main imposes no measure of its own. */
+main{flex:1 0 auto;}
+::selection{background:var(--amber-selection-bg);}
+a{color:var(--amber-accent);text-decoration:none;}
+a:hover{color:var(--amber-accent-hover);}
+:focus-visible{outline:2px solid var(--amber-accent);outline-offset:3px;}
+
 .wrap{max-width:1080px;margin:0 auto;padding:0 32px;}
+
+/* ── Type ───────────────────────────────────────────────────────────────── */
+.display{
+	font-family:var(--amber-font-display);font-optical-sizing:auto;
+	font-variation-settings:'opsz' 144,'SOFT' 30,'WONK' 0;
+	font-weight:600;letter-spacing:-0.015em;line-height:1.04;margin:0;
+	color:var(--amber-ink);text-wrap:balance;
+}
+h2.display{font-variation-settings:'opsz' 72,'SOFT' 30,'WONK' 0;letter-spacing:-0.01em;line-height:1.1;}
+.eyebrow{
+	font-family:var(--amber-font-mono);font-size:.8rem;letter-spacing:.16em;
+	text-transform:uppercase;color:var(--amber-accent);margin:0 0 18px;font-weight:500;
+}
+.lede{font-size:1.0625rem;line-height:1.6;color:var(--amber-ink-muted);margin:0;}
+
+/* ── Wordmark ───────────────────────────────────────────────────────────── */
+.wm{display:inline-flex;align-items:center;gap:.42em;line-height:1;}
+.gem--wm{height:1.12em;width:auto;margin-top:.02em;flex:none;display:block;}
+.wm__txt{
+	font-family:var(--amber-font-display);font-optical-sizing:auto;
+	font-variation-settings:'opsz' 144,'SOFT' 40,'WONK' 0;
+	font-weight:560;letter-spacing:-0.01em;color:var(--amber-ink);
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.site-head{position:sticky;top:0;z-index:50;
+	background:color-mix(in srgb,var(--amber-bg) 86%,transparent);
+	backdrop-filter:blur(10px);border-bottom:1px solid transparent;}
+.site-head__in{display:flex;align-items:center;justify-content:space-between;height:72px;}
+.site-head .wm__txt{font-size:1.45rem;}
+.nav{display:flex;align-items:center;gap:26px;}
+.nav a{color:var(--amber-ink-muted);font-size:.95rem;font-weight:500;transition:color .2s ease;}
+.nav a:hover{color:var(--amber-ink);}
+@media (max-width:620px){.nav a.nav__txt{display:none;}}
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+.site-foot{border-top:1px solid var(--amber-rule);padding:56px 0 64px;}
+.site-foot__top{display:flex;justify-content:space-between;align-items:flex-end;gap:30px;flex-wrap:wrap;}
+.site-foot .wm__txt{font-size:1.4rem;}
+.foot-tag{font-size:.92rem;color:var(--amber-ink-muted);margin:14px 0 0;}
+.foot-links{display:flex;gap:24px;flex-wrap:wrap;}
+.foot-links a{color:var(--amber-ink-muted);font-size:.95rem;font-weight:500;}
+.foot-links a:hover{color:var(--amber-ink);}
+
+/* ── Reserved for later tasks ───────────────────────────────────────────── */
 .gem--hero,.gem--bet{display:none;} /* shown once styled in later tasks */
