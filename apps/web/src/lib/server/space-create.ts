@@ -15,6 +15,7 @@
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ValidatedCreateInput } from './space-create-validate';
+import { escapeTomlBasic } from './toml-escape';
 
 export type WriteErrorCode = 'dir_already_exists' | 'write_failed' | 'permission_denied';
 
@@ -33,24 +34,6 @@ interface CreateSpaceArgs {
 	__forceFailAfter?: 'mkdir' | 'amber' | 'space' | 'index';
 }
 
-/** TOML basic-string escape. Covers the chars that break smol-toml's parser. */
-function escapeTomlBasic(s: string): string {
-	let out = '';
-	for (const ch of s) {
-		const code = ch.codePointAt(0)!;
-		if (ch === '"') out += '\\"';
-		else if (ch === '\\') out += '\\\\';
-		else if (ch === '\n') out += '\\n';
-		else if (ch === '\r') out += '\\r';
-		else if (ch === '\t') out += '\\t';
-		else if (code < 0x20 || code === 0x7f) {
-			out += '\\u' + code.toString(16).padStart(4, '0');
-		} else {
-			out += ch;
-		}
-	}
-	return out;
-}
 
 function amberToml(title: string): string {
 	return `amber_version = "0.1"\n\n[site]\ntitle = "${escapeTomlBasic(title)}"\n`;
