@@ -21,7 +21,8 @@ fresh chat that will do the implementation.
 - **Neutrals (light):** bg `#FAF7F0`, ink `#2A2622`, muted `#655D4F`, rule `#E4DCC9`.
 - **Neutrals (dark):** bg `#1A1714`, ink `#E8E0D2`, muted `#9A8F7D`, rule `#332E27`.
 - **Fonts:** Fraunces (display, variable, `SOFT 40` for warmth), Hanke Grotesk (body),
-  `ui-monospace` (code). Both fonts OFL-licensed, self-hosted as `.woff2` (no CDN).
+  Hanken Grotesk (body), `ui-monospace` (code). Both fonts OFL-licensed, self-hosted
+  as `.woff2` (no CDN).
 - **Wordmark:** lowercase **"amber"** in Fraunces, gem to the left.
 
 ## Logo assets (in [`logo/`](logo/))
