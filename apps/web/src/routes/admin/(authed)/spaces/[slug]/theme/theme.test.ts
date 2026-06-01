@@ -16,6 +16,13 @@ import { fileURLToPath } from 'node:url';
 import { Database } from 'bun:sqlite';
 import { applyAmberAuthMigrations } from '$lib/server/auth-migrations';
 
+// These tests do real filesystem work per case: cpSync the fixture, build a
+// SQLite cache + auth.db, and spin up a chokidar watcher via getSpace(). On a
+// cold WSL2 box the first case (route-module transform + first Space.load)
+// can exceed vitest's 5s default — the sibling layout-access.test.ts shares
+// this. Give them headroom so the suite is deterministic rather than flaky.
+vi.setConfig({ testTimeout: 20000, hookTimeout: 20000 });
+
 const FIXTURE = fileURLToPath(new URL('../../../../../../../fixtures/example-space/', import.meta.url));
 
 let workDir: string;

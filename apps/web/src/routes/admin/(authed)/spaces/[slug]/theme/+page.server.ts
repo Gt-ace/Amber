@@ -13,10 +13,13 @@
  * this space. install-admin bypasses both.
  */
 
-import { fail, redirect } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
+import path from 'node:path';
+import type { RequestEvent } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import type { Space } from '$lib/space/space';
 import { requireSpaceAccess } from '$lib/server/permissions';
-import { getDiscoveryMode } from '$lib/server/space';
+import { getDiscoveryMode, getRegistryEntries } from '$lib/server/space';
 import { readSpaceConfig } from '$lib/space/config';
 import { describeThemeSource } from '$lib/space/themes';
 import { publicUrlForSpace } from '$lib/server/space-routing';
@@ -25,6 +28,22 @@ import { writeSpaceConfig, type SpaceConfigUpdate } from '$lib/server/space-conf
 import { logger } from '$lib/server/logger';
 
 const log = logger.child({ subsystem: 'theme-picker' });
+
+/**
+ * Resolve the `Space` for this route from the registry by slug.
+ *
+ * We can't read `event.locals.space` here: the per-space `[slug]` layout sets
+ * it in its `load`, but SvelteKit does not run a parent layout's `load` before
+ * a form `action` — so during a POST `locals.space` is null. The PUT save
+ * endpoint (`api/page/[...path]/+server.ts`) resolves the same way for the same
+ * reason. Using the registry in both `load` and `action` keeps this handler
+ * self-sufficient regardless of request method.
+ */
+function resolveSpace(event: RequestEvent): Space {
+	const match = getRegistryEntries().find((e) => path.basename(e.path) === event.params.slug);
+	if (!match) error(404, `no space with slug "${event.params.slug}"`);
+	return match.space;
+}
 
 /** The routing fields to round-trip into the write, from the live config. */
 function preservedRouting(
@@ -39,8 +58,7 @@ function preservedRouting(
 
 export const load: PageServerLoad = async (event) => {
 	requireSpaceAccess(event, event.params.slug, 'owner');
-	const space = event.locals.space;
-	if (!space) throw new Error('locals.space not set by [slug]/+layout.server.ts');
+	const space = resolveSpace(event);
 
 	const { config } = readSpaceConfig(space.root);
 	const declaredTheme = config?.theme;
@@ -79,8 +97,7 @@ export const load: PageServerLoad = async (event) => {
 export const actions: Actions = {
 	default: async (event) => {
 		requireSpaceAccess(event, event.params.slug, 'owner');
-		const space = event.locals.space;
-		if (!space) throw new Error('locals.space not set by [slug]/+layout.server.ts');
+		const space = resolveSpace(event);
 
 		const fd = await event.request.formData();
 		const submitted = String(fd.get('theme') ?? '');
