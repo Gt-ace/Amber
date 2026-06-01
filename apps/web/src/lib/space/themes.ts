@@ -23,6 +23,10 @@
  * `fonts/` is optional and not touched here — it's served verbatim by the asset
  * route if a theme ships one. The amber-default theme uses a system font stack
  * and ships no fonts (SPIKE_NOTES).
+ *
+ * `theme.js` is optional too — when present it's statted (not read) so the
+ * Theme carries `hasScript`, letting the layout emit a `<script type="module">`
+ * tag for it. Absence is silent, like a missing `partials/` or `fonts/`.
  */
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -88,7 +92,14 @@ export function discoverThemes(root: string, log: Logger): Map<string, Theme> {
 			continue;
 		}
 
-		themes.set(name, { name, path: dir, assetBase: `/themes/${name}`, manifest });
+		let hasScript = false;
+		try {
+			hasScript = statSync(join(dir, 'theme.js')).isFile();
+		} catch {
+			hasScript = false; // optional file — absence is normal, no warning
+		}
+
+		themes.set(name, { name, path: dir, assetBase: `/themes/${name}`, manifest, hasScript });
 	}
 	return themes;
 }

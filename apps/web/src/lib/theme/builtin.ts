@@ -59,5 +59,6 @@ export const BUILTIN_THEME: import('$lib/types/schema').Theme = {
 	name: 'amber-default',
 	path: '',
 	assetBase: '',
-	manifest: { name: 'Amber (built-in fallback)' }
+	manifest: { name: 'Amber (built-in fallback)' },
+	hasScript: false
 };

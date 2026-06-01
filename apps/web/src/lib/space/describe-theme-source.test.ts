@@ -5,7 +5,7 @@ import type { Theme } from '$lib/types/schema';
 function themeMap(...names: string[]): Map<string, Theme> {
 	const m = new Map<string, Theme>();
 	for (const n of names) {
-		m.set(n, { name: n, path: `/themes/${n}`, assetBase: `/themes/${n}`, manifest: {} });
+		m.set(n, { name: n, path: `/themes/${n}`, assetBase: `/themes/${n}`, manifest: {}, hasScript: false });
 	}
 	return m;
 }

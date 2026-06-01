@@ -131,6 +131,8 @@ export interface Theme {
 	/** URL prefix for this theme's static assets, e.g. `/themes/amber-default`. `''` for the built-in theme (its templates emit no stylesheet `<link>`). */
 	assetBase: string;
 	manifest: ThemeManifest;
+	/** True iff the theme directory contains a `theme.js` (optional progressive-enhancement module). */
+	hasScript: boolean;
 }
 
 export interface PluginConfig {

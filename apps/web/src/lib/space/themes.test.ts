@@ -88,6 +88,23 @@ describe('discoverThemes', () => {
 			rmSync(root, { recursive: true, force: true });
 		}
 	});
+
+	test('records hasScript=true when a theme ships theme.js, false otherwise', () => {
+		const root = mkdtempSync(join(tmpdir(), 'amber-themes-hasscript-'));
+		for (const [name, withJs] of [['with-js', true], ['no-js', false]] as const) {
+			const d = join(root, 'themes', name);
+			mkdirSync(d, { recursive: true });
+			writeFileSync(join(d, 'theme.toml'), `name = "${name}"\n`);
+			writeFileSync(join(d, 'chrome.html'), '<header></header><!--amber:content--><footer></footer>');
+			writeFileSync(join(d, 'page.html'), '{{{html}}}');
+			writeFileSync(join(d, 'error.html'), 'err');
+			if (withJs) writeFileSync(join(d, 'theme.js'), 'export {};\n');
+		}
+		const themes = discoverThemes(root, log);
+		expect(themes.get('with-js')?.hasScript).toBe(true);
+		expect(themes.get('no-js')?.hasScript).toBe(false);
+		rmSync(root, { recursive: true, force: true });
+	});
 });
 
 describe('resolveActiveTheme', () => {
@@ -174,14 +191,14 @@ describe('readPartial', () => {
 			join(dir, 'partials', 'index.html'),
 			'<ol class="amber-auto-index">custom</ol>\n'
 		);
-		const theme = { name: 't', path: dir, assetBase: '/themes/t', manifest: {} };
+		const theme = { name: 't', path: dir, assetBase: '/themes/t', manifest: {}, hasScript: false };
 		expect(readPartial(theme, 'index')).toBe('<ol class="amber-auto-index">custom</ol>\n');
 		rmSync(dir, { recursive: true, force: true });
 	});
 
 	test('a discovered theme with no partials/index.html → falls back to the built-in', () => {
 		const dir = mkdtempSync(join(tmpdir(), 'amber-theme-nopartial-'));
-		const theme = { name: 't', path: dir, assetBase: '/themes/t', manifest: {} };
+		const theme = { name: 't', path: dir, assetBase: '/themes/t', manifest: {}, hasScript: false };
 		expect(readPartial(theme, 'index')).toBe(BUILTIN_PARTIALS.index);
 		rmSync(dir, { recursive: true, force: true });
 	});
