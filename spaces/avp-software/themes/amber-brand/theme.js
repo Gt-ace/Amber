@@ -73,5 +73,55 @@ function revealFallback() {
 	els.forEach((el) => io.observe(el));
 }
 
+// 3) Light/dark preference toggle. Progressive enhancement: the button ships
+//    `hidden` and the palette auto-follows the OS without this (color-scheme:
+//    light dark in theme.css). A saved choice is already applied before paint
+//    by the inline script in app.html; here we reveal the control, keep its
+//    icon/label in sync, and persist the visitor's choice on click.
+function themeToggle() {
+	const btn = document.querySelector('.theme-toggle');
+	if (!btn) return;
+	const root = document.documentElement;
+	const KEY = 'amber-theme';
+	const mq = matchMedia('(prefers-color-scheme: dark)');
+	const saved = () => {
+		try {
+			return localStorage.getItem(KEY);
+		} catch {
+			return null;
+		}
+	};
+	// The mode actually showing right now: an explicit choice if there is one,
+	// otherwise whatever the OS resolves to.
+	const resolved = () => saved() || (mq.matches ? 'dark' : 'light');
+
+	function paint(mode) {
+		btn.dataset.resolved = mode; // CSS swaps the icon off this
+		btn.setAttribute('aria-label', mode === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+		btn.setAttribute('aria-pressed', String(mode === 'dark'));
+	}
+
+	btn.hidden = false; // safe to show now that JS can drive it
+	paint(resolved());
+
+	btn.addEventListener('click', () => {
+		const next = resolved() === 'dark' ? 'light' : 'dark';
+		root.setAttribute('data-amber-theme', next);
+		try {
+			localStorage.setItem(KEY, next);
+		} catch {
+			/* private mode / storage off — the in-page switch still works for this visit */
+		}
+		paint(next);
+	});
+
+	// Visitors who never chose keep following the OS live (e.g. an auto
+	// light↔dark schedule) — mirror that into the icon. A saved choice wins.
+	mq.addEventListener('change', () => {
+		if (!saved()) paint(mq.matches ? 'dark' : 'light');
+	});
+}
+
 pointerGem();
 revealFallback();
+themeToggle();

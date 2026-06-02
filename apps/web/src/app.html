@@ -17,11 +17,33 @@
 			SvelteKit substitutes the first occurrence, and a copy here would steal
 			the injection from the real placeholder and reorder the whole head.
 		-->
+		<!-- PNG icons first: modern browsers use these directly (and they're
+		     served with a correct image/png type), which sidesteps environments
+		     that hand back favicon.ico with no/wrong content-type. The .ico stays
+		     as the universal legacy fallback. -->
+		<link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />
+		<link rel="icon" type="image/png" sizes="16x16" href="/icon-16.png" />
 		<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
 		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 		<link rel="manifest" href="/site.webmanifest" />
 		<meta name="theme-color" content="#faf7f0" media="(prefers-color-scheme: light)" />
 		<meta name="theme-color" content="#1a1714" media="(prefers-color-scheme: dark)" />
+
+		<!--
+			Theme preference: apply a saved light/dark choice to <html> before first
+			paint so there's no flash of the OS theme. Inline + ahead of the head
+			placeholder (where the theme stylesheet is injected) so it runs first.
+			A no-op until a theme's toggle writes the key, and inert on surfaces that
+			don't load a theme reading [data-amber-theme] (e.g. /admin). The public
+			amber-brand theme is the only writer/reader today.
+		-->
+		<script>
+			try {
+				var t = localStorage.getItem('amber-theme');
+				if (t === 'light' || t === 'dark')
+					document.documentElement.setAttribute('data-amber-theme', t);
+			} catch (e) {}
+		</script>
 
 		%sveltekit.head%
 	</head>

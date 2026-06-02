@@ -384,11 +384,28 @@ pre-emptive waivers remain.
 
 > *amber-brand revision (landing page):* a theme may additionally ship an
 > optional `theme.js`, loaded by the layout as a deferred ES module on public
-> pages, **strictly for progressive-enhancement motion**. The page must be
-> visually complete and fully functional with JavaScript disabled and under
-> `prefers-reduced-motion` — no content, layout, or navigation may depend on
-> it. This revised the theme "no JavaScript" guard with the amber-brand theme's
-> code, in line with this section's "revise the rule here first" rule.
+> pages, for **progressive-enhancement motion** and **an optional light/dark
+> theme-preference toggle**. The page must be visually complete and fully
+> functional with JavaScript disabled and under `prefers-reduced-motion` — no
+> content, layout, or navigation may depend on it. This revised the theme "no
+> JavaScript" guard with the amber-brand theme's code, in line with this
+> section's "revise the rule here first" rule.
+>
+> *toggle revision:* the palette already auto-follows the OS via pure CSS (the
+> `prefers-color-scheme` block — works with JS off, no browser-floor change).
+> The toggle is enhancement-only: its button ships `hidden` and `theme.js`
+> reveals it, so a no-JS visitor sees no dead control and still gets OS-driven
+> theming. A visitor's explicit choice is stored in `localStorage`
+> (`amber-theme`) and applied through a `:root[data-amber-theme="dark"]` token
+> override that beats the OS media block (the media block is scoped to
+> `:root:not([data-amber-theme])` so a choice wins). To avoid a flash of the OS
+> theme on load, a tiny **theme-agnostic inline script in `app.html`** applies
+> the saved choice to `<html>` before first paint; it is a no-op until a theme's
+> toggle writes the key and inert on surfaces (e.g. `/admin`) that load no theme
+> reading the attribute. This is the one carve-out from "the public render path
+> stays server-only with no client JS for content" — the script touches a UI
+> *preference*, never content, and the rendered HTML is unchanged.
+>
 > Separately: themes default to system font stacks; a *brand* theme may opt
 > into self-hosted `@font-face` faces already present in the install (Amber's
 > own brand page ships Fraunces + Hanken).

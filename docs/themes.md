@@ -209,7 +209,8 @@ built-in partial — adequate but ugly. The contract is described under
 
 ### `theme.js`
 
-Optional. A single ES module for **progressive-enhancement motion only**.
+Optional. A single ES module for **progressive enhancement** — motion, and
+an optional light/dark preference toggle (see [Dark mode](#dark-mode)).
 It's served by Amber's asset route at `/themes/<your-theme>/theme.js` and,
 when present, the root layout loads it on public pages as a deferred module
 script (`<script type="module">`). Theme discovery records its presence
@@ -219,8 +220,11 @@ script (`<script type="module">`). Theme discovery records its presence
 The hard contract: the page must be **visually complete and fully
 functional with `theme.js` removed**, with JavaScript disabled, and under
 `prefers-reduced-motion`. No content, layout, or navigation may depend on
-it — it only layers motion onto a page that already works. This is the one
-scripting seam a theme gets; everything structural stays CSS + HTML.
+it — it only layers enhancement onto a page that already works. A preference
+toggle therefore ships its control `hidden` and reveals it from `theme.js`,
+so no-JS visitors never meet a dead button and still get OS-driven theming.
+This is the one scripting seam a theme gets; everything structural stays
+CSS + HTML.
 
 ## Template runtime
 
@@ -394,6 +398,17 @@ If your theme has a `[theme_color]` table in `theme.toml`, its `light` and
 `dark` values should mirror `--amber-bg` in each mode. The browser uses
 them to tint its own chrome (Safari address bar, Android status bar) so it
 doesn't fight the page.
+
+A theme can add a **manual light/dark toggle** on top of this. Keep the media
+block for OS-following (and no-JS), but scope it to `:root:not([data-amber-theme])`
+so an explicit choice can win, then add a `:root[data-amber-theme="dark"]` block
+with the same dark tokens. A small [`theme.js`](#themejs) control sets that
+attribute and stores the choice in `localStorage`; an inline pre-paint script
+applies it before the stylesheet so there's no flash. `amber-brand` does exactly
+this — a header button that remembers the visitor's choice. The toggle is
+enhancement-only: it ships `hidden` and `theme.js` reveals it, so no-JS visitors
+still get OS-driven theming. (This stays on the same browser floor as the plain
+media-query approach — no `light-dark()` required.)
 
 ## One-voice and two-voice typography
 
