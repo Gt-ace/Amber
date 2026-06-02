@@ -54,7 +54,12 @@ a{color:var(--amber-accent);text-decoration:none;}
 a:hover{color:var(--amber-accent-hover);}
 :focus-visible{outline:2px solid var(--amber-accent);outline-offset:3px;border-radius:4px;}
 
-.wrap{max-width:1080px;margin:0 auto;padding:0 32px;}
+/* One shared measure for the whole page — every scrolled surface (header,
+   hero, bet, themes, editor, footer, article) sits in this same centred
+   column so the page reads at one consistent, desktop-first width top to
+   bottom. Per-section content stays left-aligned at this column's left
+   edge; only text lines cap their own measure for readability. */
+.wrap{max-width:1200px;margin:0 auto;padding:0 32px;}
 
 /* ── Type ───────────────────────────────────────────────────────────────── */
 .display{
@@ -112,7 +117,10 @@ h2.display{font-variation-settings:'opsz' 72,'SOFT' 30,'WONK' 0;letter-spacing:-
 	background:radial-gradient(circle at center,
 		color-mix(in srgb,var(--amber-brand) 20%,transparent),transparent 62%);
 }
-.hero__in{position:relative;z-index:1;max-width:760px;}
+/* The hero fills the shared column; its h1/subhead keep their own ch-measures
+   and stay left-aligned, so the hero anchors at the same left edge as every
+   section below it. */
+.hero__in{position:relative;z-index:1;}
 
 /* Headline + subhead come from {{{html}}} (rendered index.md): <h1> + <p>. */
 .hero__text h1{
@@ -203,7 +211,7 @@ h2.display{font-variation-settings:'opsz' 72,'SOFT' 30,'WONK' 0;letter-spacing:-
 	position:absolute;right:-90px;top:50%;transform:translateY(-50%);
 	width:340px;height:auto;opacity:.10;pointer-events:none;z-index:0;
 }
-.bet__in{position:relative;z-index:1;max-width:720px;}
+.bet__in{position:relative;z-index:1;}
 .bet h2{font-size:clamp(2rem,4.4vw,3rem);margin:0 0 26px;max-width:16ch;}
 .bet p{font-size:1.2rem;line-height:1.65;color:var(--amber-ink-muted);margin:0;max-width:50ch;}
 .bet p strong{color:var(--amber-ink);font-weight:500;} /* emphasis: ink on muted body */
@@ -275,7 +283,7 @@ h2.display{font-variation-settings:'opsz' 72,'SOFT' 30,'WONK' 0;letter-spacing:-
    Here the full document text is visible and the caret is a quiet static bar. */
 .editor h2{font-size:clamp(2rem,4.4vw,3rem);margin:0 0 16px;}
 .editor .lede{max-width:50ch;margin-bottom:50px;font-size:1.15rem;}
-.ed-win{max-width:720px;margin:0 auto;}
+.ed-win{width:100%;}
 .ed-toolbar{
 	display:flex;align-items:center;gap:6px;padding:9px 14px;
 	border-bottom:1px solid var(--amber-rule);
@@ -291,7 +299,7 @@ h2.display{font-variation-settings:'opsz' 72,'SOFT' 30,'WONK' 0;letter-spacing:-
 .ed-toolbar .spacer{flex:1;}
 .ed-dot{width:7px;height:7px;border-radius:50%;background:var(--amber-pine);opacity:.7;}
 .ed-saved{font-family:var(--amber-font-mono);font-size:.72rem;color:var(--amber-ink-muted);}
-.ed-doc{padding:40px 42px 52px;background:var(--amber-bg);min-height:210px;}
+.ed-doc{padding:40px 42px 56px;background:var(--amber-bg);min-height:320px;}
 .ed-row{display:flex;align-items:baseline;}
 /* Static: full text visible — typing setup (max-width:0/overflow/border-right) is Task 9. */
 .ed-line{font-family:var(--amber-font-mono);white-space:nowrap;}
@@ -412,6 +420,72 @@ h2.display{font-variation-settings:'opsz' 72,'SOFT' 30,'WONK' 0;letter-spacing:-
 	html.js-reveal .reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease, transform .7s var(--amber-ease);}
 	html.js-reveal .reveal.is-in{opacity:1;transform:none;}
 }
+
+/* ── Article (non-home content pages, e.g. the colophon) ──────────────────────
+   Non-landing pages render as a single <article> inside .wrap (chrome.html's
+   <main>). The column is left-aligned at the SAME left edge as the header
+   wordmark and the landing sections — one family — but caps its line length at
+   a comfortable reading measure rather than the full page width. Headings take
+   the Fraunces display face, prose the Hanken body face; every colour composes
+   from an --amber-* token so light and dark both hold. (Before this the article
+   had no theme styles at all: UA-default Times headings, edge-to-edge text.) */
+.article-wrap{padding-top:72px;padding-bottom:104px;}
+article{max-width:70ch;}
+
+.article-header{margin:0 0 44px;}
+.article-title{
+	font-family:var(--amber-font-display);font-optical-sizing:auto;
+	font-variation-settings:'opsz' 96,'SOFT' 30,'WONK' 0;
+	font-weight:600;font-size:clamp(2.4rem,5vw,3.4rem);line-height:1.06;
+	letter-spacing:-0.015em;color:var(--amber-ink);text-wrap:balance;margin:0;
+}
+.article-date{
+	font-family:var(--amber-font-mono);font-size:.8rem;letter-spacing:.04em;
+	color:var(--amber-ink-muted);margin:14px 0 0;
+}
+
+.article-body{font-size:1.0625rem;line-height:1.7;color:var(--amber-ink);}
+.article-body > :first-child{margin-top:0;}
+.article-body p{margin:0 0 1.3em;}
+.article-body h2{
+	font-family:var(--amber-font-display);font-optical-sizing:auto;
+	font-variation-settings:'opsz' 60,'SOFT' 30,'WONK' 0;
+	font-weight:600;font-size:1.7rem;line-height:1.18;letter-spacing:-0.01em;
+	color:var(--amber-ink);margin:2em 0 .55em;
+}
+.article-body h3{
+	font-family:var(--amber-font-display);font-optical-sizing:auto;
+	font-variation-settings:'opsz' 40,'SOFT' 30,'WONK' 0;
+	font-weight:600;font-size:1.28rem;line-height:1.25;color:var(--amber-ink);margin:1.8em 0 .5em;
+}
+.article-body a{
+	color:var(--amber-accent);text-decoration:underline;
+	text-underline-offset:2px;text-decoration-thickness:1px;
+}
+.article-body a:hover{color:var(--amber-accent-hover);}
+.article-body strong{color:var(--amber-ink);font-weight:600;}
+.article-body ul,.article-body ol{margin:0 0 1.3em;padding-left:1.4em;}
+.article-body li{margin:0 0 .45em;}
+.article-body li::marker{color:var(--amber-accent);}
+.article-body blockquote{
+	margin:1.7em 0;padding:4px 0 4px 22px;border-left:2px solid var(--amber-accent);
+	font-family:var(--amber-font-display);font-optical-sizing:auto;
+	font-variation-settings:'opsz' 32,'SOFT' 40,'WONK' 0;
+	font-weight:500;font-size:1.25rem;line-height:1.45;color:var(--amber-ink);
+}
+.article-body blockquote p{margin:0;color:inherit;}
+.article-body code{
+	font-family:var(--amber-font-mono);font-size:.88em;
+	background:var(--amber-surface-sunken);border:1px solid var(--amber-rule);
+	border-radius:5px;padding:1px 6px;color:var(--amber-ink);
+}
+.article-body pre{
+	font-family:var(--amber-font-mono);font-size:.86rem;line-height:1.7;
+	background:var(--amber-surface-sunken);border:1px solid var(--amber-rule);
+	border-radius:12px;padding:18px 20px;margin:0 0 1.4em;overflow-x:auto;color:var(--amber-ink);
+}
+.article-body pre code{background:none;border:0;padding:0;font-size:1em;}
+.article-body hr{border:0;border-top:1px solid var(--amber-rule);margin:2.4em 0;}
 
 /* ── Error page ──────────────────────────────────────────────────────────────
    Rendered by +error.svelte inside the layout-owned <main> (which has no .wrap),
