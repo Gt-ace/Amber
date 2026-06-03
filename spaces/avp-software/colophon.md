@@ -45,12 +45,14 @@ might.
 A theme is `chrome.html`, `page.html`, `error.html`, and a `theme.css` that
 defines a small set of `--amber-*` variables. The app owns the `<main>`
 landmark so a theme can't drop it; everything else (the masthead, the type,
-the rhythm) belongs to the theme. The page you're on right now is rendered by
-**amber-editorial**: a neo-grotesque for the interface, a humanist sans for
-this prose, hairline rules, no rounded corners, a single cobalt accent. Its
-sibling, **amber-default**, is the warm serif book. Same templates, opposite
-posture: proof that the contract holds without the themes looking anything
-alike.
+the rhythm) belongs to the theme. The page you're on right now is dressed in
+**amber-brand**, the theme Amber wears for its own pages: Fraunces for display,
+Hanken Grotesk for this prose, a warm amber palette, and a light/dark toggle in
+the header. It's a one-off brand skin. The contract it leans on is proven by
+the two reference themes: **amber-default**, the warm serif book, and
+**amber-editorial**, a neo-grotesque with hairline rules and a single cobalt
+accent. Same templates, opposite posture: proof that the contract holds without
+the themes looking anything alike.
 
 > Your software, your server, your files. The rest is detail.
 

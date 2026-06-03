@@ -32,8 +32,8 @@ self-hosting guide threads a real secret through production).
 ## Status
 
 Current version: 0.5. Early development. A production instance runs at
-[amber.avp.software](https://amber.avp.software) — that is the operator's
-personal site, which happens to run on Amber. It isn't Amber's homepage.
+[amber.avp.software](https://amber.avp.software) — Amber's own landing page,
+served by Amber on the operator's server. The project runs on the project.
 
 The substrate is stable. The theme contract has been exercised by two
 themes. Per-space configuration works. As of v0.4 the desktop-developer
