@@ -114,7 +114,22 @@ export const actions: Actions = {
 		);
 		writeFileSync(absPath, recombine(fmBlock, ''), 'utf8');
 
-		// Redirect to the editor; the watcher indexes the new file via Space.apply().
+		// Fold the new file into the live index *now* so the editor `load` we
+		// redirect to below finds it. The watcher will also emit an `add` for
+		// this path after its debounce, but `Space.apply` treats a re-add as a
+		// re-index (idempotent), so the later event is a no-op. Without this,
+		// the 303 races the watcher and can land the user on a 404 (the page
+		// isn't in `space.pages` yet). These writes are constrained (validated
+		// basename, no `slug:`), so `apply` won't throw — but if it ever did,
+		// the file is already on disk and the watcher will pick it up shortly,
+		// so we log and let the redirect proceed rather than 500.
+		try {
+			space.apply({ type: 'add', path: relPath });
+		} catch (err) {
+			event.locals.log?.warn({ err, relPath }, 'new-page apply() threw; watcher will index');
+		}
+
+		// Redirect to the editor.
 		const editPath = url === '/' ? '' : url;
 		redirect(303, `/admin/spaces/${params.slug}/edit${editPath}`);
 	}

@@ -180,6 +180,39 @@ describe('admin surface smoke (AMBER_E2E)', () => {
 		}
 	}, 60_000);
 
+	test('client-side nav from the dashboard into the editor does not 500 (layout-reuse regression)', async () => {
+		// Regression guard for the per-space 500s. On a *same-slug* client-side
+		// navigation SvelteKit reuses the `[slug]` layout's cached `load` and does
+		// not re-run it, so a child load that read `locals.space` (the layout's
+		// side effect) saw null and threw. A hard `page.goto` masks the bug (the
+		// layout runs on SSR) — the regression only shows on an in-app link click,
+		// which is why the goto-based editor test above passed even when this
+		// path was broken. Exercises the dashboard (index load) → editor (edit
+		// load) hop, the two loads that were on the broken side-channel.
+		const page = await signedInContext.newPage();
+		try {
+			// Hard-load the dashboard so the [slug] layout runs once and the client
+			// router hydrates; then click an in-app link (client-side nav).
+			await page.goto(base + '/admin/spaces/' + spaceSlug, { waitUntil: 'networkidle' });
+			await page.waitForSelector('.amber-page-list a[href$="/edit/about"]', { timeout: 20_000 });
+			// Sentinel survives a client-side nav but is wiped by a full reload —
+			// proves the click really went through the SPA router (where the layout
+			// is reused), so this test actually guards the reported failure mode.
+			await page.evaluate(() => ((window as unknown as { __spa: boolean }).__spa = true));
+			await page.click('.amber-page-list a[href$="/edit/about"]');
+			await page.waitForURL(base + '/admin/spaces/' + spaceSlug + '/edit/about', {
+				timeout: 15_000
+			});
+			await page.waitForSelector('.amber-body [contenteditable="true"]', { timeout: 20_000 });
+			expect(await page.locator('.amber-body [contenteditable="true"]').count()).toBe(1);
+			expect(await page.evaluate(() => (window as unknown as { __spa?: boolean }).__spa)).toBe(
+				true
+			);
+		} finally {
+			await page.close();
+		}
+	}, 60_000);
+
 	test('the PUT endpoint saves a body-only change (with session cookie)', async () => {
 		const cookies = await signedInContext.cookies();
 		const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join('; ');

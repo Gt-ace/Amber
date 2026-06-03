@@ -142,6 +142,11 @@ describe('per-space new-page create action', () => {
 		});
 		expect(location).toBe(`/admin/spaces/${slug}/edit/notes/fresh-note`);
 		expect(existsSync(join(workDir, 'notes/fresh-note.md'))).toBe(true);
+		// Regression (#2): the action folds the new page into the live index via
+		// Space.apply() *before* the redirect, so the editor load it points at
+		// finds the page immediately instead of racing the watcher into a 404.
+		const { getSpace } = await import('$lib/server/space');
+		expect(getSpace().pages.has('/notes/fresh-note')).toBe(true);
 	});
 
 	test('a logged-in non-member is 404, with no file written', async () => {

@@ -1,5 +1,10 @@
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 import { fileURLToPath } from 'node:url';
+
+// The load now imports the permissions/auth chain (requireSpaceAccess), whose
+// first cold transform can exceed vitest's default 10s hook timeout on a cold
+// WSL2 box — same headroom the sibling theme/layout-access tests take.
+vi.setConfig({ testTimeout: 20000, hookTimeout: 20000 });
 
 const FIXTURE = fileURLToPath(
 	new URL('../../../../../../../../fixtures/example-space/', import.meta.url)
@@ -9,6 +14,7 @@ let load: typeof import('./+page.server.ts').load;
 
 beforeAll(async () => {
 	process.env.AMBER_SPACE_PATH = FIXTURE.replace(/\/$/, '');
+	process.env.AMBER_AUTH_SECRET = 'x'.repeat(32);
 	load = (await import('./+page.server.ts')).load;
 });
 
@@ -20,8 +26,18 @@ async function stub(path: string) {
 	const { getSpace } = await import('$lib/server/space');
 	const space = getSpace();
 	return {
+		// The load now self-resolves the Space from the registry and self-guards
+		// via requireSpaceAccess (the [slug] layout's `load` is skipped on
+		// client-side nav). An install-admin short-circuits the guard with no
+		// auth.db, so a stub user is all the role plumbing needs here.
 		params: { path, slug: 'example-space' },
-		locals: { space }
+		locals: {
+			user: { id: 'admin', isInstallAdmin: true, email: 'a@x', name: null },
+			access: null,
+			role: null,
+			space,
+			mountPath: null
+		}
 	} as unknown as Parameters<typeof load>[0];
 }
 
