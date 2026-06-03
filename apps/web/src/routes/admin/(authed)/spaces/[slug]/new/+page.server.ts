@@ -4,16 +4,33 @@
  * a minimal-frontmatter file to disk (filesystem is truth — the file exists
  * before the editor opens it), and redirects to the editor.
  *
- * v1 does not create directories. Reads `locals.space` set by the per-space
- * [slug] layout above; auth is enforced by the (authed) +layout.server.ts guard.
+ * v1 does not create directories.
+ *
+ * A form `action` runs *before* any layout `load`, so the `[slug]` layout has
+ * neither set `locals.space` nor run its `requireSpaceAccess` guard when this
+ * handler executes. So — exactly like the PUT save endpoint
+ * (`../api/page/[...path]/+server.ts`) — we resolve the `Space` from the
+ * registry by slug *and* re-assert access here. `'editor'` is the minimum role,
+ * matching the save endpoint: creating a page and editing it are the same trust
+ * level. install-admin short-circuits inside `requireSpaceAccess`.
  */
 
-import { fail, redirect } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import { existsSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import path from 'node:path';
+import type { RequestEvent } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import type { Space } from '$lib/space/space';
 import { recombine, reserializeFrontmatter } from '$lib/server/editor';
+import { requireSpaceAccess } from '$lib/server/permissions';
+import { getRegistryEntries } from '$lib/server/space';
+
+/** Resolve the `Space` for this route from the registry by slug. */
+function resolveSpace(event: RequestEvent): Space {
+	const match = getRegistryEntries().find((e) => path.basename(e.path) === event.params.slug);
+	if (!match) error(404, `no space with slug "${event.params.slug}"`);
+	return match.space;
+}
 
 /** Reserved-prefix test applied to every path segment (root CLAUDE.md). */
 function hasReservedSegment(relPath: string): boolean {
@@ -43,16 +60,17 @@ function deriveUrl(dir: string, filename: string): string {
 	return `/${rel}`;
 }
 
-export const load: PageServerLoad = ({ locals, params }) => {
-	const space = locals.space;
-	if (!space) throw new Error('locals.space not set by [slug]/+layout.server.ts');
-	return { directories: contentDirectories(space), slug: params.slug };
+export const load: PageServerLoad = (event) => {
+	requireSpaceAccess(event, event.params.slug, 'editor');
+	const space = resolveSpace(event);
+	return { directories: contentDirectories(space), slug: event.params.slug };
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals, params }) => {
-		const space = locals.space;
-		if (!space) throw new Error('locals.space not set by [slug]/+layout.server.ts');
+	default: async (event) => {
+		requireSpaceAccess(event, event.params.slug, 'editor');
+		const space = resolveSpace(event);
+		const { request, params } = event;
 
 		const form = await request.formData();
 		const directory = String(form.get('directory') ?? '');
@@ -79,7 +97,7 @@ export const actions: Actions = {
 			return fail(400, { error: 'That name uses a reserved prefix (`_`, `.`) or name.' });
 		}
 
-		const absPath = join(space.root, relPath);
+		const absPath = path.join(space.root, relPath);
 		if (existsSync(absPath)) {
 			return fail(400, { error: `A file already exists at ${relPath}.` });
 		}
