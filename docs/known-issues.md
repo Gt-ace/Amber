@@ -56,7 +56,13 @@ and asserts a non-member is 404'd **with no file written**.
 
 ## P1 — amber-brand theme: missing latent CSS (not visible on the live page)
 
-The `amber-brand` theme (`spaces/avp-software/themes/amber-brand/`) references
+**Status: fixed in this change.** Both class sets are now styled in
+`amber-brand/theme.css` (draft callout: full accent-tinted border + leading
+status dot, no side-stripe; auto-index: ruled list with Fraunces display titles
+and right-pushed mono dates), verified rendered in light and dark with the real
+fonts. Recorded here for the trail.
+
+The `amber-brand` theme (`spaces/avp-software/themes/amber-brand/`) referenced
 two classes in its templates that have no CSS. Neither is exercised by the live
 `avp-software` space (its three pages use no `draft:` and no `auto_index`), so
 nothing renders unstyled **today** — but any future draft or auto-index page on

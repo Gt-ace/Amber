@@ -524,6 +524,53 @@ article{max-width:70ch;}
 .article-body pre code{background:none;border:0;padding:0;font-size:1em;}
 .article-body hr{border:0;border-top:1px solid var(--amber-rule);margin:2.4em 0;}
 
+/* ── Draft banner (non-home pages flagged draft: true) ────────────────────────
+   A calm dev-only notice sitting above the article, aligned to the article's
+   reading measure rather than the full page width. A full accent-tinted border
+   over a faint accent wash signals "notice" without alarm (no side-stripe); a
+   small leading dot reads as a status mark. Body face, muted ink, normal case —
+   read as a sentence, not shouted in caps. Both colours compose from tokens, so
+   light and dark hold; the muted-on-wash pairing matches .foot-tag. */
+.draft-banner{
+	max-width:70ch;margin:0 0 40px;
+	display:flex;align-items:center;gap:.65em;
+	padding:12px 18px;border-radius:11px;
+	border:1px solid color-mix(in srgb,var(--amber-accent) 38%,var(--amber-rule));
+	background:color-mix(in srgb,var(--amber-accent) 7%,var(--amber-bg));
+	color:var(--amber-ink-muted);
+	font-family:var(--amber-font-body);font-size:.92rem;line-height:1.55;
+}
+.draft-banner::before{
+	content:"";flex:none;width:7px;height:7px;border-radius:50%;
+	background:var(--amber-accent);
+}
+
+/* ── Auto-index (a page's index_html listing, after the article body) ─────────
+   A ruled list of child pages: the title in the Fraunces display face (echoing
+   .article-title / .article-body h3), an optional date in mono pushed to the
+   right edge (matching .article-date). Full hairline rules above the first row
+   and between rows — no side accents. Rendered inside <article>, so it inherits
+   the 70ch measure. flex-wrap lets a long title and its date degrade onto two
+   lines; a dateless row leaves the title alone at the left. */
+.amber-auto-index{list-style:none;margin:52px 0 0;padding:0;}
+.amber-auto-index-item{
+	display:flex;flex-wrap:wrap;align-items:baseline;gap:.25em 1.2em;
+	padding:15px 0;border-bottom:1px solid var(--amber-rule);
+}
+.amber-auto-index-item:first-child{border-top:1px solid var(--amber-rule);}
+.amber-auto-index-link{
+	font-family:var(--amber-font-display);font-optical-sizing:auto;
+	font-variation-settings:'opsz' 40,'SOFT' 30,'WONK' 0;
+	font-weight:560;font-size:1.2rem;letter-spacing:-0.01em;
+	color:var(--amber-ink);transition:color .2s ease;
+}
+.amber-auto-index-link:hover{color:var(--amber-accent);}
+.amber-auto-index-date{
+	margin-left:auto;font-family:var(--amber-font-mono);
+	font-size:.78rem;letter-spacing:.04em;color:var(--amber-ink-muted);
+	white-space:nowrap;
+}
+
 /* ── Error page ──────────────────────────────────────────────────────────────
    Rendered by +error.svelte inside the layout-owned <main> (which has no .wrap),
    so .error-page supplies its own measure + horizontal padding, mirroring .wrap.
