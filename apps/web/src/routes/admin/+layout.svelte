@@ -7,6 +7,10 @@
 	// neutrals, scoped to the admin/authoring surface. Imported here and nowhere
 	// else so the public render path stays on system stacks (see brand.css).
 	import '$lib/brand/brand.css';
+	// Shared admin UI primitives (panels, buttons, fields, badges, notices).
+	// Loaded after brand.css so it inherits the warm-amber tokens. Admin-only,
+	// same as the brand layer.
+	import '$lib/brand/admin.css';
 	let { children, data }: { children: Snippet; data: LayoutData } = $props();
 </script>
 

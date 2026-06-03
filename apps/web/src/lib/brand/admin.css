@@ -1,0 +1,247 @@
+/*
+ * Amber — admin UI primitives.
+ *
+ * Shared building blocks (panels, buttons, fields, badges, notices) for the
+ * admin / authoring surface. Imported by routes/admin/+layout.svelte right
+ * after brand.css, so it rides the same admin-only load and inherits the
+ * warm-amber tokens defined there.
+ *
+ * Class names are deliberately distinct from the per-component scoped
+ * `.amber-*` classes already living in individual +page.svelte <style> blocks
+ * (.amber-card, .amber-auth-form, .amber-form-error, …). Those stay scoped;
+ * these are the global vocabulary new/redesigned pages opt into. Everything is
+ * built on the --amber-* tokens, so light/dark comes for free.
+ */
+
+/* ---- Page header ------------------------------------------------------- */
+
+.amber-page-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 0.75rem 1.5rem;
+	margin-bottom: 1.5rem;
+}
+.amber-page-head__text {
+	min-width: 0;
+}
+.amber-page-head h1 {
+	margin: 0;
+	font-size: clamp(1.6rem, 1.2rem + 1.6vw, 2.1rem);
+}
+.amber-page-head__lede {
+	margin: 0.35rem 0 0;
+	color: var(--amber-ink-muted);
+	font-size: 0.95rem;
+	max-width: 46ch;
+}
+
+/* ---- Panel (bordered card) -------------------------------------------- */
+
+.amber-panel {
+	background: var(--amber-surface-sunken);
+	border: 1px solid var(--amber-rule);
+	border-radius: 10px;
+	padding: 1.25rem 1.35rem;
+}
+.amber-panel + .amber-panel {
+	margin-top: 1rem;
+}
+.amber-panel > :first-child {
+	margin-top: 0;
+}
+.amber-panel > :last-child {
+	margin-bottom: 0;
+}
+.amber-panel h2 {
+	font-size: 1.15rem;
+	margin: 0 0 0.25rem;
+}
+.amber-panel__hint {
+	margin: 0 0 1rem;
+	color: var(--amber-ink-muted);
+	font-size: 0.9rem;
+}
+
+/* ---- Forms / fields --------------------------------------------------- */
+
+.amber-form {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	max-width: 26rem;
+}
+.amber-field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+}
+.amber-field > span {
+	font-size: 0.85rem;
+	font-weight: 600;
+	color: var(--amber-ink);
+}
+.amber-field__hint {
+	font-size: 0.8rem;
+	font-weight: 400;
+	color: var(--amber-ink-muted);
+}
+.amber-input {
+	font: inherit;
+	color: var(--amber-ink);
+	background: var(--amber-bg);
+	border: 1px solid var(--amber-rule);
+	border-radius: 7px;
+	padding: 0.55rem 0.7rem;
+	transition:
+		border-color 120ms ease,
+		box-shadow 120ms ease;
+}
+.amber-input::placeholder {
+	color: var(--amber-ink-muted);
+	opacity: 0.8;
+}
+.amber-input:focus-visible {
+	outline: none;
+	border-color: var(--amber-accent);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber-accent) 22%, transparent);
+}
+
+/* ---- Buttons ---------------------------------------------------------- */
+
+.amber-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.45rem;
+	font: inherit;
+	font-weight: 600;
+	line-height: 1;
+	min-height: 2.5rem;
+	padding: 0 1.1rem;
+	border-radius: 7px;
+	border: 1px solid transparent;
+	cursor: pointer;
+	text-decoration: none;
+	white-space: nowrap;
+	transition:
+		transform 140ms cubic-bezier(0.23, 1, 0.32, 1),
+		background-color 120ms ease,
+		border-color 120ms ease,
+		color 120ms ease;
+}
+.amber-btn:active {
+	transform: scale(0.97);
+}
+.amber-btn:focus-visible {
+	outline: 2px solid var(--amber-accent);
+	outline-offset: 2px;
+}
+.amber-btn:disabled {
+	opacity: 0.55;
+	cursor: progress;
+	transform: none;
+}
+
+.amber-btn--primary {
+	background: var(--amber-accent);
+	color: var(--amber-bg);
+}
+.amber-btn--primary:hover:not(:disabled) {
+	background: var(--amber-accent-hover);
+}
+
+.amber-btn--ghost {
+	background: transparent;
+	color: var(--amber-ink);
+	border-color: var(--amber-rule);
+}
+.amber-btn--ghost:hover:not(:disabled) {
+	background: var(--amber-bg);
+	border-color: var(--amber-ink-muted);
+}
+
+.amber-btn--danger {
+	background: var(--amber-danger);
+	color: var(--amber-bg);
+}
+.amber-btn--danger:hover:not(:disabled) {
+	background: var(--amber-danger-hover);
+}
+
+.amber-btn--sm {
+	min-height: 2.1rem;
+	padding: 0 0.8rem;
+	font-size: 0.88rem;
+}
+
+/* ---- Badges ----------------------------------------------------------- */
+
+.amber-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	font-size: 0.72rem;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	padding: 0.2rem 0.55rem;
+	border-radius: 999px;
+	border: 1px solid var(--amber-rule);
+	color: var(--amber-ink-muted);
+	background: var(--amber-bg);
+	white-space: nowrap;
+}
+.amber-badge--accent {
+	color: var(--amber-accent);
+	border-color: color-mix(in srgb, var(--amber-accent) 40%, var(--amber-rule));
+	background: color-mix(in srgb, var(--amber-accent) 12%, var(--amber-bg));
+}
+
+/* ---- Notices (inline alerts) ----------------------------------------- */
+
+.amber-notice {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.55rem;
+	margin: 0;
+	padding: 0.6rem 0.8rem;
+	border-radius: 8px;
+	border: 1px solid var(--amber-rule);
+	border-left-width: 3px;
+	font-size: 0.9rem;
+	background: var(--amber-bg);
+}
+.amber-notice svg {
+	flex: 0 0 auto;
+	width: 1.05rem;
+	height: 1.05rem;
+	margin-top: 0.05rem;
+}
+.amber-notice--ok {
+	color: var(--amber-success);
+	border-color: var(--amber-success);
+	background: var(--amber-success-surface);
+}
+.amber-notice--error {
+	color: var(--amber-danger);
+	border-color: var(--amber-danger);
+	background: var(--amber-danger-surface);
+}
+.amber-notice--warn {
+	color: var(--amber-accent);
+	border-color: var(--amber-accent);
+	background: color-mix(in srgb, var(--amber-accent) 12%, var(--amber-bg));
+}
+
+/* ---- Reduced motion --------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+	.amber-btn,
+	.amber-input {
+		transition: none;
+	}
+	.amber-btn:active {
+		transform: none;
+	}
+}

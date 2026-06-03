@@ -52,6 +52,15 @@
 	--amber-ink: #2a2622;
 	--amber-accent: #9a6314; /* amber-700 — AA link/text on paper */
 	--amber-accent-hover: #7c4e0f; /* amber-800 */
+
+	/* Semantic state — the warm neutrals carry no danger/success signal, so the
+	 * admin surface needs its own. Tuned to read clearly on paper and to pair
+	 * with the surface tints below for callouts and the account danger zone. */
+	--amber-danger: #b3261e; /* AA as text on paper and as a filled button */
+	--amber-danger-hover: #8c1d17;
+	--amber-danger-surface: #fbe9e7;
+	--amber-success: #2f6b43;
+	--amber-success-surface: #e7f2ea;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -63,6 +72,14 @@
 		--amber-ink: #e8e0d2;
 		--amber-accent: #d9a441; /* amber-400 — dark-mode accent */
 		--amber-accent-hover: #ecbb5e;
+
+		/* Dark-mode state — lighter faces so red/green read against the dark
+		 * paper, with deep tinted surfaces for the same callouts. */
+		--amber-danger: #f08a7e;
+		--amber-danger-hover: #f4a89e;
+		--amber-danger-surface: #2c1b18;
+		--amber-success: #84d39a;
+		--amber-success-surface: #18261d;
 	}
 }
 
