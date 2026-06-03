@@ -9,10 +9,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { __resetRegistryForTests } from './space';
-import {
-	setResolverIndex,
-	__resetResolverIndexForTests
-} from './resolver-index-holder';
+import { setResolverIndex, __resetResolverIndexForTests } from './resolver-index-holder';
 import { setReroutePrefixes } from '$lib/reroute-prefixes';
 import { setDefaultSlug } from '$lib/server/default-space';
 import { buildResolverIndex } from './resolver-index';

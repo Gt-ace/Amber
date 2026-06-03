@@ -86,10 +86,7 @@ export interface RegistrySnapshot {
 	adminHost: string;
 }
 
-export function validateCreateInput(
-	raw: RawCreateInput,
-	snap: RegistrySnapshot
-): ValidateResult {
+export function validateCreateInput(raw: RawCreateInput, snap: RegistrySnapshot): ValidateResult {
 	const errors: FieldError[] = [];
 
 	const title = raw.title.trim();

@@ -8,6 +8,9 @@ const FIXTURE = fileURLToPath(new URL('../../../../../fixtures/example-space/', 
 
 let workDir: string;
 let load: typeof import('./+page.server.ts').load;
+// svelte-check widens PageServerLoad's return to include `void`; strip it so
+// reads off the resolved data type-check. Runtime is unchanged.
+type LoadData = Exclude<Awaited<ReturnType<typeof import('./+page.server.ts').load>>, void>;
 let resetSingleton: () => void;
 let getAuth: typeof import('$lib/server/auth-config').getAuth;
 let getAuthDb: typeof import('$lib/server/auth-config').getAuthDb;
@@ -30,7 +33,11 @@ beforeEach(async () => {
 
 afterEach(async () => {
 	const { getSpace } = await import('$lib/server/space');
-	try { getSpace().close(); } catch {}
+	try {
+		getSpace().close();
+	} catch {
+		/* space may not have been initialised in this test */
+	}
 	resetSingleton();
 	rmSync(workDir, { recursive: true, force: true });
 });
@@ -49,16 +56,16 @@ describe('/admin/users load', () => {
 			"INSERT INTO user (id, email, name, emailVerified, createdAt, updatedAt, isInstallAdmin) VALUES ('admin-1', 'a@x.test', 'A', 1, ?1, ?1, 1), ('u-1', 'b@x.test', 'B', 1, ?1, ?1, 0)",
 			[Date.now()]
 		);
-		const data = await load(loadEvent({ id: 'admin-1', isInstallAdmin: true }));
+		const data = (await load(loadEvent({ id: 'admin-1', isInstallAdmin: true }))) as LoadData;
 		expect(data.users.length).toBe(2);
 		expect(data.users[0].isInstallAdmin).toBe(true);
 	});
 
 	test('non-admin: 403', async () => {
 		await getAuth();
-		await expect(
-			load(loadEvent({ id: 'u-1', isInstallAdmin: false }))
-		).rejects.toMatchObject({ status: 403 });
+		await expect(load(loadEvent({ id: 'u-1', isInstallAdmin: false }))).rejects.toMatchObject({
+			status: 403
+		});
 	});
 
 	test('signed-out: 401', async () => {
@@ -77,7 +84,7 @@ function actionEvent(
 		locals: { user, access: null, role: null },
 		request: { formData: async () => fd, headers: new Headers() }
 	} as unknown as Parameters<
-		NonNullable<typeof import('./+page.server.ts').actions.deleteUser>
+		NonNullable<(typeof import('./+page.server.ts').actions)['deleteUser']>
 	>[0];
 }
 
@@ -95,13 +102,18 @@ describe('deleteUser action', () => {
 		);
 		const { actions } = await import('./+page.server.ts');
 		await actions.deleteUser!(
-			actionEvent({ id: 'admin-1', isInstallAdmin: true }, {
-				userId: 'u-1',
-				confirmEmail: 'b@x.test'
-			})
+			actionEvent(
+				{ id: 'admin-1', isInstallAdmin: true },
+				{
+					userId: 'u-1',
+					confirmEmail: 'b@x.test'
+				}
+			)
 		);
 		expect(db.query('SELECT COUNT(*) AS n FROM user WHERE id = ?1').get('u-1')).toEqual({ n: 0 });
-		expect(db.query('SELECT COUNT(*) AS n FROM member WHERE user_id = ?1').get('u-1')).toEqual({ n: 0 });
+		expect(db.query('SELECT COUNT(*) AS n FROM member WHERE user_id = ?1').get('u-1')).toEqual({
+			n: 0
+		});
 	});
 
 	test('refuses to delete install-admin', async () => {
@@ -113,10 +125,13 @@ describe('deleteUser action', () => {
 		);
 		const { actions } = await import('./+page.server.ts');
 		const r = await actions.deleteUser!(
-			actionEvent({ id: 'admin-1', isInstallAdmin: true }, {
-				userId: 'admin-1',
-				confirmEmail: 'a@x.test'
-			})
+			actionEvent(
+				{ id: 'admin-1', isInstallAdmin: true },
+				{
+					userId: 'admin-1',
+					confirmEmail: 'a@x.test'
+				}
+			)
 		);
 		expect((r as { status: number }).status).toBe(400);
 	});
@@ -130,10 +145,13 @@ describe('deleteUser action', () => {
 		);
 		const { actions } = await import('./+page.server.ts');
 		const r = await actions.deleteUser!(
-			actionEvent({ id: 'admin-1', isInstallAdmin: true }, {
-				userId: 'u-1',
-				confirmEmail: 'wrong@x.test'
-			})
+			actionEvent(
+				{ id: 'admin-1', isInstallAdmin: true },
+				{
+					userId: 'u-1',
+					confirmEmail: 'wrong@x.test'
+				}
+			)
 		);
 		expect((r as { status: number }).status).toBe(400);
 	});

@@ -56,9 +56,9 @@ export function insertInvite(
 }
 
 export function lookupByTokenHash(db: Database, tokenHash: string): InviteRow | null {
-	const row = db
-		.query('SELECT * FROM invite WHERE token_hash = ?1')
-		.get(tokenHash) as InviteRow | undefined;
+	const row = db.query('SELECT * FROM invite WHERE token_hash = ?1').get(tokenHash) as
+		| InviteRow
+		| undefined;
 	return row ?? null;
 }
 

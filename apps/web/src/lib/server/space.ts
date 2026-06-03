@@ -237,7 +237,11 @@ export async function addSpace(absPath: string): Promise<Space> {
 		// buildResolverIndex / config-parsing failure before any live state was
 		// mutated. Roll back the registry insertion so the caller can rm-rf the dir.
 		registry.delete(key);
-		try { await entry.watcher.close(); } catch { /* best-effort */ }
+		try {
+			await entry.watcher.close();
+		} catch {
+			/* best-effort */
+		}
 		entry.space.close();
 		throw err;
 	}

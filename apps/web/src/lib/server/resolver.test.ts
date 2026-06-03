@@ -125,17 +125,10 @@ describe('resolve()', () => {
 	});
 
 	test('admin-elsewhere preserves query string', () => {
-		const r = resolve(
-			index(),
-			'amber.example.com',
-			'/admin/login',
-			'?next=%2Fadmin%2Faccount'
-		);
+		const r = resolve(index(), 'amber.example.com', '/admin/login', '?next=%2Fadmin%2Faccount');
 		expect(r.kind).toBe('admin-elsewhere');
 		if (r.kind !== 'admin-elsewhere') throw new Error('unreachable');
-		expect(r.redirectTo).toBe(
-			'https://admin.example.com/admin/login?next=%2Fadmin%2Faccount'
-		);
+		expect(r.redirectTo).toBe('https://admin.example.com/admin/login?next=%2Fadmin%2Faccount');
 	});
 
 	test('single-space-mode degenerate index: default-only, non-admin paths fall through to lone space', () => {

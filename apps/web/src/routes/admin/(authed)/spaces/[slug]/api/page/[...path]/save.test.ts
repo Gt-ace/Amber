@@ -41,19 +41,29 @@ beforeEach(async () => {
 	`);
 	applyAmberAuthMigrations(db);
 	const now = Date.now();
-	db.run('INSERT INTO user (id, email, isInstallAdmin, createdAt, updatedAt) VALUES (?, ?, 1, ?, ?)', [
-		'admin-id', 'admin@x.test', now, now
-	]);
-	db.run('INSERT INTO user (id, email, createdAt, updatedAt) VALUES (?, ?, ?, ?)', [
-		'editor-id', 'editor@x.test', now, now
-	]);
-	db.run('INSERT INTO user (id, email, createdAt, updatedAt) VALUES (?, ?, ?, ?)', [
-		'stranger-id', 'stranger@x.test', now, now
-	]);
 	db.run(
-		'INSERT INTO member (id, user_id, space_slug, role, created_at) VALUES (?, ?, ?, ?, ?)',
-		['m1', 'editor-id', workSlug, 'editor', now]
+		'INSERT INTO user (id, email, isInstallAdmin, createdAt, updatedAt) VALUES (?, ?, 1, ?, ?)',
+		['admin-id', 'admin@x.test', now, now]
 	);
+	db.run('INSERT INTO user (id, email, createdAt, updatedAt) VALUES (?, ?, ?, ?)', [
+		'editor-id',
+		'editor@x.test',
+		now,
+		now
+	]);
+	db.run('INSERT INTO user (id, email, createdAt, updatedAt) VALUES (?, ?, ?, ?)', [
+		'stranger-id',
+		'stranger@x.test',
+		now,
+		now
+	]);
+	db.run('INSERT INTO member (id, user_id, space_slug, role, created_at) VALUES (?, ?, ?, ?, ?)', [
+		'm1',
+		'editor-id',
+		workSlug,
+		'editor',
+		now
+	]);
 	db.close();
 
 	// Prime the registry so the +server.ts handler finds the space by slug.
@@ -193,7 +203,9 @@ describe('PUT /admin/spaces/[slug]/api/page/[...path]', () => {
 		const ev = {
 			params: { path: 'about', slug: 'does-not-exist' },
 			request: req,
-			locals: { user: { id: 'admin-id', email: 'admin@x.test', name: 'admin', isInstallAdmin: true } }
+			locals: {
+				user: { id: 'admin-id', email: 'admin@x.test', name: 'admin', isInstallAdmin: true }
+			}
 		} as unknown as Parameters<RequestHandler>[0];
 		try {
 			await PUT(ev);
@@ -222,7 +234,10 @@ describe('PUT save endpoint — permission matrix', () => {
 		const original = readFileSync(file, 'utf8');
 		const { body } = splitRaw(original);
 
-		const headers = new Headers({ 'Content-Type': 'application/json', 'If-Match': hashContent(original) });
+		const headers = new Headers({
+			'Content-Type': 'application/json',
+			'If-Match': hashContent(original)
+		});
 		const req = new Request(`http://x/admin/spaces/${workSlug}/api/page/about`, {
 			method: 'PUT',
 			headers,
@@ -231,7 +246,9 @@ describe('PUT save endpoint — permission matrix', () => {
 		const ev = {
 			params: { path: 'about', slug: workSlug },
 			request: req,
-			locals: { user: { id: 'editor-id', email: 'editor@x.test', name: 'editor', isInstallAdmin: false } }
+			locals: {
+				user: { id: 'editor-id', email: 'editor@x.test', name: 'editor', isInstallAdmin: false }
+			}
 		} as unknown as Parameters<RequestHandler>[0];
 
 		const res = await PUT(ev);
@@ -249,7 +266,14 @@ describe('PUT save endpoint — permission matrix', () => {
 		const ev = {
 			params: { path: 'about', slug: workSlug },
 			request: req,
-			locals: { user: { id: 'stranger-id', email: 'stranger@x.test', name: 'stranger', isInstallAdmin: false } }
+			locals: {
+				user: {
+					id: 'stranger-id',
+					email: 'stranger@x.test',
+					name: 'stranger',
+					isInstallAdmin: false
+				}
+			}
 		} as unknown as Parameters<RequestHandler>[0];
 
 		try {

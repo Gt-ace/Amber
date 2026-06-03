@@ -5,16 +5,22 @@ import type { Theme } from '$lib/types/schema';
 function themeMap(...names: string[]): Map<string, Theme> {
 	const m = new Map<string, Theme>();
 	for (const n of names) {
-		m.set(n, { name: n, path: `/themes/${n}`, assetBase: `/themes/${n}`, manifest: {}, hasScript: false });
+		m.set(n, {
+			name: n,
+			path: `/themes/${n}`,
+			assetBase: `/themes/${n}`,
+			manifest: {},
+			hasScript: false
+		});
 	}
 	return m;
 }
 
 describe('describeThemeSource', () => {
 	test('declared + discovered → space-toml, not stale', () => {
-		expect(describeThemeSource('amber-editorial', themeMap('amber-default', 'amber-editorial'))).toEqual(
-			{ source: 'space-toml', staleThemeName: null }
-		);
+		expect(
+			describeThemeSource('amber-editorial', themeMap('amber-default', 'amber-editorial'))
+		).toEqual({ source: 'space-toml', staleThemeName: null });
 	});
 
 	test('declared + not discovered → inherited + stale', () => {

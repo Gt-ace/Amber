@@ -11,9 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { Database } from 'bun:sqlite';
 import { applyAmberAuthMigrations } from '$lib/server/auth-migrations';
 
-const FIXTURE = fileURLToPath(
-	new URL('../../../../fixtures/example-space/', import.meta.url)
-);
+const FIXTURE = fileURLToPath(new URL('../../../../fixtures/example-space/', import.meta.url));
 
 let workDir: string;
 let slug: string;
@@ -39,19 +37,29 @@ beforeEach(async () => {
 	`);
 	applyAmberAuthMigrations(db);
 	const now = Date.now();
-	db.run('INSERT INTO user (id, email, isInstallAdmin, createdAt, updatedAt) VALUES (?, ?, 1, ?, ?)', [
-		'admin', 'a@x.test', now, now
-	]);
-	db.run('INSERT INTO user (id, email, createdAt, updatedAt) VALUES (?, ?, ?, ?)', [
-		'editor', 'e@x.test', now, now
-	]);
-	db.run('INSERT INTO user (id, email, createdAt, updatedAt) VALUES (?, ?, ?, ?)', [
-		'stranger', 's@x.test', now, now
-	]);
 	db.run(
-		'INSERT INTO member (id, user_id, space_slug, role, created_at) VALUES (?, ?, ?, ?, ?)',
-		['m', 'editor', slug, 'editor', now]
+		'INSERT INTO user (id, email, isInstallAdmin, createdAt, updatedAt) VALUES (?, ?, 1, ?, ?)',
+		['admin', 'a@x.test', now, now]
 	);
+	db.run('INSERT INTO user (id, email, createdAt, updatedAt) VALUES (?, ?, ?, ?)', [
+		'editor',
+		'e@x.test',
+		now,
+		now
+	]);
+	db.run('INSERT INTO user (id, email, createdAt, updatedAt) VALUES (?, ?, ?, ?)', [
+		'stranger',
+		's@x.test',
+		now,
+		now
+	]);
+	db.run('INSERT INTO member (id, user_id, space_slug, role, created_at) VALUES (?, ?, ?, ?, ?)', [
+		'm',
+		'editor',
+		slug,
+		'editor',
+		now
+	]);
 	db.close();
 
 	// Prime the registry so getRegistryEntries() returns the loaded space.

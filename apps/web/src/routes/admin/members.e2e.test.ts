@@ -215,10 +215,9 @@ describe('multi-user invite round-trip (AMBER_E2E)', () => {
 		// member row is gone. requireSpaceAccess() in the [slug] layout 404s.
 		const editorPage = await editorContext.newPage();
 		try {
-			const response = await editorPage.goto(
-				base + `/admin/spaces/${TARGET_SLUG}/edit/about`,
-				{ waitUntil: 'networkidle' }
-			);
+			const response = await editorPage.goto(base + `/admin/spaces/${TARGET_SLUG}/edit/about`, {
+				waitUntil: 'networkidle'
+			});
 			expect(response?.status()).toBe(404);
 		} finally {
 			await editorPage.close();
@@ -249,10 +248,9 @@ describe('multi-user invite round-trip (AMBER_E2E)', () => {
 		// 200 with the page heading proves the upgrade landed.
 		const page = await editorContext.newPage();
 		try {
-			const response = await page.goto(
-				base + `/admin/spaces/${TARGET_SLUG}/members`,
-				{ waitUntil: 'networkidle' }
-			);
+			const response = await page.goto(base + `/admin/spaces/${TARGET_SLUG}/members`, {
+				waitUntil: 'networkidle'
+			});
 			expect(response?.status()).toBe(200);
 			const h1Text = await page.locator('h1').textContent();
 			expect(h1Text).toContain('Members of');

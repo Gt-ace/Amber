@@ -122,7 +122,11 @@ describe('listPendingForSpace', () => {
 		// Insert with explicit created_at values to guarantee ordering even when
 		// Date.now() doesn't advance between synchronous calls.
 		const now = Date.now();
-		const { id: id1 } = insertInvite(db, { spaceSlug: 'site-a', role: 'editor', createdBy: 'admin-1' });
+		const { id: id1 } = insertInvite(db, {
+			spaceSlug: 'site-a',
+			role: 'editor',
+			createdBy: 'admin-1'
+		});
 		db.run('UPDATE invite SET created_at = ?1 WHERE id = ?2', [now, id1]);
 		insertInvite(db, { spaceSlug: 'site-b', role: 'owner', createdBy: 'admin-1' });
 		const { id: id2 } = insertInvite(db, {

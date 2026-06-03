@@ -2,6 +2,7 @@
 	import type { PageData, ActionData } from './$types';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
+	import { resolve } from '$app/paths';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	const state = $derived(data.state);
@@ -16,7 +17,9 @@
 	</p>
 	<form method="POST" action="?/redeemAsNew" use:enhance>
 		<label>Email <input name="email" type="email" required /></label>
-		<label>Password (8+ chars) <input name="password" type="password" minlength="8" required /></label>
+		<label
+			>Password (8+ chars) <input name="password" type="password" minlength="8" required /></label
+		>
 		<label>Name <input name="name" type="text" /></label>
 		<button type="submit">Create account and accept</button>
 		{#if form?.redeem?.ok === false}
@@ -24,13 +27,24 @@
 		{/if}
 	</form>
 	{#if data.googleEnabled}
-		<a href="/api/auth/sign-in/social/google?callbackURL={encodeURIComponent('/admin/invite/' + page.params.token + '?gstate=' + data.inviteSignedState)}">
+		<!-- /api/auth/* is handled by better-auth's svelteKitHandler, not a SvelteKit route. -->
+		<!-- eslint-disable svelte/no-navigation-without-resolve -->
+		<a
+			href="/api/auth/sign-in/social/google?callbackURL={encodeURIComponent(
+				'/admin/invite/' + page.params.token + '?gstate=' + data.inviteSignedState
+			)}"
+		>
 			Continue with Google
 		</a>
+		<!-- eslint-enable svelte/no-navigation-without-resolve -->
 	{/if}
 	<p>
 		Already have an account?
-		<a href="/admin/login?next={encodeURIComponent('/admin/invite/' + page.params.token)}">Sign in to claim.</a>
+		<a
+			href="{resolve('/admin/login')}?next={encodeURIComponent(
+				'/admin/invite/' + page.params.token
+			)}">Sign in to claim.</a
+		>
 	</p>
 {:else if state.kind === 'install-admin'}
 	<p>
@@ -43,8 +57,8 @@
 {:else if state.kind === 'already-member'}
 	<p>
 		You already have <strong>{state.currentRole}</strong> access to
-		<strong>{state.invite.spaceTitle ?? state.invite.slug}</strong>. This invite is
-		still pending and can be passed on or revoked.
+		<strong>{state.invite.spaceTitle ?? state.invite.slug}</strong>. This invite is still pending
+		and can be passed on or revoked.
 	</p>
 	{#if state.currentRole === 'owner'}
 		<form method="POST" action="?/revokeIfOwner" use:enhance>

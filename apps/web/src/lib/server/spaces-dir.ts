@@ -44,7 +44,8 @@ export function discoverSpaces(spacesDir: string): DiscoveryResult {
 		throw new Error(
 			`AMBER_SPACES_DIR is set to "${spacesDir}" but the directory could not be read: ${
 				err instanceof Error ? err.message : String(err)
-			}`
+			}`,
+			{ cause: err }
 		);
 	}
 

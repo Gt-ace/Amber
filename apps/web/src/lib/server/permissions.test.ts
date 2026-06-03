@@ -40,26 +40,41 @@ beforeEach(() => {
 		'INSERT INTO user (id, email, name, isInstallAdmin, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?)',
 		['admin', 'admin@x.test', 'Admin', 1, now, now]
 	);
-	db.run(
-		'INSERT INTO user (id, email, name, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)',
-		['owner', 'owner@x.test', 'O', now, now]
-	);
-	db.run(
-		'INSERT INTO user (id, email, name, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)',
-		['editor', 'editor@x.test', 'E', now, now]
-	);
-	db.run(
-		'INSERT INTO user (id, email, name, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)',
-		['stranger', 'stranger@x.test', 'S', now, now]
-	);
-	db.run(
-		'INSERT INTO member (id, user_id, space_slug, role, created_at) VALUES (?, ?, ?, ?, ?)',
-		['m1', 'owner', 'site-a', 'owner', now]
-	);
-	db.run(
-		'INSERT INTO member (id, user_id, space_slug, role, created_at) VALUES (?, ?, ?, ?, ?)',
-		['m2', 'editor', 'site-a', 'editor', now]
-	);
+	db.run('INSERT INTO user (id, email, name, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)', [
+		'owner',
+		'owner@x.test',
+		'O',
+		now,
+		now
+	]);
+	db.run('INSERT INTO user (id, email, name, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)', [
+		'editor',
+		'editor@x.test',
+		'E',
+		now,
+		now
+	]);
+	db.run('INSERT INTO user (id, email, name, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)', [
+		'stranger',
+		'stranger@x.test',
+		'S',
+		now,
+		now
+	]);
+	db.run('INSERT INTO member (id, user_id, space_slug, role, created_at) VALUES (?, ?, ?, ?, ?)', [
+		'm1',
+		'owner',
+		'site-a',
+		'owner',
+		now
+	]);
+	db.run('INSERT INTO member (id, user_id, space_slug, role, created_at) VALUES (?, ?, ?, ?, ?)', [
+		'm2',
+		'editor',
+		'site-a',
+		'editor',
+		now
+	]);
 });
 
 afterEach(() => {

@@ -66,12 +66,11 @@
 	</form>
 
 	{#if form?.generate?.ok}
+		{@const inviteUrl = form.generate.inviteUrl}
 		<aside class="invite-url-once">
 			<p>Send this URL to the invitee. <strong>It will not be shown again.</strong></p>
-			<input type="text" readonly value={form.generate.inviteUrl} aria-label="Invite URL" />
-			<button type="button" onclick={() => navigator.clipboard.writeText(form.generate.inviteUrl)}>
-				Copy
-			</button>
+			<input type="text" readonly value={inviteUrl} aria-label="Invite URL" />
+			<button type="button" onclick={() => navigator.clipboard.writeText(inviteUrl)}> Copy </button>
 		</aside>
 	{/if}
 	{#if form?.generate?.ok === false}

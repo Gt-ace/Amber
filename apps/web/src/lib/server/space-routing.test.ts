@@ -130,15 +130,15 @@ describe('parseSpaceRouting()', () => {
 
 describe('publicUrlForSpace', () => {
 	test('multi-space host: scheme from publicUrl, host from config', () => {
-		expect(publicUrlForSpace({ host: 'notes.example.com' }, 'https://amber.test', 'multi-space')).toBe(
-			'https://notes.example.com/'
-		);
+		expect(
+			publicUrlForSpace({ host: 'notes.example.com' }, 'https://amber.test', 'multi-space')
+		).toBe('https://notes.example.com/');
 	});
 
 	test('multi-space host inherits the dev scheme', () => {
-		expect(publicUrlForSpace({ host: 'notes.example.com' }, 'http://localhost:3000', 'multi-space')).toBe(
-			'http://notes.example.com/'
-		);
+		expect(
+			publicUrlForSpace({ host: 'notes.example.com' }, 'http://localhost:3000', 'multi-space')
+		).toBe('http://notes.example.com/');
 	});
 
 	test('multi-space prefix: publicUrl origin + prefix', () => {
@@ -166,7 +166,9 @@ describe('publicUrlForSpace', () => {
 	});
 
 	test('single-space null config → publicUrl origin', () => {
-		expect(publicUrlForSpace(null, 'https://amber.test', 'single-space')).toBe('https://amber.test/');
+		expect(publicUrlForSpace(null, 'https://amber.test', 'single-space')).toBe(
+			'https://amber.test/'
+		);
 	});
 
 	test('single-space ignores host routing (matches boot)', () => {

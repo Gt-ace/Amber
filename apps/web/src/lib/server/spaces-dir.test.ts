@@ -12,9 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { discoverSpaces, isValidSlug } from './spaces-dir';
 
-const FIXTURE = fileURLToPath(
-	new URL('../../../fixtures/multi-space-broken/', import.meta.url)
-);
+const FIXTURE = fileURLToPath(new URL('../../../fixtures/multi-space-broken/', import.meta.url));
 
 describe('isValidSlug()', () => {
 	test('accepts lowercase + digits + hyphens', () => {

@@ -29,12 +29,13 @@
 {#if data.googleEnabled}
 	<p class="amber-or">or</p>
 	<!-- /api/auth/* is handled by better-auth's svelteKitHandler, not a SvelteKit route. -->
-	<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+	<!-- eslint-disable svelte/no-navigation-without-resolve -->
 	<a
 		class="amber-oauth-button"
 		href={`/api/auth/sign-in/social/google?callbackURL=${encodeURIComponent(data.next ?? '/admin')}`}
 		>Continue with Google</a
 	>
+	<!-- eslint-enable svelte/no-navigation-without-resolve -->
 {/if}
 
 <style>

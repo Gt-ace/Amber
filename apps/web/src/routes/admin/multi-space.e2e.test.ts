@@ -194,8 +194,9 @@ describe('multi-space routing smoke (AMBER_E2E)', () => {
 		function ingestSetCookie(res: Response): void {
 			// Bun's fetch exposes setCookie() (plural) for multi-Set-Cookie headers.
 			// Fall back to a single get('set-cookie') for environments without it.
-			const all = (res.headers as unknown as { getSetCookie?: () => string[] }).getSetCookie?.()
-				?? (res.headers.get('set-cookie') ? [res.headers.get('set-cookie')!] : []);
+			const all =
+				(res.headers as unknown as { getSetCookie?: () => string[] }).getSetCookie?.() ??
+				(res.headers.get('set-cookie') ? [res.headers.get('set-cookie')!] : []);
 			for (const raw of all) {
 				const first = raw.split(';')[0];
 				const eq = first.indexOf('=');

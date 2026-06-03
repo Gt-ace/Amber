@@ -31,10 +31,7 @@ function loaded(
 
 describe('buildResolverIndex()', () => {
 	test('single host space → indexed by host, no default', () => {
-		const { index, warnings } = buildResolverIndex(
-			[loaded('a', { host: 'a.example.com' })],
-			ADMIN
-		);
+		const { index, warnings } = buildResolverIndex([loaded('a', { host: 'a.example.com' })], ADMIN);
 		expect(index.byHost.get('a.example.com')).toBeDefined();
 		expect(index.default).toBeNull();
 		expect(warnings).toEqual([]);
@@ -45,7 +42,7 @@ describe('buildResolverIndex()', () => {
 			[loaded('a', { host: 'x.example.com' }), loaded('b', { host: 'x.example.com' })],
 			ADMIN
 		);
-		expect((index.byHost.get('x.example.com') as { id: string }).id).toBe('a');
+		expect((index.byHost.get('x.example.com') as unknown as { id: string }).id).toBe('a');
 		expect(warnings.map((w) => w.code)).toContain('space_routing_duplicate_host');
 		expect(warnings.find((w) => w.code === 'space_routing_duplicate_host')?.source).toContain('b');
 	});
@@ -56,7 +53,7 @@ describe('buildResolverIndex()', () => {
 			ADMIN
 		);
 		expect(index.prefixes).toHaveLength(1);
-		expect((index.prefixes[0].space as { id: string }).id).toBe('a');
+		expect((index.prefixes[0].space as unknown as { id: string }).id).toBe('a');
 		expect(warnings.map((w) => w.code)).toContain('space_routing_duplicate_prefix');
 	});
 
@@ -65,7 +62,7 @@ describe('buildResolverIndex()', () => {
 			[loaded('a', { default: true }), loaded('b', { default: true })],
 			ADMIN
 		);
-		expect((index.default as { id: string }).id).toBe('a');
+		expect((index.default as unknown as { id: string }).id).toBe('a');
 		expect(warnings.map((w) => w.code)).toContain('space_routing_duplicate_default');
 	});
 
@@ -78,11 +75,7 @@ describe('buildResolverIndex()', () => {
 			],
 			ADMIN
 		);
-		expect(index.prefixes.map((p) => p.prefix)).toEqual([
-			'/scratch-archive',
-			'/scratch',
-			'/s'
-		]);
+		expect(index.prefixes.map((p) => p.prefix)).toEqual(['/scratch-archive', '/scratch', '/s']);
 	});
 
 	test('adminHost is the one passed in', () => {

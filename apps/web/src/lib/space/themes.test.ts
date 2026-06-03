@@ -91,11 +91,17 @@ describe('discoverThemes', () => {
 
 	test('records hasScript=true when a theme ships theme.js, false otherwise', () => {
 		const root = mkdtempSync(join(tmpdir(), 'amber-themes-hasscript-'));
-		for (const [name, withJs] of [['with-js', true], ['no-js', false]] as const) {
+		for (const [name, withJs] of [
+			['with-js', true],
+			['no-js', false]
+		] as const) {
 			const d = join(root, 'themes', name);
 			mkdirSync(d, { recursive: true });
 			writeFileSync(join(d, 'theme.toml'), `name = "${name}"\n`);
-			writeFileSync(join(d, 'chrome.html'), '<header></header><!--amber:content--><footer></footer>');
+			writeFileSync(
+				join(d, 'chrome.html'),
+				'<header></header><!--amber:content--><footer></footer>'
+			);
 			writeFileSync(join(d, 'page.html'), '{{{html}}}');
 			writeFileSync(join(d, 'error.html'), 'err');
 			if (withJs) writeFileSync(join(d, 'theme.js'), 'export {};\n');

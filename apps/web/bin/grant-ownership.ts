@@ -53,7 +53,9 @@ async function main() {
 		process.exit(1);
 	}
 	if (user.isInstallAdmin) {
-		console.log(`${email} is the install-admin; they already implicitly own every space. No row inserted.`);
+		console.log(
+			`${email} is the install-admin; they already implicitly own every space. No row inserted.`
+		);
 		process.exit(0);
 	}
 

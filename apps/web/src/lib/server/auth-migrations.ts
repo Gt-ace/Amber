@@ -70,9 +70,7 @@ export function applyAmberAuthMigrations(db: Database): void {
 	);
 
 	const knownIds = new Set(MIGRATIONS.map((m) => m.id));
-	const appliedRows = db
-		.query('SELECT id FROM amber_migrations')
-		.all() as Array<{ id: string }>;
+	const appliedRows = db.query('SELECT id FROM amber_migrations').all() as Array<{ id: string }>;
 	const appliedIds = new Set(appliedRows.map((r) => r.id));
 
 	for (const applied of appliedIds) {

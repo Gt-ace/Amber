@@ -96,7 +96,7 @@ export function discoverThemes(root: string, log: Logger): Map<string, Theme> {
 		try {
 			hasScript = statSync(join(dir, 'theme.js')).isFile();
 		} catch {
-			hasScript = false; // optional file — absence is normal, no warning
+			// optional file — absence is normal, no warning (hasScript stays false)
 		}
 
 		themes.set(name, { name, path: dir, assetBase: `/themes/${name}`, manifest, hasScript });

@@ -57,9 +57,9 @@ export const actions: Actions = {
 		if (!userId) return fail(400, { delete: { ok: false as const, error: 'Missing user id.' } });
 
 		const db = getAuthDb();
-		const target = db.query('SELECT id, email, isInstallAdmin FROM user WHERE id = ?1').get(userId) as
-			| { id: string; email: string; isInstallAdmin: number }
-			| undefined;
+		const target = db
+			.query('SELECT id, email, isInstallAdmin FROM user WHERE id = ?1')
+			.get(userId) as { id: string; email: string; isInstallAdmin: number } | undefined;
 		if (!target) return fail(404, { delete: { ok: false as const, error: 'Unknown user.' } });
 		if (target.isInstallAdmin) {
 			return fail(400, {
@@ -82,10 +82,7 @@ export const actions: Actions = {
 			db.run('DELETE FROM user WHERE id = ?1', [userId]);
 		})();
 
-		log.info(
-			{ code: 'user_deleted', actorId: event.locals.user.id, userId },
-			'user deleted'
-		);
+		log.info({ code: 'user_deleted', actorId: event.locals.user.id, userId }, 'user deleted');
 		return { delete: { ok: true as const } };
 	}
 };

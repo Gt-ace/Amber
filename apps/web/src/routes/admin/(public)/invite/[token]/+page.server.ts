@@ -10,7 +10,14 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getAuth, getAuthDb, resolveGoogleEnv } from '$lib/server/auth-config';
-import { hashToken, loadValidByTokenHash, lookupById, lookupByTokenHash, markRedeemed, type InviteRow } from '$lib/server/invites';
+import {
+	hashToken,
+	loadValidByTokenHash,
+	lookupById,
+	lookupByTokenHash,
+	markRedeemed,
+	type InviteRow
+} from '$lib/server/invites';
 import { getRole, upsertMember, type SpaceRole } from '$lib/server/permissions';
 import { getRegistryEntries } from '$lib/server/space';
 import { inviteContext } from '$lib/server/invite-context';
@@ -86,23 +93,39 @@ export const load: PageServerLoad = async ({ params, locals, setHeaders, url }) 
 
 	if (!locals.user) {
 		const state: LoadState = { kind: 'signed-out', invite };
-		return { state, googleEnabled: resolveGoogleEnv() != null, inviteSignedState: signInviteState(row.id) };
+		return {
+			state,
+			googleEnabled: resolveGoogleEnv() != null,
+			inviteSignedState: signInviteState(row.id)
+		};
 	}
 	if (locals.user.isInstallAdmin) {
 		const state: LoadState = { kind: 'install-admin', invite };
-		return { state, googleEnabled: resolveGoogleEnv() != null, inviteSignedState: signInviteState(row.id) };
+		return {
+			state,
+			googleEnabled: resolveGoogleEnv() != null,
+			inviteSignedState: signInviteState(row.id)
+		};
 	}
 	const currentRole = getRole(locals.user.id, row.space_slug);
 	if (currentRole) {
 		const state: LoadState = { kind: 'already-member', invite, currentRole };
-		return { state, googleEnabled: resolveGoogleEnv() != null, inviteSignedState: signInviteState(row.id) };
+		return {
+			state,
+			googleEnabled: resolveGoogleEnv() != null,
+			inviteSignedState: signInviteState(row.id)
+		};
 	}
 	const state: LoadState = {
 		kind: 'accept-as-current',
 		invite,
 		email: locals.user.email
 	};
-	return { state, googleEnabled: resolveGoogleEnv() != null, inviteSignedState: signInviteState(row.id) };
+	return {
+		state,
+		googleEnabled: resolveGoogleEnv() != null,
+		inviteSignedState: signInviteState(row.id)
+	};
 };
 
 const log = logger.child({ subsystem: 'permissions' });
@@ -115,16 +138,22 @@ export const actions: Actions = {
 		const name = String(form.get('name') ?? '').trim() || email.split('@')[0] || 'user';
 
 		if (!email || !password) {
-			return fail(400, { redeem: { ok: false as const, error: 'Email and password are required.' } });
+			return fail(400, {
+				redeem: { ok: false as const, error: 'Email and password are required.' }
+			});
 		}
 		if (password.length < 8) {
-			return fail(400, { redeem: { ok: false as const, error: 'Password must be at least 8 characters.' } });
+			return fail(400, {
+				redeem: { ok: false as const, error: 'Password must be at least 8 characters.' }
+			});
 		}
 
 		const db = getAuthDb();
 		const row = loadValidByTokenHash(db, hashToken(event.params.token));
 		if (!row) {
-			return fail(410, { redeem: { ok: false as const, error: 'This invite is no longer valid.' } });
+			return fail(410, {
+				redeem: { ok: false as const, error: 'This invite is no longer valid.' }
+			});
 		}
 
 		const auth = await getAuth();
@@ -142,8 +171,7 @@ export const actions: Actions = {
 					return fail(409, {
 						redeem: {
 							ok: false as const,
-							error:
-								'This email already has an account. Sign in to claim this invite instead.'
+							error: 'This email already has an account. Sign in to claim this invite instead.'
 						}
 					});
 				}
@@ -180,17 +208,32 @@ export const actions: Actions = {
 			})();
 		} catch (e) {
 			if (raced) {
-				return fail(410, { redeem: { ok: false as const, error: 'This invite is no longer valid.' } });
+				return fail(410, {
+					redeem: { ok: false as const, error: 'This invite is no longer valid.' }
+				});
 			}
 			throw e;
 		}
 
 		log.info(
-			{ code: 'invite_redeemed', inviteId: row.id, userId: user.id, slug: row.space_slug, role: row.role },
+			{
+				code: 'invite_redeemed',
+				inviteId: row.id,
+				userId: user.id,
+				slug: row.space_slug,
+				role: row.role
+			},
 			'invite redeemed (new user)'
 		);
 		log.info(
-			{ code: 'member_added', actorId: row.created_by, userId: user.id, slug: row.space_slug, role: row.role, via: 'invite' },
+			{
+				code: 'member_added',
+				actorId: row.created_by,
+				userId: user.id,
+				slug: row.space_slug,
+				role: row.role,
+				via: 'invite'
+			},
 			'member added via invite'
 		);
 
@@ -214,7 +257,9 @@ export const actions: Actions = {
 		const db = getAuthDb();
 		const row = loadValidByTokenHash(db, hashToken(event.params.token));
 		if (!row) {
-			return fail(410, { redeem: { ok: false as const, error: 'This invite is no longer valid.' } });
+			return fail(410, {
+				redeem: { ok: false as const, error: 'This invite is no longer valid.' }
+			});
 		}
 
 		// Already-member: refuse to consume the invite.
@@ -244,7 +289,9 @@ export const actions: Actions = {
 			})();
 		} catch (e) {
 			if (raced) {
-				return fail(410, { redeem: { ok: false as const, error: 'This invite is no longer valid.' } });
+				return fail(410, {
+					redeem: { ok: false as const, error: 'This invite is no longer valid.' }
+				});
 			}
 			throw e;
 		}
@@ -254,7 +301,14 @@ export const actions: Actions = {
 			'invite redeemed (existing user)'
 		);
 		log.info(
-			{ code: 'member_added', actorId: row.created_by, userId, slug: row.space_slug, role: row.role, via: 'invite' },
+			{
+				code: 'member_added',
+				actorId: row.created_by,
+				userId,
+				slug: row.space_slug,
+				role: row.role,
+				via: 'invite'
+			},
 			'member added via invite'
 		);
 		redirect(302, `/admin/spaces/${row.space_slug}`);
@@ -269,7 +323,12 @@ export const actions: Actions = {
 		if (!row) return fail(404, { revoke: { ok: false as const, error: 'Unknown invite.' } });
 		db.run('DELETE FROM invite WHERE id = ?1 AND redeemed_at IS NULL', [row.id]);
 		log.info(
-			{ code: 'invite_revoked', actorId: event.locals.user.id, inviteId: row.id, slug: row.space_slug },
+			{
+				code: 'invite_revoked',
+				actorId: event.locals.user.id,
+				inviteId: row.id,
+				slug: row.space_slug
+			},
 			'invite revoked by install-admin from redemption page'
 		);
 		return { revoke: { ok: true as const } };
@@ -290,7 +349,12 @@ export const actions: Actions = {
 		}
 		db.run('DELETE FROM invite WHERE id = ?1 AND redeemed_at IS NULL', [row.id]);
 		log.info(
-			{ code: 'invite_revoked', actorId: event.locals.user.id, inviteId: row.id, slug: row.space_slug },
+			{
+				code: 'invite_revoked',
+				actorId: event.locals.user.id,
+				inviteId: row.id,
+				slug: row.space_slug
+			},
 			'invite revoked by space owner from redemption page'
 		);
 		return { revoke: { ok: true as const } };

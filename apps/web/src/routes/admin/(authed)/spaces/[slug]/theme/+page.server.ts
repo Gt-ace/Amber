@@ -51,7 +51,8 @@ function preservedRouting(
 ): SpaceConfigUpdate {
 	if (!config) return {};
 	if (typeof config.host === 'string' && config.host.length > 0) return { host: config.host };
-	if (typeof config.prefix === 'string' && config.prefix.length > 0) return { prefix: config.prefix };
+	if (typeof config.prefix === 'string' && config.prefix.length > 0)
+		return { prefix: config.prefix };
 	if (config.default === true) return { default: true };
 	return {};
 }
@@ -64,11 +65,7 @@ export const load: PageServerLoad = async (event) => {
 	const declaredTheme = config?.theme;
 	const resolvedThemeName = space.theme.name;
 	const { source, staleThemeName } = describeThemeSource(declaredTheme, space.themes);
-	const publicUrl = publicUrlForSpace(
-		config,
-		process.env.AMBER_PUBLIC_URL!,
-		getDiscoveryMode()
-	);
+	const publicUrl = publicUrlForSpace(config, process.env.AMBER_PUBLIC_URL!, getDiscoveryMode());
 
 	const themes = [...space.themes.values()]
 		.map((t) => ({
@@ -113,7 +110,12 @@ export const actions: Actions = {
 		const result = validateThemePick(submitted, space.themes);
 		if (result.kind === 'error') {
 			log.warn(
-				{ slug: event.params.slug, code: result.code, themeSubmitted: submitted, actor: event.locals.user?.id },
+				{
+					slug: event.params.slug,
+					code: result.code,
+					themeSubmitted: submitted,
+					actor: event.locals.user?.id
+				},
 				'pick-rejected'
 			);
 			return fail(400, { themeError: result.code, submitted });
@@ -130,7 +132,12 @@ export const actions: Actions = {
 		const writeRes = await writeSpaceConfig(space.root, update);
 		if (writeRes.kind === 'error') {
 			log.error(
-				{ slug: event.params.slug, code: writeRes.code, detail: writeRes.detail, themeSubmitted: submitted },
+				{
+					slug: event.params.slug,
+					code: writeRes.code,
+					detail: writeRes.detail,
+					themeSubmitted: submitted
+				},
 				'pick-failed'
 			);
 			return fail(500, { writeError: writeRes.code });

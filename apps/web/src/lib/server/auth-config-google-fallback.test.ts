@@ -148,10 +148,11 @@ describe('user-create hook — Google gstate fallback', () => {
 
 	test('already-redeemed invite via gstate → reject', async () => {
 		const { auth, db, inviteId } = await seedAdminAndInvite();
-		db.run(
-			'UPDATE invite SET redeemed_at = ?1, redeemed_by = ?2 WHERE id = ?3',
-			[Date.now(), 'someone-else', inviteId]
-		);
+		db.run('UPDATE invite SET redeemed_at = ?1, redeemed_by = ?2 WHERE id = ?3', [
+			Date.now(),
+			'someone-else',
+			inviteId
+		]);
 		const state = signInviteState(inviteId);
 		mockReq.url = `${PUBLIC_URL}/api/auth/callback/google?gstate=${state}`;
 

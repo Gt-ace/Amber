@@ -135,9 +135,7 @@ describe('/admin/setup action', () => {
 
 	test('sets isInstallAdmin = 1 on the created user row', async () => {
 		await Promise.resolve(
-			actions.default!(
-				formEvent({ email: 'first@x.test', password: 'password123', name: 'First' })
-			)
+			actions.default!(formEvent({ email: 'first@x.test', password: 'password123', name: 'First' }))
 		).catch((e: unknown) => {
 			if ((e as { status?: number }).status !== 302) throw e;
 		});

@@ -102,28 +102,68 @@ Cosmetic but trail-confusing; none block functionality.
 
 ## P3 — Release mechanics (never exercised)
 
+**Status: gate cleanup + verification done in this change; the release act
+(tag + `CHANGELOG`) is deliberately deferred.** Recorded here for the trail.
+
 For an AGPL self-hostable project that is feature-complete through v0.5, this
 is the "make it official" gap.
 
-- No git tags, no `CHANGELOG`. Nothing has ever been cut as a release; the
-  production instance tracks `main`.
-- **`bun run check` and `bun run lint` are both red on `main`** (pre-existing,
-  unrelated to any single change — the "no CI by design" gates have drifted).
-  `check` reports 33 `svelte-check` errors, almost all the same shape:
-  route-handler `actions.default` / load-return types resolving as `void` from
-  generated `$types` inside `*.test.ts` files (e.g. `theme.test.ts`,
-  `members.test.ts`, `invite.test.ts`, `users.test.ts`), plus an `inviteUrl`
-  discriminated-union narrowing miss in `members/+page.svelte:72` and three
-  `Space`-cast errors in `resolver-index.test.ts`. `lint` reports ~53 files
-  with Prettier style drift. The fast unit suite (`bun test`, 609 green) is the
-  only gate that's actually clean. Worth a dedicated cleanup pass before any
-  tagged release.
-- Pre-deploy gates not part of routine verification: a production
-  `bun run build` and `bun run test:smoke` (the hydration gate).
-- Stale local branches to prune (`feat/editor`, `feat/auth`,
-  `feat/multi-space-routing`, `feat/wave3-p1-per-space-theming`,
-  `fix/multi-space-routing-followups`, `spec/editor`). `spike/editor-roundtrip`
-  is correctly left unmerged.
+- **No git tags, no `CHANGELOG`** — still true, deferred on purpose. Cutting a
+  tag forces a coherent version, but `main` currently disagrees with itself
+  (README "0.4", `amber.toml` "0.3" — the P2 drift above). The release act is
+  left as a separate, deliberate step *after* the P2 version drift is settled,
+  per the doc's own "a dedicated cleanup pass *before* any tagged release"
+  framing. The production instance still tracks `main`.
+- **`bun run check` and `bun run lint` were both red on `main`; both are now
+  green** (the "no CI by design" gates had drifted; pre-existing, unrelated to
+  any single change). The fix was scoped to keep the public render path
+  untouched — the route `+page.server.ts` annotations were left as-is rather
+  than switched to `satisfies` (which would narrow the generated
+  `PageServerData`/`ActionData` and ripple into every `.svelte` consumer).
+  - `check`: was 33 `svelte-check` errors. Two shapes, both **type-position
+    only** (the handlers genuinely export what the tests reference):
+    `typeof import('…').actions.default` does namespace-style dotted access
+    through `typeof import()`, which rejects the `Actions` index signature →
+    switched to indexed access `actions['default']`; and `load`-return types
+    resolved as `… | void` because `export const load: PageServerLoad` widens
+    the return → cast at the call site via a documented per-file
+    `type LoadData = Exclude<…, void>`. Plus the `inviteUrl` discriminated-union
+    narrowing miss in `members/+page.svelte` (fixed with `{@const}` to capture
+    the value outside the closure), three `Space`-cast errors in
+    `resolver-index.test.ts` (`as unknown as { id: string }`), and two
+    untyped `.map()` callbacks that fell out of the void cast (explicit param
+    type). The 22 `svelte-check` **warnings** (`state_referenced_locally`,
+    `a11y_autofocus`) are pre-existing and do not fail the gate — `check` exits
+    0 with them present.
+  - `lint`: the doc undercounted this. Prettier reported ~53 files of style
+    drift (fixed by `bun run format`), but `prettier --check` short-circuits
+    `&& eslint .`, so **eslint had never run** — it surfaced **12 hidden
+    errors** once prettier passed: `preserve-caught-error`, `no-useless-assignment`
+    (×3), `no-empty` catch blocks (×2), an unused var, and
+    `svelte/no-navigation-without-resolve` (×5). The navigation ones split by
+    intent — external/`/api/auth/*` links got the codebase's `eslint-disable`
+    convention (one of which was silently mis-targeted after a prettier wrap;
+    re-done as a block disable), the internal `/admin/login` link got
+    `resolve()`. The fast unit suite (`bun test`, 609 green) was the only gate
+    already clean; it stays green, as does `test:smoke` (21).
+- **Pre-deploy gates — both run and green.** `test:smoke` (the hydration gate)
+  rebuilds the production bundle under Bun, boots it, and drives it in Chromium:
+  21 e2e tests pass. A standalone production build also emits adapter-node
+  output. One sharp edge worth recording: plain `bun run build` fails in any
+  environment where Node is on `$PATH` — `vite`'s `#!/usr/bin/env node` shebang
+  hands the build to Node, whose loader can't resolve the `bun:sqlite` import
+  (`lib/space/cache.ts`). The build must run under Bun (`bun --bun run build`).
+  The prod Docker `build` stage is `oven/bun:1` (Node-free), so the bare
+  `bun run build` in the Dockerfile is unaffected; only mixed local shells hit
+  this. A one-line hardening — make the `build` script `bun --bun vite build`,
+  matching the `test:*` scripts — would make it robust everywhere; left
+  unchanged for now (the Dockerfile is correct as-is).
+- **Stale local branches pruned.** `feat/editor`, `feat/multi-space-routing`,
+  `feat/wave3-p1-per-space-theming`, `fix/multi-space-routing-followups`, and
+  `spec/editor` were all fully merged into `main` and deleted with
+  `git branch -d`. `spike/editor-roundtrip` is correctly left unmerged and
+  kept. (The earlier `feat/auth` listing was stale — no such local branch
+  existed.)
 
 ---
 

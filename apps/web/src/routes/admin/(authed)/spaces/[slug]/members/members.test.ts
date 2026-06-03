@@ -5,11 +5,16 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // members/ is one level deeper than [slug]/, so we need 7 ../s to reach apps/web/
-const FIXTURE = fileURLToPath(new URL('../../../../../../../fixtures/example-space/', import.meta.url));
+const FIXTURE = fileURLToPath(
+	new URL('../../../../../../../fixtures/example-space/', import.meta.url)
+);
 
 let workDir: string;
 let load: typeof import('./+page.server.ts').load;
 let actions: typeof import('./+page.server.ts').actions;
+// svelte-check widens PageServerLoad's return to include `void`; strip it so
+// reads off the resolved data type-check. Runtime is unchanged.
+type LoadData = Exclude<Awaited<ReturnType<typeof import('./+page.server.ts').load>>, void>;
 let resetSingleton: () => void;
 let getAuth: typeof import('$lib/server/auth-config').getAuth;
 let getAuthDb: typeof import('$lib/server/auth-config').getAuthDb;
@@ -36,7 +41,9 @@ afterEach(async () => {
 	const { getSpace } = await import('$lib/server/space');
 	try {
 		getSpace().close();
-	} catch {}
+	} catch {
+		/* space may not have been initialised in this test */
+	}
 	resetSingleton();
 	rmSync(workDir, { recursive: true, force: true });
 });
@@ -85,7 +92,9 @@ function actionEvent(
 describe('members load', () => {
 	test('install-admin sees the lists even without a member row', async () => {
 		await seedAdmin();
-		const data = await load(loadEvent({ id: 'admin-1', isInstallAdmin: true }, 'example-space'));
+		const data = (await load(
+			loadEvent({ id: 'admin-1', isInstallAdmin: true }, 'example-space')
+		)) as LoadData;
 		expect(data.members).toEqual([]);
 		expect(data.invites).toEqual([]);
 	});
@@ -110,8 +119,10 @@ describe('members load', () => {
 			"INSERT INTO member (id, user_id, space_slug, role, created_at, created_by) VALUES ('m-2', 'u-2', 'example-space', 'owner', ?1, 'admin-1')",
 			[Date.now()]
 		);
-		const data = await load(loadEvent({ id: 'u-2', isInstallAdmin: false }, 'example-space'));
-		expect(data.members.map((m) => m.userId)).toContain('u-2');
+		const data = (await load(
+			loadEvent({ id: 'u-2', isInstallAdmin: false }, 'example-space')
+		)) as LoadData;
+		expect(data.members.map((m: { userId: string }) => m.userId)).toContain('u-2');
 	});
 });
 
@@ -148,10 +159,14 @@ describe('revokeInvite action', () => {
 			.query('SELECT id FROM invite WHERE space_slug = ?1')
 			.get('example-space') as { id: string };
 		const r = await actions.revokeInvite!(
-			actionEvent({ id: 'admin-1', isInstallAdmin: true }, 'example-space', { inviteId: inviteId.id })
+			actionEvent({ id: 'admin-1', isInstallAdmin: true }, 'example-space', {
+				inviteId: inviteId.id
+			})
 		);
 		expect((r as { revoke: { ok: true } }).revoke.ok).toBe(true);
-		const pending = getAuthDb().query('SELECT COUNT(*) AS n FROM invite WHERE redeemed_at IS NULL').get();
+		const pending = getAuthDb()
+			.query('SELECT COUNT(*) AS n FROM invite WHERE redeemed_at IS NULL')
+			.get();
 		expect((pending as { n: number }).n).toBe(0);
 		expect(created.generate.inviteUrl).toBeTruthy();
 	});

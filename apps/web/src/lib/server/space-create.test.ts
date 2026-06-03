@@ -12,7 +12,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-	try { chmodSync(parentDir, 0o755); } catch { /* best-effort */ }
+	try {
+		chmodSync(parentDir, 0o755);
+	} catch {
+		/* best-effort */
+	}
 	rmSync(parentDir, { recursive: true, force: true });
 });
 

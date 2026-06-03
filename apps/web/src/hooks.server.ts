@@ -264,13 +264,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 				// Idempotent — subsequent requests find the flag already set.
 				if (!event.locals.user.isInstallAdmin) {
 					const db = getAuthDb();
-					const count = (
-						db.query('SELECT COUNT(*) AS n FROM user').get() as { n: number }
-					).n;
+					const count = (db.query('SELECT COUNT(*) AS n FROM user').get() as { n: number }).n;
 					if (count === 1) {
-						db.run('UPDATE user SET isInstallAdmin = 1 WHERE id = ?', [
-							event.locals.user.id
-						]);
+						db.run('UPDATE user SET isInstallAdmin = 1 WHERE id = ?', [event.locals.user.id]);
 						event.locals.user.isInstallAdmin = true;
 					}
 				}

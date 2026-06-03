@@ -49,9 +49,7 @@ export const load: PageServerLoad = (event) => {
 	// admin slug so the link stays inside the matched space.
 	const slug = path.basename(space.root);
 	const userCanEdit = canEdit(event, slug);
-	const editHref = userCanEdit
-		? `/admin/spaces/${slug}/edit${url === '/' ? '' : url}`
-		: null;
+	const editHref = userCanEdit ? `/admin/spaces/${slug}/edit${url === '/' ? '' : url}` : null;
 
 	return {
 		page: {

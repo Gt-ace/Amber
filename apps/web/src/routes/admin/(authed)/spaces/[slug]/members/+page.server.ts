@@ -15,12 +15,7 @@ import {
 	upsertMember,
 	type SpaceRole
 } from '$lib/server/permissions';
-import {
-	insertInvite,
-	listPendingForSpace,
-	revokeInvite,
-	lookupById
-} from '$lib/server/invites';
+import { insertInvite, listPendingForSpace, revokeInvite, lookupById } from '$lib/server/invites';
 import { getAuthDb } from '$lib/server/auth-config';
 import { logger } from '$lib/server/logger';
 
@@ -52,7 +47,13 @@ export const actions: Actions = {
 		});
 		const inviteUrl = `${publicUrl()}/admin/invite/${token}`;
 		log.info(
-			{ code: 'invite_generated', actorId: event.locals.user!.id, slug: event.params.slug, role, inviteId: id },
+			{
+				code: 'invite_generated',
+				actorId: event.locals.user!.id,
+				slug: event.params.slug,
+				role,
+				inviteId: id
+			},
 			'invite generated'
 		);
 		// The token leaves the server exactly once — here.
@@ -93,7 +94,8 @@ export const actions: Actions = {
 			return fail(400, {
 				change: {
 					ok: false as const,
-					error: 'This user is the install-admin; their access is implicit and cannot be changed here.'
+					error:
+						'This user is the install-admin; their access is implicit and cannot be changed here.'
 				}
 			});
 		}
@@ -124,7 +126,8 @@ export const actions: Actions = {
 			return fail(400, {
 				remove: {
 					ok: false as const,
-					error: 'The install-admin has implicit ownership; they cannot be removed from a space here.'
+					error:
+						'The install-admin has implicit ownership; they cannot be removed from a space here.'
 				}
 			});
 		}

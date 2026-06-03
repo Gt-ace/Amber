@@ -15,11 +15,7 @@ import { readdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import type { Actions, PageServerLoad } from './$types';
 import { logger } from '$lib/server/logger';
-import {
-	addSpace,
-	getDiscoveryMode,
-	getRegistryEntries
-} from '$lib/server/space';
+import { addSpace, getDiscoveryMode, getRegistryEntries } from '$lib/server/space';
 import { getResolverIndex } from '$lib/server/resolver-index-holder';
 import { createSpace } from '$lib/server/space-create';
 import {
@@ -54,13 +50,17 @@ function buildSnapshot(): RegistrySnapshot {
 		const slug = spaceToSlug.get(space);
 		if (slug) prefixes.set(prefix, slug);
 	}
-	const defaultOwner = idx.default ? spaceToSlug.get(idx.default) ?? null : null;
+	const defaultOwner = idx.default ? (spaceToSlug.get(idx.default) ?? null) : null;
 	// Slugs already on disk under AMBER_SPACES_DIR. Includes spaces that
 	// failed to load (e.g. invalid slug regex) — we don't want to silently
 	// re-mkdir over them.
 	const parent = process.env.AMBER_SPACES_DIR!;
 	let onDisk: string[] = [];
-	try { onDisk = readdirSync(parent); } catch { onDisk = []; }
+	try {
+		onDisk = readdirSync(parent);
+	} catch {
+		// parent unreadable — treat as no slugs on disk (onDisk stays [])
+	}
 	return {
 		slugs: new Set(onDisk),
 		hosts,
@@ -93,7 +93,7 @@ export const actions: Actions = {
 		const raw = {
 			title: String(fd.get('title') ?? ''),
 			slug: String(fd.get('slug') ?? ''),
-			routingKind: (String(fd.get('routingKind') ?? 'admin-only')) as RoutingKind,
+			routingKind: String(fd.get('routingKind') ?? 'admin-only') as RoutingKind,
 			host: String(fd.get('host') ?? ''),
 			prefix: String(fd.get('prefix') ?? '')
 		};
@@ -101,17 +101,26 @@ export const actions: Actions = {
 		const snap = buildSnapshot();
 		const { valid, errors } = validateCreateInput(raw, snap);
 		if (!valid) {
-			log.warn({ slug: raw.slug, code: errors[0]?.code, actor: event.locals.user?.id }, 'create-rejected');
+			log.warn(
+				{ slug: raw.slug, code: errors[0]?.code, actor: event.locals.user?.id },
+				'create-rejected'
+			);
 			return fail(400, { errors, raw });
 		}
 
 		const start = performance.now();
-		log.info({ slug: valid.slug, routingKind: valid.routing.kind, actor: event.locals.user?.id }, 'create-attempted');
+		log.info(
+			{ slug: valid.slug, routingKind: valid.routing.kind, actor: event.locals.user?.id },
+			'create-attempted'
+		);
 
 		const parent = process.env.AMBER_SPACES_DIR!;
 		const writeRes = await createSpace({ parentDir: parent, input: valid });
 		if (writeRes.kind === 'error') {
-			log.error({ slug: valid.slug, code: writeRes.code, detail: writeRes.detail }, 'create-failed');
+			log.error(
+				{ slug: valid.slug, code: writeRes.code, detail: writeRes.detail },
+				'create-failed'
+			);
 			return fail(500, { writeError: writeRes.code, raw });
 		}
 
@@ -121,7 +130,11 @@ export const actions: Actions = {
 			await addSpace(writeRes.absPath);
 		} catch (err) {
 			log.error({ slug: valid.slug, err: (err as Error)?.message }, 'addSpace-failed-after-write');
-			try { rmSync(writeRes.absPath, { recursive: true, force: true }); } catch { /* best-effort */ }
+			try {
+				rmSync(writeRes.absPath, { recursive: true, force: true });
+			} catch {
+				/* best-effort */
+			}
 			return fail(500, { writeError: 'write_failed', raw });
 		}
 

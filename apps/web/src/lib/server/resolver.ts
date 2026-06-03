@@ -52,8 +52,7 @@ export function resolve<S>(
 	}
 
 	const hostMatch = index.byHost.get(host);
-	if (hostMatch)
-		return { kind: 'space', space: hostMatch, mountPath: pathname, mountPrefix: '' };
+	if (hostMatch) return { kind: 'space', space: hostMatch, mountPath: pathname, mountPrefix: '' };
 
 	if (index.default == null && index.prefixes.length === 0) {
 		return { kind: 'not-found' };
@@ -61,8 +60,7 @@ export function resolve<S>(
 
 	// Longest-first prefix match: `prefixes` is pre-sorted by the index builder.
 	for (const { prefix, space } of index.prefixes) {
-		if (pathname === prefix)
-			return { kind: 'space', space, mountPath: '/', mountPrefix: prefix };
+		if (pathname === prefix) return { kind: 'space', space, mountPath: '/', mountPrefix: prefix };
 		if (pathname.startsWith(prefix + '/')) {
 			const mount = pathname.slice(prefix.length);
 			return { kind: 'space', space, mountPath: mount, mountPrefix: prefix };

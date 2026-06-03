@@ -74,7 +74,11 @@ export async function createSpace(args: CreateSpaceArgs): Promise<CreateSpaceRes
 		return { kind: 'error', code: classifyError(err), detail: (err as Error)?.message };
 	}
 	if (__forceFailAfter === 'mkdir') {
-		try { rmSync(absPath, { recursive: true, force: true }); } catch { /* best-effort */ }
+		try {
+			rmSync(absPath, { recursive: true, force: true });
+		} catch {
+			/* best-effort */
+		}
 		return { kind: 'error', code: 'write_failed', detail: 'forced fail after mkdir' };
 	}
 
@@ -90,7 +94,11 @@ export async function createSpace(args: CreateSpaceArgs): Promise<CreateSpaceRes
 		if (__forceFailAfter === 'index') throw new Error('forced fail after index');
 	} catch (err) {
 		// Roll back — the dir didn't exist before us, so this is safe.
-		try { rmSync(absPath, { recursive: true, force: true }); } catch { /* best-effort */ }
+		try {
+			rmSync(absPath, { recursive: true, force: true });
+		} catch {
+			/* best-effort */
+		}
 		return { kind: 'error', code: classifyError(err), detail: (err as Error)?.message };
 	}
 

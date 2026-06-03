@@ -95,10 +95,13 @@ describe('migration 0001 — isInstallAdmin', () => {
 				updatedAt INTEGER NOT NULL
 			);
 		`);
-		db.run(
-			'INSERT INTO user (id, email, name, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)',
-			['u1', 'a@x.test', 'A', Date.now(), Date.now()]
-		);
+		db.run('INSERT INTO user (id, email, name, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)', [
+			'u1',
+			'a@x.test',
+			'A',
+			Date.now(),
+			Date.now()
+		]);
 
 		applyAmberAuthMigrations(db);
 

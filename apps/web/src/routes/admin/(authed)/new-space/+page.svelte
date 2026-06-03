@@ -19,9 +19,7 @@
 	// the title would have derived, the user hand-edited it — preserve
 	// `slugDirty: true` across the re-render so the next title edit doesn't
 	// silently overwrite their slug choice.
-	let slugDirty = $state(
-		form?.raw?.slug != null && form.raw.slug !== derive(form.raw.title ?? '')
-	);
+	let slugDirty = $state(form?.raw?.slug != null && form.raw.slug !== derive(form.raw.title ?? ''));
 	let routingKind = $state<'prefix' | 'host' | 'default' | 'admin-only'>(
 		(form?.raw?.routingKind as 'prefix' | 'host' | 'default' | 'admin-only') ?? 'prefix'
 	);
@@ -42,16 +40,26 @@
 		const e = form.errors.find((x) => x.field === field);
 		if (!e) return null;
 		switch (e.code) {
-			case 'title_empty': return 'Title is required.';
-			case 'slug_invalid': return 'Use lowercase letters, digits, and hyphens. Must start with a letter or digit.';
-			case 'slug_taken': return `A directory named "${slug}" already exists. Choose another name.`;
-			case 'host_invalid': return 'Bare host only, no scheme or port. Example: notes.example.com.';
-			case 'host_is_admin': return 'This is the admin host. The admin/auth endpoints always win here — pick a different host.';
-			case 'host_taken': return `"${host}" is already used by another space.`;
-			case 'prefix_invalid': return 'Path like /notes. No trailing slash.';
-			case 'prefix_reserved': return `"${prefix}" collides with a reserved Amber path.`;
-			case 'prefix_taken': return `"${prefix}" is already used by another space.`;
-			case 'default_taken': return 'A default space already exists.';
+			case 'title_empty':
+				return 'Title is required.';
+			case 'slug_invalid':
+				return 'Use lowercase letters, digits, and hyphens. Must start with a letter or digit.';
+			case 'slug_taken':
+				return `A directory named "${slug}" already exists. Choose another name.`;
+			case 'host_invalid':
+				return 'Bare host only, no scheme or port. Example: notes.example.com.';
+			case 'host_is_admin':
+				return 'This is the admin host. The admin/auth endpoints always win here — pick a different host.';
+			case 'host_taken':
+				return `"${host}" is already used by another space.`;
+			case 'prefix_invalid':
+				return 'Path like /notes. No trailing slash.';
+			case 'prefix_reserved':
+				return `"${prefix}" collides with a reserved Amber path.`;
+			case 'prefix_taken':
+				return `"${prefix}" is already used by another space.`;
+			case 'default_taken':
+				return 'A default space already exists.';
 		}
 		return null;
 	}
@@ -64,7 +72,11 @@
 </svelte:head>
 
 <h1>New space</h1>
-<p class="hint">Creates a directory under your spaces folder, scaffolds <code>amber.toml</code> and <code>index.md</code>, and (if you pick host or path routing) writes <code>space.toml</code>. The new space is hot-added — no restart.</p>
+<p class="hint">
+	Creates a directory under your spaces folder, scaffolds <code>amber.toml</code> and
+	<code>index.md</code>, and (if you pick host or path routing) writes <code>space.toml</code>. The
+	new space is hot-added — no restart.
+</p>
 
 <form method="POST" onsubmit={() => (submitting = true)}>
 	<div class="field">
@@ -92,10 +104,12 @@
 			bind:value={slug}
 			oninput={() => (slugDirty = true)}
 			required
-			pattern={"^[a-z0-9][a-z0-9-]{0,62}$"}
+			pattern={'^[a-z0-9][a-z0-9-]{0,62}$'}
 			aria-invalid={errorFor('slug') ? 'true' : undefined}
 		/>
-		<p class="hint">Becomes the directory name and <code>/admin/spaces/{slug || '<slug>'}</code>.</p>
+		<p class="hint">
+			Becomes the directory name and <code>/admin/spaces/{slug || '<slug>'}</code>.
+		</p>
 		{#if errorFor('slug')}
 			<p class="err" role="alert" aria-live="polite">{errorFor('slug')}</p>
 		{/if}
@@ -112,10 +126,18 @@
 		{#if routingKind === 'prefix'}
 			<div class="reveal">
 				<label for="prefix" class="sublabel">Prefix</label>
-				<input id="prefix" name="prefix" type="text" bind:value={prefix} aria-invalid={errorFor('prefix') ? 'true' : undefined} />
+				<input
+					id="prefix"
+					name="prefix"
+					type="text"
+					bind:value={prefix}
+					aria-invalid={errorFor('prefix') ? 'true' : undefined}
+				/>
 				<p class="hint">Path the space is mounted at, e.g. <code>/notes</code>.</p>
 				{#if prefix.startsWith('/') && prefix.length > 1}
-					<p class="preview">Will serve at <code>{data.adminScheme}//{data.adminHost}{prefix}</code></p>
+					<p class="preview">
+						Will serve at <code>{data.adminScheme}//{data.adminHost}{prefix}</code>
+					</p>
 				{/if}
 				{#if errorFor('prefix')}
 					<p class="err" role="alert" aria-live="polite">{errorFor('prefix')}</p>
@@ -131,7 +153,14 @@
 		{#if routingKind === 'host'}
 			<div class="reveal">
 				<label for="host" class="sublabel">Host</label>
-				<input id="host" name="host" type="text" bind:value={host} placeholder="notes.example.com" aria-invalid={errorFor('host') ? 'true' : undefined} />
+				<input
+					id="host"
+					name="host"
+					type="text"
+					bind:value={host}
+					placeholder="notes.example.com"
+					aria-invalid={errorFor('host') ? 'true' : undefined}
+				/>
 				<p class="hint">Bare host, no scheme or port.</p>
 				{#if host}
 					<p class="preview">Will serve at <code>{data.adminScheme}//{host}</code></p>
@@ -143,7 +172,13 @@
 		{/if}
 
 		<label class="row" class:disabled={data.defaultOwner !== null}>
-			<input type="radio" name="routingKind" value="default" bind:group={routingKind} disabled={data.defaultOwner !== null} />
+			<input
+				type="radio"
+				name="routingKind"
+				value="default"
+				bind:group={routingKind}
+				disabled={data.defaultOwner !== null}
+			/>
 			<span class="row-main">This is the default site</span>
 			<span class="row-sub">
 				{#if data.defaultOwner !== null}
@@ -165,14 +200,23 @@
 		<label class="row">
 			<input type="radio" name="routingKind" value="admin-only" bind:group={routingKind} />
 			<span class="row-main">Admin-only for now</span>
-			<span class="row-sub">Loads into the admin but doesn't serve public traffic yet. Add <code>host</code> or <code>prefix</code> to <code>space.toml</code> later.</span>
+			<span class="row-sub"
+				>Loads into the admin but doesn't serve public traffic yet. Add <code>host</code> or
+				<code>prefix</code>
+				to <code>space.toml</code> later.</span
+			>
 		</label>
 	</fieldset>
 
 	{#if writeError === 'permission_denied'}
-		<p class="form-err" role="alert">Amber doesn't have write access to your spaces directory. Fix the directory permissions and try again.</p>
+		<p class="form-err" role="alert">
+			Amber doesn't have write access to your spaces directory. Fix the directory permissions and
+			try again.
+		</p>
 	{:else if writeError === 'write_failed'}
-		<p class="form-err" role="alert">Couldn't create the space. Check the server logs for details.</p>
+		<p class="form-err" role="alert">
+			Couldn't create the space. Check the server logs for details.
+		</p>
 	{:else if writeError === 'dir_already_exists'}
 		<p class="form-err" role="alert">A directory with this slug already exists.</p>
 	{/if}
@@ -261,8 +305,14 @@
 		animation: slide-in 200ms cubic-bezier(0.23, 1, 0.32, 1);
 	}
 	@keyframes slide-in {
-		from { opacity: 0; transform: translateY(8px); }
-		to   { opacity: 1; transform: translateY(0);    }
+		from {
+			opacity: 0;
+			transform: translateY(8px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 	.sublabel {
 		font-weight: 500;

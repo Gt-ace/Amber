@@ -83,11 +83,7 @@ export function buildSitemapXml(
 
 function formatLoc(pageUrl: string, siteUrl: string | null, mountPrefix: string): string {
 	const effective =
-		mountPrefix === ''
-			? pageUrl
-			: pageUrl === '/'
-				? mountPrefix
-				: mountPrefix + pageUrl;
+		mountPrefix === '' ? pageUrl : pageUrl === '/' ? mountPrefix : mountPrefix + pageUrl;
 	if (siteUrl === null) return effective;
 	return siteUrl + effective;
 }

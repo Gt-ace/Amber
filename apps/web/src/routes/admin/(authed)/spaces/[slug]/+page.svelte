@@ -10,11 +10,15 @@
 		Theme: <strong>{data.activeThemeName}</strong>
 		<a href={resolve(`/admin/spaces/${data.slug}/theme` as '/admin/spaces/[slug]/theme')}>Change</a>
 		{#if data.publicUrl}
+			<!-- publicUrl is the space's own external site URL, not an internal SvelteKit route. -->
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 			· <a href={data.publicUrl} target="_blank" rel="noopener">view your site ↗</a>
 		{/if}
 	</p>
 {/if}
-<p><a href={resolve(`/admin/spaces/${data.slug}/new` as '/admin/spaces/[slug]/new')}>+ New page</a></p>
+<p>
+	<a href={resolve(`/admin/spaces/${data.slug}/new` as '/admin/spaces/[slug]/new')}>+ New page</a>
+</p>
 
 <ul class="amber-page-list">
 	{#each data.pages as page (page.url)}

@@ -36,14 +36,11 @@ afterEach(() => {
 });
 
 async function runCli(args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
-	const proc = Bun.spawn(
-		['bun', 'run', CLI, ...args],
-		{
-			env: { ...process.env, AMBER_SPACE_PATH: workDir },
-			stdout: 'pipe',
-			stderr: 'pipe'
-		}
-	);
+	const proc = Bun.spawn(['bun', 'run', CLI, ...args], {
+		env: { ...process.env, AMBER_SPACE_PATH: workDir },
+		stdout: 'pipe',
+		stderr: 'pipe'
+	});
 	const stdout = await new Response(proc.stdout).text();
 	const stderr = await new Response(proc.stderr).text();
 	const code = await proc.exited;
@@ -82,7 +79,9 @@ describe('grant-ownership CLI', () => {
 
 	test('refuses on install-admin (no-op)', async () => {
 		const d = new Database(dbPath);
-		d.run("INSERT INTO user (id, email, name, isInstallAdmin) VALUES ('admin-1', 'a@x.test', 'A', 1)");
+		d.run(
+			"INSERT INTO user (id, email, name, isInstallAdmin) VALUES ('admin-1', 'a@x.test', 'A', 1)"
+		);
 		d.close();
 		const r = await runCli(['--email', 'a@x.test', '--space', 'site-a']);
 		expect(r.code).toBe(0);

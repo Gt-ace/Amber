@@ -2,7 +2,9 @@ import { describe, expect, test } from 'vitest';
 import type { RequestEvent } from '@sveltejs/kit';
 import { isAuthor, requireAuthor } from './auth.ts';
 
-function eventWith(user: { id: string; email: string; name?: string | null; isInstallAdmin: boolean } | null) {
+function eventWith(
+	user: { id: string; email: string; name?: string | null; isInstallAdmin: boolean } | null
+) {
 	return { locals: { user } } as unknown as RequestEvent;
 }
 
@@ -25,6 +27,8 @@ describe('auth seam', () => {
 	});
 
 	test('requireAuthor does not throw when locals.user is set', () => {
-		expect(() => requireAuthor(eventWith({ id: 'u1', email: 'a@x', isInstallAdmin: false }))).not.toThrow();
+		expect(() =>
+			requireAuthor(eventWith({ id: 'u1', email: 'a@x', isInstallAdmin: false }))
+		).not.toThrow();
 	});
 });

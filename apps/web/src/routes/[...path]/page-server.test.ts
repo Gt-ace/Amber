@@ -76,10 +76,13 @@ beforeEach(async () => {
 		'INSERT INTO user (id, name, email, isInstallAdmin, createdAt, updatedAt) VALUES (?, ?, ?, 0, ?, ?)',
 		['stranger', null, 's@x.test', now, now]
 	);
-	db.run(
-		'INSERT INTO member (id, user_id, space_slug, role, created_at) VALUES (?, ?, ?, ?, ?)',
-		[crypto.randomUUID(), 'editor', slug, 'editor', now]
-	);
+	db.run('INSERT INTO member (id, user_id, space_slug, role, created_at) VALUES (?, ?, ?, ?, ?)', [
+		crypto.randomUUID(),
+		'editor',
+		slug,
+		'editor',
+		now
+	]);
 	db.close();
 
 	// Initialise the space singleton against the temp workdir.
@@ -108,7 +111,12 @@ async function loadFor(
 		params: { path: pagePath },
 		locals: {
 			user: user
-				? { id: user.id, isInstallAdmin: user.isInstallAdmin, email: user.email ?? 'x@x.test', name: null }
+				? {
+						id: user.id,
+						isInstallAdmin: user.isInstallAdmin,
+						email: user.email ?? 'x@x.test',
+						name: null
+					}
 				: null,
 			space,
 			mountPath: '/',

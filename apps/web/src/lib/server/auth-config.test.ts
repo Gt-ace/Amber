@@ -120,10 +120,21 @@ describe('user-create hook with inviteContext', () => {
 	test('with no context and ≥1 user → reject', async () => {
 		const { dbPath, cleanup } = tmpAuthDb();
 		cleanups.push(cleanup);
-		const { auth, db } = await buildAndMigrateAuth({ dbPath, secret: 'x'.repeat(32), publicUrl: 'https://amber.test', google: null });
-		await auth.api.signUpEmail({ body: { email: 'a@x.test', password: 'password123', name: 'A' }, headers: new Headers() });
+		const { auth, db } = await buildAndMigrateAuth({
+			dbPath,
+			secret: 'x'.repeat(32),
+			publicUrl: 'https://amber.test',
+			google: null
+		});
+		await auth.api.signUpEmail({
+			body: { email: 'a@x.test', password: 'password123', name: 'A' },
+			headers: new Headers()
+		});
 		await expect(
-			auth.api.signUpEmail({ body: { email: 'b@x.test', password: 'password123', name: 'B' }, headers: new Headers() })
+			auth.api.signUpEmail({
+				body: { email: 'b@x.test', password: 'password123', name: 'B' },
+				headers: new Headers()
+			})
 		).rejects.toThrow();
 		db.close();
 	});
@@ -131,11 +142,26 @@ describe('user-create hook with inviteContext', () => {
 	test('with valid pending invite in context → allow', async () => {
 		const { dbPath, cleanup } = tmpAuthDb();
 		cleanups.push(cleanup);
-		const { auth, db } = await buildAndMigrateAuth({ dbPath, secret: 'x'.repeat(32), publicUrl: 'https://amber.test', google: null });
-		await auth.api.signUpEmail({ body: { email: 'admin@x.test', password: 'password123', name: 'admin' }, headers: new Headers() });
-		const { id: inviteId } = insertInvite(db, { spaceSlug: 'site-a', role: 'editor', createdBy: 'admin' });
+		const { auth, db } = await buildAndMigrateAuth({
+			dbPath,
+			secret: 'x'.repeat(32),
+			publicUrl: 'https://amber.test',
+			google: null
+		});
+		await auth.api.signUpEmail({
+			body: { email: 'admin@x.test', password: 'password123', name: 'admin' },
+			headers: new Headers()
+		});
+		const { id: inviteId } = insertInvite(db, {
+			spaceSlug: 'site-a',
+			role: 'editor',
+			createdBy: 'admin'
+		});
 		await inviteContext.run({ pendingInviteId: inviteId }, async () => {
-			await auth.api.signUpEmail({ body: { email: 'c@x.test', password: 'password123', name: 'C' }, headers: new Headers() });
+			await auth.api.signUpEmail({
+				body: { email: 'c@x.test', password: 'password123', name: 'C' },
+				headers: new Headers()
+			});
 		});
 		const n = db.query('SELECT COUNT(*) AS n FROM user').get() as { n: number };
 		expect(n.n).toBe(2);
@@ -145,13 +171,28 @@ describe('user-create hook with inviteContext', () => {
 	test('with expired invite in context → reject', async () => {
 		const { dbPath, cleanup } = tmpAuthDb();
 		cleanups.push(cleanup);
-		const { auth, db } = await buildAndMigrateAuth({ dbPath, secret: 'x'.repeat(32), publicUrl: 'https://amber.test', google: null });
-		await auth.api.signUpEmail({ body: { email: 'admin@x.test', password: 'password123', name: 'admin' }, headers: new Headers() });
-		const { id: inviteId } = insertInvite(db, { spaceSlug: 'site-a', role: 'editor', createdBy: 'admin' });
+		const { auth, db } = await buildAndMigrateAuth({
+			dbPath,
+			secret: 'x'.repeat(32),
+			publicUrl: 'https://amber.test',
+			google: null
+		});
+		await auth.api.signUpEmail({
+			body: { email: 'admin@x.test', password: 'password123', name: 'admin' },
+			headers: new Headers()
+		});
+		const { id: inviteId } = insertInvite(db, {
+			spaceSlug: 'site-a',
+			role: 'editor',
+			createdBy: 'admin'
+		});
 		db.run('UPDATE invite SET expires_at = 0 WHERE id = ?1', [inviteId]);
 		await expect(
 			inviteContext.run({ pendingInviteId: inviteId }, async () => {
-				await auth.api.signUpEmail({ body: { email: 'd@x.test', password: 'password123', name: 'D' }, headers: new Headers() });
+				await auth.api.signUpEmail({
+					body: { email: 'd@x.test', password: 'password123', name: 'D' },
+					headers: new Headers()
+				});
 			})
 		).rejects.toThrow();
 		db.close();
@@ -160,9 +201,21 @@ describe('user-create hook with inviteContext', () => {
 	test('with redeemed invite in context → reject', async () => {
 		const { dbPath, cleanup } = tmpAuthDb();
 		cleanups.push(cleanup);
-		const { auth, db } = await buildAndMigrateAuth({ dbPath, secret: 'x'.repeat(32), publicUrl: 'https://amber.test', google: null });
-		await auth.api.signUpEmail({ body: { email: 'admin@x.test', password: 'password123', name: 'admin' }, headers: new Headers() });
-		const { id: inviteId } = insertInvite(db, { spaceSlug: 'site-a', role: 'editor', createdBy: 'admin' });
+		const { auth, db } = await buildAndMigrateAuth({
+			dbPath,
+			secret: 'x'.repeat(32),
+			publicUrl: 'https://amber.test',
+			google: null
+		});
+		await auth.api.signUpEmail({
+			body: { email: 'admin@x.test', password: 'password123', name: 'admin' },
+			headers: new Headers()
+		});
+		const { id: inviteId } = insertInvite(db, {
+			spaceSlug: 'site-a',
+			role: 'editor',
+			createdBy: 'admin'
+		});
 		db.run('UPDATE invite SET redeemed_at = ?1, redeemed_by = ?2 WHERE id = ?3', [
 			Date.now(),
 			'someone-else',
@@ -170,7 +223,10 @@ describe('user-create hook with inviteContext', () => {
 		]);
 		await expect(
 			inviteContext.run({ pendingInviteId: inviteId }, async () => {
-				await auth.api.signUpEmail({ body: { email: 'e@x.test', password: 'password123', name: 'E' }, headers: new Headers() });
+				await auth.api.signUpEmail({
+					body: { email: 'e@x.test', password: 'password123', name: 'E' },
+					headers: new Headers()
+				});
 			})
 		).rejects.toThrow();
 		db.close();

@@ -152,17 +152,11 @@ export function buildAuth(opts: BuildAuthOptions = {}): { auth: Auth; db: Databa
 						const ctx = inviteContext.getStore();
 						if (ctx?.pendingInviteId) {
 							const invite = db
-								.query(
-									`SELECT redeemed_at, expires_at FROM invite WHERE id = ?1`
-								)
+								.query(`SELECT redeemed_at, expires_at FROM invite WHERE id = ?1`)
 								.get(ctx.pendingInviteId) as
 								| { redeemed_at: number | null; expires_at: number }
 								| undefined;
-							if (
-								invite &&
-								invite.redeemed_at == null &&
-								invite.expires_at >= Date.now()
-							) {
+							if (invite && invite.redeemed_at == null && invite.expires_at >= Date.now()) {
 								return; // accept — the redemption action owns the post-state mutations.
 							}
 						}
@@ -179,7 +173,9 @@ export function buildAuth(opts: BuildAuthOptions = {}): { auth: Auth; db: Databa
 								if (inviteId) {
 									const invite = db
 										.query('SELECT redeemed_at, expires_at FROM invite WHERE id = ?1')
-										.get(inviteId) as { redeemed_at: number | null; expires_at: number } | undefined;
+										.get(inviteId) as
+										| { redeemed_at: number | null; expires_at: number }
+										| undefined;
 									if (invite && invite.redeemed_at == null && invite.expires_at >= Date.now()) {
 										return; // allow — finalization happens in the redemption load's gstate branch
 									}

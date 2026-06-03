@@ -5,13 +5,22 @@ import type { Theme } from '$lib/types/schema';
 function themeMap(...names: string[]): Map<string, Theme> {
 	const m = new Map<string, Theme>();
 	for (const n of names)
-		m.set(n, { name: n, path: `/t/${n}`, assetBase: `/themes/${n}`, manifest: {}, hasScript: false });
+		m.set(n, {
+			name: n,
+			path: `/t/${n}`,
+			assetBase: `/themes/${n}`,
+			manifest: {},
+			hasScript: false
+		});
 	return m;
 }
 
 describe('validateThemePick', () => {
 	test('empty string → ok, theme undefined (use install default)', () => {
-		expect(validateThemePick('', themeMap('amber-default'))).toEqual({ kind: 'ok', theme: undefined });
+		expect(validateThemePick('', themeMap('amber-default'))).toEqual({
+			kind: 'ok',
+			theme: undefined
+		});
 	});
 
 	test('discovered name → ok with that theme', () => {

@@ -63,11 +63,14 @@ async function waitForServer(url: string, timeoutMs = 15_000): Promise<void> {
 	}
 }
 
-async function waitForBodyContaining(url: string, needle: string, timeoutMs = 10_000): Promise<string> {
+async function waitForBodyContaining(
+	url: string,
+	needle: string,
+	timeoutMs = 10_000
+): Promise<string> {
 	const deadline = Date.now() + timeoutMs;
-	let body = '';
 	for (;;) {
-		body = await (await fetch(url)).text();
+		const body = await (await fetch(url)).text();
 		if (body.includes(needle)) return body;
 		if (Date.now() > deadline) return body; // return last seen; the assertion reports the miss
 		await new Promise((r) => setTimeout(r, 200));
@@ -96,8 +99,12 @@ beforeAll(async () => {
 	workDir = mkdtempSync(join(tmpdir(), 'amber-admin-e2e-'));
 	cpSync(FIXTURE, workDir, { recursive: true });
 	const THEMES_SRC = resolve(APP_ROOT, '../../spaces/avp-software/themes');
-	cpSync(join(THEMES_SRC, 'amber-default'), join(workDir, 'themes', 'amber-default'), { recursive: true });
-	cpSync(join(THEMES_SRC, 'amber-editorial'), join(workDir, 'themes', 'amber-editorial'), { recursive: true });
+	cpSync(join(THEMES_SRC, 'amber-default'), join(workDir, 'themes', 'amber-default'), {
+		recursive: true
+	});
+	cpSync(join(THEMES_SRC, 'amber-editorial'), join(workDir, 'themes', 'amber-editorial'), {
+		recursive: true
+	});
 	spaceSlug = basename(workDir);
 
 	const port = await freePort();
@@ -200,12 +207,14 @@ describe('admin surface smoke (AMBER_E2E)', () => {
 			await page.waitForURL(base + '/admin/spaces/' + spaceSlug + '/theme', { timeout: 15_000 });
 
 			// space.toml on disk carries the theme line.
-			expect(readFileSync(join(workDir, 'space.toml'), 'utf8')).toContain('theme = "amber-editorial"');
+			expect(readFileSync(join(workDir, 'space.toml'), 'utf8')).toContain(
+				'theme = "amber-editorial"'
+			);
 
 			// Public homepage now links amber-editorial's stylesheet (watcher hot-reload).
-			expect(await waitForBodyContaining(base + '/', '/themes/amber-editorial/theme.css')).toContain(
-				'/themes/amber-editorial/theme.css'
-			);
+			expect(
+				await waitForBodyContaining(base + '/', '/themes/amber-editorial/theme.css')
+			).toContain('/themes/amber-editorial/theme.css');
 
 			// Revert to install default.
 			await page.goto(base + '/admin/spaces/' + spaceSlug + '/theme', { waitUntil: 'networkidle' });
@@ -236,9 +245,7 @@ describe('admin surface smoke (AMBER_E2E)', () => {
 			redirect: 'manual'
 		});
 		expect(editShim.status).toBe(302);
-		expect(editShim.headers.get('location')).toBe(
-			'/admin/spaces/' + spaceSlug + '/edit/about'
-		);
+		expect(editShim.headers.get('location')).toBe('/admin/spaces/' + spaceSlug + '/edit/about');
 
 		// /admin/new → 302 → /admin/spaces/example-space/new
 		const newShim = await fetch(base + '/admin/new', {
@@ -261,9 +268,7 @@ describe('admin surface smoke (AMBER_E2E)', () => {
 			redirect: 'manual'
 		});
 		expect(saveShim.status).toBe(308);
-		expect(saveShim.headers.get('location')).toBe(
-			'/admin/spaces/' + spaceSlug + '/api/page/about'
-		);
+		expect(saveShim.headers.get('location')).toBe('/admin/spaces/' + spaceSlug + '/api/page/about');
 	}, 60_000);
 
 	test('login page Google button carries callbackURL — defaults to /admin and threads validated ?next=', async () => {
@@ -276,20 +281,18 @@ describe('admin surface smoke (AMBER_E2E)', () => {
 				`/api/auth/sign-in/social/google?callbackURL=${encodeURIComponent('/admin')}`
 			);
 
-			await page.goto(
-				base + '/admin/login?next=' + encodeURIComponent('/admin/edit/about'),
-				{ waitUntil: 'networkidle' }
-			);
+			await page.goto(base + '/admin/login?next=' + encodeURIComponent('/admin/edit/about'), {
+				waitUntil: 'networkidle'
+			});
 			const withNext = await page.locator('a.amber-oauth-button').getAttribute('href');
 			expect(withNext).toBe(
 				`/api/auth/sign-in/social/google?callbackURL=${encodeURIComponent('/admin/edit/about')}`
 			);
 
 			// Open-redirect attempt must be sanitised to /admin before reaching the OAuth callback.
-			await page.goto(
-				base + '/admin/login?next=' + encodeURIComponent('//evil.example.com/'),
-				{ waitUntil: 'networkidle' }
-			);
+			await page.goto(base + '/admin/login?next=' + encodeURIComponent('//evil.example.com/'), {
+				waitUntil: 'networkidle'
+			});
 			const sanitised = await page.locator('a.amber-oauth-button').getAttribute('href');
 			expect(sanitised).toBe(
 				`/api/auth/sign-in/social/google?callbackURL=${encodeURIComponent('/admin')}`

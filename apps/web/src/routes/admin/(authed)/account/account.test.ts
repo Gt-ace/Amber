@@ -161,14 +161,19 @@ describe('deleteSelf action', () => {
 			freshActions.deleteSelf!(
 				actionEvent(
 					{ confirmEmail: 'e@x.test' },
-					{ user: { id: 'u-1', email: 'e@x.test', name: null, isInstallAdmin: false }, cookieHeader: '' }
+					{
+						user: { id: 'u-1', email: 'e@x.test', name: null, isInstallAdmin: false },
+						cookieHeader: ''
+					}
 				)
 			)
 		).catch((e: unknown) => {
 			if ((e as { status?: number }).status !== 302) throw e;
 		});
 		expect(db.query('SELECT COUNT(*) AS n FROM user WHERE id = ?1').get('u-1')).toEqual({ n: 0 });
-		expect(db.query('SELECT COUNT(*) AS n FROM member WHERE user_id = ?1').get('u-1')).toEqual({ n: 0 });
+		expect(db.query('SELECT COUNT(*) AS n FROM member WHERE user_id = ?1').get('u-1')).toEqual({
+			n: 0
+		});
 	});
 
 	test('install-admin self-delete is blocked', async () => {
@@ -182,7 +187,10 @@ describe('deleteSelf action', () => {
 		const r = await freshActions.deleteSelf!(
 			actionEvent(
 				{ confirmEmail: 'a@x.test' },
-				{ user: { id: 'admin-1', email: 'a@x.test', name: null, isInstallAdmin: true }, cookieHeader: '' }
+				{
+					user: { id: 'admin-1', email: 'a@x.test', name: null, isInstallAdmin: true },
+					cookieHeader: ''
+				}
 			)
 		);
 		expect((r as { status: number }).status).toBe(400);
@@ -199,7 +207,10 @@ describe('deleteSelf action', () => {
 		const r = await freshActions.deleteSelf!(
 			actionEvent(
 				{ confirmEmail: 'wrong@x.test' },
-				{ user: { id: 'u-1', email: 'e@x.test', name: null, isInstallAdmin: false }, cookieHeader: '' }
+				{
+					user: { id: 'u-1', email: 'e@x.test', name: null, isInstallAdmin: false },
+					cookieHeader: ''
+				}
 			)
 		);
 		expect((r as { status: number }).status).toBe(400);

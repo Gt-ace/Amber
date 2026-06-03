@@ -11,6 +11,9 @@ const FIXTURE = fileURLToPath(
 let workDir: string;
 let slug: string;
 let load: typeof import('./+page.server.ts').load;
+// svelte-check widens PageServerLoad's return to include `void`; strip it so
+// reads off the resolved data type-check. Runtime is unchanged.
+type LoadData = Exclude<Awaited<ReturnType<typeof import('./+page.server.ts').load>>, void>;
 let resetSingleton: () => void;
 let getAuth: typeof import('$lib/server/auth-config').getAuth;
 let getAuthDb: typeof import('$lib/server/auth-config').getAuthDb;
@@ -98,15 +101,15 @@ describe('invite load — validity', () => {
 describe('invite load — state matrix', () => {
 	test('signed-out → kind: signed-out', async () => {
 		const token = await freshInvite();
-		const data = await load(loadEvent(token, null));
+		const data = (await load(loadEvent(token, null))) as LoadData;
 		expect(data.state.kind).toBe('signed-out');
 	});
 
 	test('signed-in install-admin → kind: install-admin', async () => {
 		const token = await freshInvite();
-		const data = await load(
+		const data = (await load(
 			loadEvent(token, { id: 'admin-1', email: 'a@x.test', isInstallAdmin: true })
-		);
+		)) as LoadData;
 		expect(data.state.kind).toBe('install-admin');
 	});
 
@@ -116,18 +119,18 @@ describe('invite load — state matrix', () => {
 			"INSERT INTO member (id, user_id, space_slug, role, created_at, created_by) VALUES ('m-1', 'u-1', ?1, 'editor', ?2, 'admin-1')",
 			[slug, Date.now()]
 		);
-		const data = await load(
+		const data = (await load(
 			loadEvent(token, { id: 'u-1', email: 'e@x.test', isInstallAdmin: false })
-		);
+		)) as LoadData;
 		expect(data.state.kind).toBe('already-member');
 		if (data.state.kind === 'already-member') expect(data.state.currentRole).toBe('editor');
 	});
 
 	test('signed-in non-member → kind: accept-as-current', async () => {
 		const token = await freshInvite();
-		const data = await load(
+		const data = (await load(
 			loadEvent(token, { id: 'u-2', email: 'f@x.test', isInstallAdmin: false })
-		);
+		)) as LoadData;
 		expect(data.state.kind).toBe('accept-as-current');
 	});
 });
@@ -153,7 +156,7 @@ function actionEvent(token: string, fields: Record<string, string>) {
 		setHeaders: () => {},
 		url: new URL(`https://amber.test/admin/invite/${token}`)
 	} as unknown as Parameters<
-		NonNullable<typeof import('./+page.server.ts').actions.redeemAsNew>
+		NonNullable<(typeof import('./+page.server.ts').actions)['redeemAsNew']>
 	>[0];
 }
 
@@ -169,7 +172,7 @@ describe('redeemAsNew', () => {
 			if ((e as { status?: number }).status !== 302) throw e;
 		});
 		const db = getAuthDb();
-		const user = db.query("SELECT id FROM user WHERE email = ?1").get('invitee@x.test');
+		const user = db.query('SELECT id FROM user WHERE email = ?1').get('invitee@x.test');
 		expect(user).toBeTruthy();
 		const member = db.query('SELECT role FROM member WHERE space_slug = ?1').get(slug);
 		expect((member as { role: string }).role).toBe('editor');
@@ -207,7 +210,9 @@ describe('redeemAsNew', () => {
 	test('password too short → 400', async () => {
 		const token = await freshInvite();
 		const { actions } = await import('./+page.server.ts');
-		const r = await actions.redeemAsNew!(actionEvent(token, { email: 'a@x.test', password: 'short' }));
+		const r = await actions.redeemAsNew!(
+			actionEvent(token, { email: 'a@x.test', password: 'short' })
+		);
 		expect((r as { status: number }).status).toBe(400);
 	});
 });
@@ -226,7 +231,7 @@ function actionEventWithUser(
 		setHeaders: () => {},
 		url: new URL(`https://amber.test/admin/invite/${token}`)
 	} as unknown as Parameters<
-		NonNullable<typeof import('./+page.server.ts').actions.redeemAsCurrent>
+		NonNullable<(typeof import('./+page.server.ts').actions)['redeemAsCurrent']>
 	>[0];
 }
 

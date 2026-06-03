@@ -36,15 +36,15 @@
 
 {#if data.staleThemeName}
 	<p class="warn" role="alert">
-		<code>space.toml</code> names <code>{data.staleThemeName}</code>, which isn't a discovered theme.
-		Pick one below and save to fix it.
+		<code>space.toml</code> names <code>{data.staleThemeName}</code>, which isn't a discovered
+		theme. Pick one below and save to fix it.
 	</p>
 {/if}
 
 {#if data.themes.length === 0}
 	<p class="hint">
-		No themes are discovered under <code>themes/</code>. Add a theme directory and restart to pick it
-		here.
+		No themes are discovered under <code>themes/</code>. Add a theme directory and restart to pick
+		it here.
 	</p>
 {/if}
 
@@ -69,7 +69,9 @@
 					{#if data.declaredTheme === t.name}<span class="chip">Selected</span>{/if}
 					{#if t.description}<span class="row-sub">{t.description}</span>{/if}
 					{#if t.version || t.author}
-						<span class="row-meta">{t.version ?? ''}{t.version && t.author ? ' · ' : ''}{t.author ?? ''}</span>
+						<span class="row-meta"
+							>{t.version ?? ''}{t.version && t.author ? ' · ' : ''}{t.author ?? ''}</span
+						>
 					{/if}
 				</label>
 			</li>
@@ -79,6 +81,8 @@
 	<p class="rendering">
 		{renderingLine()}
 		{#if data.publicUrl}
+			<!-- publicUrl is the space's own external site URL, not an internal SvelteKit route. -->
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 			· <a href={data.publicUrl} target="_blank" rel="noopener">view your site ↗</a>
 		{/if}
 	</p>
@@ -90,20 +94,26 @@
 	{/if}
 
 	{#if themeError === 'theme_not_discovered'}
-		<p class="form-err" role="alert">That isn't a discovered theme. The list above shows what's available.</p>
+		<p class="form-err" role="alert">
+			That isn't a discovered theme. The list above shows what's available.
+		</p>
 	{/if}
 	{#if writeError === 'permission_denied'}
 		<p class="form-err" role="alert">
-			Amber doesn't have write access to this space's directory. Fix the directory permissions and try
-			again.
+			Amber doesn't have write access to this space's directory. Fix the directory permissions and
+			try again.
 		</p>
 	{:else if writeError === 'write_failed'}
-		<p class="form-err" role="alert">Couldn't update space.toml. Check the server logs for details.</p>
+		<p class="form-err" role="alert">
+			Couldn't update space.toml. Check the server logs for details.
+		</p>
 	{/if}
 
 	<div class="actions">
 		<button type="submit" disabled={submitting}>{submitting ? 'Saving…' : 'Save'}</button>
-		<a href={resolve(`/admin/spaces/${data.slug}` as '/admin/spaces/[slug]')} class="cancel">Cancel</a>
+		<a href={resolve(`/admin/spaces/${data.slug}` as '/admin/spaces/[slug]')} class="cancel"
+			>Cancel</a
+		>
 	</div>
 </form>
 

@@ -34,10 +34,16 @@ beforeEach(async () => {
 		createdAt INTEGER NOT NULL, updatedAt INTEGER NOT NULL);`);
 	applyAmberAuthMigrations(db);
 	const now = Date.now();
-	db.run('INSERT INTO user (id, email, isInstallAdmin, createdAt, updatedAt) VALUES (?, ?, 1, ?, ?)',
-		['admin', 'a@x.test', now, now]);
-	db.run('INSERT INTO user (id, email, createdAt, updatedAt) VALUES (?, ?, ?, ?)',
-		['editor', 'e@x.test', now, now]);
+	db.run(
+		'INSERT INTO user (id, email, isInstallAdmin, createdAt, updatedAt) VALUES (?, ?, 1, ?, ?)',
+		['admin', 'a@x.test', now, now]
+	);
+	db.run('INSERT INTO user (id, email, createdAt, updatedAt) VALUES (?, ?, ?, ?)', [
+		'editor',
+		'e@x.test',
+		now,
+		now
+	]);
 	db.close();
 
 	// Prime the registry + resolver index.
@@ -90,14 +96,18 @@ function actionEvent(
 		locals: { user, access: null, role: null, space: null, mountPath: null },
 		request: { formData: async () => fd, headers: new Headers() }
 	} as unknown as Parameters<
-		NonNullable<typeof import('./+page.server.ts').actions.default>
+		NonNullable<(typeof import('./+page.server.ts').actions)['default']>
 	>[0];
 }
+
+// svelte-check widens PageServerLoad's return to include `void`; strip it so
+// reads off the resolved data type-check. Runtime is unchanged.
+type LoadData = Exclude<Awaited<ReturnType<typeof import('./+page.server.ts').load>>, void>;
 
 describe('/admin/new-space load', () => {
 	test('install-admin: returns the empty form data shape', async () => {
 		const { load } = await import('./+page.server.ts');
-		const data = await load(loadEvent({ id: 'admin', isInstallAdmin: true }));
+		const data = (await load(loadEvent({ id: 'admin', isInstallAdmin: true }))) as LoadData;
 		expect(data.discoveryMode).toBe('multi-space');
 		// multi-space-fixture/site-default declares `default = true`, so the
 		// form should see it and disable the "make this the default" option.
@@ -106,18 +116,18 @@ describe('/admin/new-space load', () => {
 
 	test('non-admin editor: 403', async () => {
 		const { load } = await import('./+page.server.ts');
-		await expect(
-			load(loadEvent({ id: 'editor', isInstallAdmin: false }))
-		).rejects.toMatchObject({ status: 403 });
+		await expect(load(loadEvent({ id: 'editor', isInstallAdmin: false }))).rejects.toMatchObject({
+			status: 403
+		});
 	});
 
 	test('single-space mode: 404', async () => {
 		delete process.env.AMBER_SPACES_DIR;
 		process.env.AMBER_SPACE_PATH = workDir;
 		const { load } = await import('./+page.server.ts');
-		await expect(
-			load(loadEvent({ id: 'admin', isInstallAdmin: true }))
-		).rejects.toMatchObject({ status: 404 });
+		await expect(load(loadEvent({ id: 'admin', isInstallAdmin: true }))).rejects.toMatchObject({
+			status: 404
+		});
 	});
 });
 
@@ -126,13 +136,16 @@ describe('/admin/new-space action', () => {
 		const { actions } = await import('./+page.server.ts');
 		try {
 			await actions.default!(
-				actionEvent({ id: 'admin', isInstallAdmin: true }, {
-					title: 'New Site',
-					slug: 'newsite',
-					routingKind: 'prefix',
-					prefix: '/newsite',
-					host: ''
-				})
+				actionEvent(
+					{ id: 'admin', isInstallAdmin: true },
+					{
+						title: 'New Site',
+						slug: 'newsite',
+						routingKind: 'prefix',
+						prefix: '/newsite',
+						host: ''
+					}
+				)
 			);
 			expect.unreachable('action should have redirected');
 		} catch (r) {
@@ -148,13 +161,16 @@ describe('/admin/new-space action', () => {
 	test('form-rejection: slug taken (collides with existing fixture space)', async () => {
 		const { actions } = await import('./+page.server.ts');
 		const r = await actions.default!(
-			actionEvent({ id: 'admin', isInstallAdmin: true }, {
-				title: 'Dupe',
-				slug: 'site-a',  // already present in multi-space-fixture
-				routingKind: 'admin-only',
-				host: '',
-				prefix: ''
-			})
+			actionEvent(
+				{ id: 'admin', isInstallAdmin: true },
+				{
+					title: 'Dupe',
+					slug: 'site-a', // already present in multi-space-fixture
+					routingKind: 'admin-only',
+					host: '',
+					prefix: ''
+				}
+			)
 		);
 		const res = r as { status: number; data: { errors: Array<{ code: string }> } };
 		expect(res.status).toBe(400);
@@ -169,23 +185,24 @@ describe('/admin/new-space action', () => {
 		// exercised here. Spy mid-call so we can confirm the directory existed
 		// on disk *before* throwing, then assert the route's rollback ran.
 		const spaceMod = await import('$lib/server/space');
-		const spy = vi
-			.spyOn(spaceMod, 'addSpace')
-			.mockImplementationOnce(async (absPath: string) => {
-				// Writer just finished; the partial directory should exist.
-				expect(existsSync(absPath)).toBe(true);
-				throw new Error('injected addSpace failure');
-			});
+		const spy = vi.spyOn(spaceMod, 'addSpace').mockImplementationOnce(async (absPath: string) => {
+			// Writer just finished; the partial directory should exist.
+			expect(existsSync(absPath)).toBe(true);
+			throw new Error('injected addSpace failure');
+		});
 
 		const { actions } = await import('./+page.server.ts');
 		const r = await actions.default!(
-			actionEvent({ id: 'admin', isInstallAdmin: true }, {
-				title: 'Doomed',
-				slug: 'doomed',
-				routingKind: 'admin-only',
-				host: '',
-				prefix: ''
-			})
+			actionEvent(
+				{ id: 'admin', isInstallAdmin: true },
+				{
+					title: 'Doomed',
+					slug: 'doomed',
+					routingKind: 'admin-only',
+					host: '',
+					prefix: ''
+				}
+			)
 		);
 		const res = r as { status: number; data: { writeError: string } };
 
@@ -202,13 +219,16 @@ describe('/admin/new-space action', () => {
 		const { actions } = await import('./+page.server.ts');
 		await expect(
 			actions.default!(
-				actionEvent({ id: 'editor', isInstallAdmin: false }, {
-					title: 'Sneaky',
-					slug: 'sneaky',
-					routingKind: 'admin-only',
-					host: '',
-					prefix: ''
-				})
+				actionEvent(
+					{ id: 'editor', isInstallAdmin: false },
+					{
+						title: 'Sneaky',
+						slug: 'sneaky',
+						routingKind: 'admin-only',
+						host: '',
+						prefix: ''
+					}
+				)
 			)
 		).rejects.toMatchObject({ status: 403 });
 		expect(existsSync(join(workDir, 'sneaky'))).toBe(false);
