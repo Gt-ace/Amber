@@ -1,0 +1,15 @@
+<header class="site-header">
+	{{#site_title}}<a href="/" class="site-title">{{site_title}}</a>{{/site_title}}
+	{{#has_nav}}
+	<nav class="site-nav" aria-label="Primary">
+		<ul>
+			{{#nav}}<li><a href="{{href}}">{{label}}</a></li>{{/nav}}
+		</ul>
+	</nav>
+	{{/has_nav}}
+</header>
+<!--amber:content-->
+<footer class="site-footer">
+	<span>{{site_title_or_default}}</span>
+	{{#footer_href}}<a href="{{footer_href}}">{{footer_label}}</a>{{/footer_href}}
+</footer>

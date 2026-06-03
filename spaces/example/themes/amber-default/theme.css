@@ -1,0 +1,427 @@
+/*
+ * amber-default — Amber's default theme.
+ *
+ * A quiet, warm, book-like reading surface. "Amber" as in resin — something
+ * personal, kept, unhurried. Old-style serif (system stack) for the prose; the
+ * same family, set small / uppercase / tracked, for the chrome.
+ *
+ * Vanilla CSS, no build step. Every value a second theme would plausibly want
+ * to change is an `--amber-*` custom property on :root. Light + dark live in
+ * one file; the dark block remaps the eight colour tokens and nothing else.
+ *
+ * Pairs with chrome.html / page.html / error.html / partials/index.html in this directory and the
+ * `theme_color` / `footer` slots in theme.toml. The `--amber-*` contract isn't
+ * formally documented yet — that gets pinned down when theme B lands (Wave 3).
+ */
+
+:root {
+	/* ── Color ──────────────────────────────────────────────────────────── */
+	--amber-bg: #faf7f0; /* page background — warm paper */
+	--amber-ink: #2a2622; /* primary text — warm near-black, never pure #000 */
+	--amber-ink-muted: #655d4f; /* secondary text — dates, captions, chrome, footer */
+	--amber-accent: #9a6314; /* links and ::marker accents — deep amber/ochre */
+	--amber-accent-hover: #7c4e0f; /* link hover — a shade richer/darker */
+	--amber-rule: #e4dcc9; /* hairlines — header/footer/article rules, borders */
+	--amber-surface-sunken: #efe8d6; /* recessed fill — code blocks, inline code */
+	--amber-selection-bg: rgba(154, 99, 20, 0.18); /* ::selection highlight — faint amber wash */
+
+	/* ── Type ───────────────────────────────────────────────────────────── */
+	/* Body face: an old-style serif. System stack on purpose — a self-hosted
+	   canvas shouldn't phone a font CDN on every page load. (Open question for
+	   the theme system: how do themes ship their own faces? See SPIKE_NOTES.) */
+	--amber-font-body:
+		'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, 'Times New Roman',
+		serif;
+	--amber-font-heading: var(--amber-font-body); /* headings — same family here; exposed so a theme can diverge */
+	--amber-font-ui: var(--amber-font-body); /* chrome (nav, dates, footer) — kept on the serif for cohesion; a theme could swap in a sans */
+	--amber-font-mono:
+		ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Menlo, Consolas, monospace; /* code */
+
+	--amber-text-base: 1.1875rem; /* root body size — 19px; serifs want a touch more */
+	--amber-text-sm: 0.78rem; /* small chrome text — nav, date, footer */
+	--amber-text-h1: 2.1rem; /* article title */
+	--amber-text-h2: 1.4rem; /* section heading */
+	--amber-text-h3: 1.15rem; /* sub-heading */
+
+	--amber-leading-body: 1.72; /* body line-height — generous, for reading */
+	--amber-leading-tight: 1.2; /* headings line-height */
+	--amber-tracking-ui: 0.085em; /* letter-spacing for the uppercased chrome */
+
+	/* ── Space & layout ─────────────────────────────────────────────────── */
+	--amber-measure: 36rem; /* content column max-width — ~65–70 chars at this size */
+	--amber-pad-page: 1.4rem; /* horizontal page padding (small screens) */
+	--amber-gap-flow: 1.25rem; /* vertical rhythm between flowing blocks (p, ul, …) */
+	--amber-gap-section: 2.75rem; /* extra space above a section heading (h2) */
+	--amber-gap-chrome: 2.6rem; /* gap between header/footer chrome and the content */
+
+	/* ── Shape & motion ─────────────────────────────────────────────────── */
+	--amber-radius: 4px; /* corner radius — code blocks, images */
+	--amber-ease: cubic-bezier(0.23, 1, 0.32, 1); /* strong ease-out for entrances/hovers */
+	--amber-duration: 360ms; /* page-entrance duration */
+}
+
+@media (prefers-color-scheme: dark) {
+	/* A second "mode" is really a second set of color tokens. Surfacing it here
+	   because it's a real finding: a theme has to declare light *and* dark, and
+	   only the colors move — type, spacing and layout are mode-agnostic. */
+	:root {
+		--amber-bg: #1a1714;
+		--amber-ink: #e8e0d2;
+		--amber-ink-muted: #9a8f7d;
+		--amber-accent: #d9a441;
+		--amber-accent-hover: #ecbb5e;
+		--amber-rule: #332e27;
+		--amber-surface-sunken: #232019;
+		--amber-selection-bg: rgba(217, 164, 65, 0.22);
+	}
+}
+
+/* ───────────────────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	font-family: var(--amber-font-body);
+	font-size: var(--amber-text-base);
+	line-height: var(--amber-leading-body);
+	color: var(--amber-ink);
+	background: var(--amber-bg);
+	-webkit-text-size-adjust: 100%;
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+}
+
+body {
+	margin: 0;
+	min-height: 100dvh;
+	display: flex;
+	flex-direction: column;
+}
+
+::selection {
+	background: var(--amber-selection-bg);
+}
+
+/* ── Page chrome: header ───────────────────────────────────────────────── */
+
+.site-header {
+	width: 100%;
+	max-width: var(--amber-measure);
+	margin: var(--amber-gap-chrome) auto 0;
+	padding: 0 var(--amber-pad-page) 0.9rem;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.75rem 1.5rem;
+	border-bottom: 1px solid var(--amber-rule);
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	text-transform: uppercase;
+}
+
+.site-header .site-title {
+	margin-right: auto;
+	color: var(--amber-ink);
+	text-decoration: none;
+	font-weight: 600;
+	transition: color 150ms var(--amber-ease);
+}
+
+.site-header .site-title:hover {
+	color: var(--amber-accent);
+}
+
+.site-nav ul {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1.25rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.site-nav a {
+	color: var(--amber-ink-muted);
+	text-decoration: none;
+	transition: color 150ms var(--amber-ease);
+}
+
+.site-nav a:hover {
+	color: var(--amber-accent);
+}
+
+/* ── Content column ────────────────────────────────────────────────────── */
+
+main {
+	width: 100%;
+	max-width: var(--amber-measure);
+	margin: var(--amber-gap-chrome) auto;
+	padding: 0 var(--amber-pad-page);
+	flex: 1 0 auto;
+}
+
+/* ── Article ───────────────────────────────────────────────────────────── */
+
+.article-header {
+	margin-bottom: 2.4rem;
+	padding-bottom: 1.4rem;
+	border-bottom: 1px solid var(--amber-rule);
+}
+
+.article-title {
+	font-family: var(--amber-font-heading);
+	font-size: var(--amber-text-h1);
+	line-height: var(--amber-leading-tight);
+	font-weight: 600;
+	margin: 0 0 0.6rem;
+	letter-spacing: -0.01em;
+}
+
+.article-date {
+	margin: 0;
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	text-transform: uppercase;
+	color: var(--amber-ink-muted);
+}
+
+/* The markdown body. All selectors are scoped under .article-body because the
+   HTML here is injected via {@html} — these styles can't ride on Svelte's
+   component scoping, so app.css is loaded global and we scope by hand. */
+
+.article-body > :first-child {
+	margin-top: 0;
+}
+
+.article-body p,
+.article-body ul,
+.article-body ol,
+.article-body blockquote,
+.article-body pre,
+.article-body figure {
+	margin: 0 0 var(--amber-gap-flow);
+}
+
+.article-body h2,
+.article-body h3 {
+	font-family: var(--amber-font-heading);
+	line-height: var(--amber-leading-tight);
+	font-weight: 600;
+	margin: var(--amber-gap-section) 0 0.5rem;
+}
+
+.article-body h2 {
+	font-size: var(--amber-text-h2);
+}
+
+.article-body h3 {
+	font-size: var(--amber-text-h3);
+}
+
+.article-body a {
+	color: var(--amber-accent);
+	text-decoration: underline;
+	text-decoration-thickness: 1px;
+	text-decoration-color: color-mix(in srgb, var(--amber-accent) 38%, transparent);
+	text-underline-offset: 0.18em;
+	transition:
+		color 150ms var(--amber-ease),
+		text-decoration-color 150ms var(--amber-ease);
+}
+
+.article-body a:hover {
+	color: var(--amber-accent-hover);
+	text-decoration-color: currentColor;
+}
+
+.article-body strong {
+	font-weight: 600;
+}
+
+.article-body em {
+	font-style: italic;
+}
+
+.article-body ul,
+.article-body ol {
+	padding-left: 1.4rem;
+}
+
+.article-body li {
+	margin-bottom: 0.3rem;
+}
+
+.article-body li::marker {
+	color: var(--amber-accent);
+}
+
+.article-body blockquote {
+	padding-left: 1.1rem;
+	border-left: 2px solid var(--amber-accent);
+	color: var(--amber-ink-muted);
+	font-style: italic;
+}
+
+.article-body blockquote a {
+	font-style: normal;
+}
+
+.article-body img {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	margin: var(--amber-gap-flow) auto;
+	border-radius: var(--amber-radius);
+	border: 1px solid var(--amber-rule);
+}
+
+.article-body code {
+	font-family: var(--amber-font-mono);
+	font-size: 0.86em;
+	background: var(--amber-surface-sunken);
+	padding: 0.12em 0.32em;
+	border-radius: var(--amber-radius);
+}
+
+.article-body pre {
+	font-family: var(--amber-font-mono);
+	font-size: 0.86em;
+	line-height: 1.55;
+	background: var(--amber-surface-sunken);
+	padding: 0.9rem 1.1rem;
+	border-radius: var(--amber-radius);
+	overflow-x: auto;
+}
+
+.article-body pre code {
+	background: transparent;
+	padding: 0;
+	border-radius: 0;
+	font-size: inherit;
+}
+
+.article-body hr {
+	border: none;
+	border-top: 1px solid var(--amber-rule);
+	width: 4rem;
+	margin: var(--amber-gap-section) auto;
+}
+
+/* ── Draft banner (dev-only; preserved from the previous chrome) ────────── */
+
+.draft-banner {
+	margin: 0 0 1.6rem;
+	padding: 0.55rem 0.85rem;
+	border: 1px solid var(--amber-accent);
+	border-radius: var(--amber-radius);
+	background: var(--amber-surface-sunken);
+	color: var(--amber-ink-muted);
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	text-transform: uppercase;
+}
+
+/* ── Page chrome: footer ───────────────────────────────────────────────── */
+
+.site-footer {
+	width: 100%;
+	max-width: var(--amber-measure);
+	margin: var(--amber-gap-chrome) auto;
+	padding: 1rem var(--amber-pad-page) var(--amber-gap-chrome);
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem 1rem;
+	align-items: baseline;
+	border-top: 1px solid var(--amber-rule);
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	text-transform: uppercase;
+	color: var(--amber-ink-muted);
+}
+
+.site-footer a {
+	margin-left: auto;
+	color: var(--amber-ink-muted);
+	text-decoration: none;
+	transition: color 150ms var(--amber-ease);
+}
+
+.site-footer a:hover {
+	color: var(--amber-accent);
+}
+
+/* ── Auto-index list (auto_index frontmatter → partials/index.html) ─────── */
+
+.amber-auto-index {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.amber-auto-index-item {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.35rem 1rem;
+	padding: 0.55rem 0;
+	border-bottom: 1px solid var(--amber-rule);
+}
+
+.amber-auto-index-item:first-child {
+	border-top: 1px solid var(--amber-rule);
+}
+
+.amber-auto-index-link {
+	color: var(--amber-accent);
+	text-decoration: none;
+	transition: color 150ms var(--amber-ease);
+}
+
+.amber-auto-index-link:hover {
+	color: var(--amber-accent-hover);
+	text-decoration: underline;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 0.18em;
+}
+
+.amber-auto-index-date {
+	margin-left: auto;
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	text-transform: uppercase;
+	color: var(--amber-ink-muted);
+	white-space: nowrap;
+}
+
+/* ── Entrance: one quiet orchestrated moment, then nothing ─────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+	.article-header,
+	.article-body {
+		animation: amber-enter var(--amber-duration) var(--amber-ease) both;
+	}
+
+	.article-body {
+		animation-delay: 70ms;
+	}
+
+	@keyframes amber-enter {
+		from {
+			opacity: 0;
+			transform: translateY(6px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+}

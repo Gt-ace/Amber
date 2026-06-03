@@ -1,0 +1,5 @@
+{{#is_404}}{{#has_body}}{{{body}}}{{/has_body}}{{^has_body}}<h1>Page not found</h1>
+<p>The page you were looking for doesn't exist.</p>
+<p><a href="/">Back to home</a></p>{{/has_body}}{{/is_404}}{{^is_404}}<h1>{{status}}</h1>
+<p>{{message}}</p>
+<p><a href="/">Back to home</a></p>{{/is_404}}
