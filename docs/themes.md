@@ -1,11 +1,15 @@
 # Theming Amber
 
 A theme is how an Amber space looks. This document is the reference and a
-guided tour of the two themes that ship with Amber today —
+guided tour of the two themes that define Amber's theme contract —
 [`amber-default`](../spaces/avp-software/themes/amber-default/) and
 [`amber-editorial`](../spaces/avp-software/themes/amber-editorial/) — read as
-the contract. Anything not proven by one of those two themes is not yet part
-of the contract.
+the spec. A third theme,
+[`amber-brand`](../spaces/avp-software/themes/amber-brand/), also ships — it
+dresses Amber's own landing page and exercises the optional extensions
+(self-hosted webfonts, a progressive-enhancement `theme.js`) — but the two
+above are what the contract is proven against. Anything not proven by one of
+those two is not yet part of the contract.
 
 The audience is someone who can read CSS and HTML and wants to build their
 own theme. It assumes nothing about the Amber source.

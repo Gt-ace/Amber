@@ -8,8 +8,9 @@
  * font/spacing tokens are constant, and every literal colour in this file
  * composes from an --amber-* token so both modes hold.
  *
- * Ported from the approved prototype (amber-claude-design/index(1).html); this
- * first pass covers @font-face, tokens, base/type, header and footer only.
+ * Ported from the approved prototype (amber-claude-design/index(1).html); covers
+ * @font-face, tokens, base/type, header/footer, hero, the-bet, themes, editor,
+ * article, and error pages.
  */
 
 /* ── Brand webfonts (self-hosted, served install-wide at /fonts/) ───────── */

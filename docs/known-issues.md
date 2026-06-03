@@ -81,6 +81,13 @@ this theme would.
 
 ## P2 — Documentation / version drift
 
+**Status: fixed in this change.** README and `amber.toml` now read `0.5`;
+`docs/themes.md`'s intro acknowledges `amber-brand` as a third shipping
+theme; `docs/current-state.md` reflects subsystem 6 as shipped (and prod on
+`amber-brand`); the `amber-brand/theme.css` header no longer claims a "first
+pass … only"; and the `amber-brand-landing-plan` working-memory note reads as
+built. Recorded here for the trail.
+
 Cosmetic but trail-confusing; none block functionality.
 
 - `README.md` — "Current version: 0.4"; v0.5 subsystems 1–6 have shipped.
