@@ -5,7 +5,8 @@
  * discovered theme under `<space>/themes/` — i.e. a misconfigured space, or a
  * test fixture with no `themes/` directory. Deliberately unstyled: it renders
  * semantic HTML and emits no stylesheet `<link>` (its `assetBase` is `''`).
- * The real default lives at `spaces/avp-software/themes/amber-default/`.
+ * The real default lives at `apps/web/themes/amber-default/` (an install-level
+ * shared theme).
  *
  * Its templates use the same Mustache-subset contract the discovered themes do
  * (see `lib/render/template.ts`), so the route renders it through exactly the

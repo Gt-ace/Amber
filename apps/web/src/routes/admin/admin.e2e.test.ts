@@ -98,7 +98,7 @@ beforeAll(async () => {
 
 	workDir = mkdtempSync(join(tmpdir(), 'amber-admin-e2e-'));
 	cpSync(FIXTURE, workDir, { recursive: true });
-	const THEMES_SRC = resolve(APP_ROOT, '../../spaces/avp-software/themes');
+	const THEMES_SRC = resolve(APP_ROOT, 'themes');
 	cpSync(join(THEMES_SRC, 'amber-default'), join(workDir, 'themes', 'amber-default'), {
 		recursive: true
 	});
