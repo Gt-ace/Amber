@@ -45,14 +45,20 @@ const TEMPLATE_FILES: Record<TemplateKind, string> = {
 	error: 'error.html'
 };
 
-export function discoverThemes(root: string, log: Logger): Map<string, Theme> {
+/**
+ * Scan a directory that IS the themes container (i.e. immediate subdirs are
+ * theme dirs). This is the inner half of `discoverThemes` exposed so the
+ * install-level shared-themes discovery can call it directly — the bundled
+ * themes dir is itself the container, not a space root that contains a
+ * `themes/` subdir.
+ */
+export function discoverThemesInDir(themesDir: string, log: Logger): Map<string, Theme> {
 	const themes = new Map<string, Theme>();
-	const themesDir = join(root, 'themes');
 	let entries: import('node:fs').Dirent[];
 	try {
 		entries = readdirSync(themesDir, { withFileTypes: true });
 	} catch {
-		return themes; // no themes/ directory — fine.
+		return themes; // directory absent or unreadable — fine.
 	}
 	for (const entry of entries) {
 		if (!entry.isDirectory()) continue;
@@ -102,6 +108,10 @@ export function discoverThemes(root: string, log: Logger): Map<string, Theme> {
 		themes.set(name, { name, path: dir, assetBase: `/themes/${name}`, manifest, hasScript });
 	}
 	return themes;
+}
+
+export function discoverThemes(root: string, log: Logger): Map<string, Theme> {
+	return discoverThemesInDir(join(root, 'themes'), log);
 }
 
 /**
