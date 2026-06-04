@@ -312,7 +312,9 @@ describe('/admin/spaces/[slug]/theme load — shared themes', () => {
 	test('shared themes appear, labelled by source', async () => {
 		const { load } = await import('./+page.server.ts');
 		const data = (await load(await loadEvent({ id: 'owner', isInstallAdmin: false }))) as LoadData;
-		const byName = Object.fromEntries(data.themes.map((t) => [t.name, t.source]));
+		const byName = Object.fromEntries(
+			data.themes.map((t: { name: string; source: string }) => [t.name, t.source])
+		);
 		expect(byName['amber-brand']).toBe('shared');
 		expect(byName['amber-default']).toBe('this-space'); // per-space copy from outer setup
 	});
