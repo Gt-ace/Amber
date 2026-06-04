@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { discoverThemes, resolveActiveTheme, readTemplate, readPartial } from './themes.ts';
+import { discoverThemes, resolveActiveTheme, readTemplate, readPartial, effectiveThemes } from './themes.ts';
 import { BUILTIN_THEME, BUILTIN_PARTIALS } from '$lib/theme/builtin';
 import type { AmberManifest } from '$lib/types/schema';
 import { logger } from '$lib/server/logger';
@@ -211,5 +211,38 @@ describe('readPartial', () => {
 
 	test('defaults the kind to "index"', () => {
 		expect(readPartial(BUILTIN_THEME)).toBe(BUILTIN_PARTIALS.index);
+	});
+});
+
+describe('effectiveThemes', () => {
+	const t = (name: string, path: string) => ({
+		name,
+		path,
+		assetBase: `/themes/${name}`,
+		manifest: {},
+		hasScript: false
+	});
+
+	test('union of shared and per-space, per-space wins on name collision', () => {
+		const shared = new Map([
+			['amber-default', t('amber-default', '/app/themes/amber-default')],
+			['amber-brand', t('amber-brand', '/app/themes/amber-brand')]
+		]);
+		const perSpace = new Map([
+			['amber-default', t('amber-default', '/space/themes/amber-default')],
+			['mine', t('mine', '/space/themes/mine')]
+		]);
+		const eff = effectiveThemes(shared, perSpace);
+		expect([...eff.keys()].sort()).toEqual(['amber-brand', 'amber-default', 'mine']);
+		// per-space wins: amber-default resolves to the space's own copy
+		expect(eff.get('amber-default')!.path).toBe('/space/themes/amber-default');
+		// shared-only survives
+		expect(eff.get('amber-brand')!.path).toBe('/app/themes/amber-brand');
+	});
+
+	test('empty shared → just per-space (today\'s behavior)', () => {
+		const perSpace = new Map([['mine', t('mine', '/space/themes/mine')]]);
+		const eff = effectiveThemes(new Map(), perSpace);
+		expect([...eff.keys()]).toEqual(['mine']);
 	});
 });

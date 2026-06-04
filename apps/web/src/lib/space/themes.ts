@@ -141,6 +141,21 @@ export function readPartial(theme: Theme, kind: PartialKind = 'index'): string {
 export const DEFAULT_THEME_NAME = 'amber-default';
 
 /**
+ * Merge the install-level shared theme set with a space's own discovered
+ * themes into the *effective* map the resolver, picker, and asset route all
+ * read. Per-space entries overwrite shared ones on name collision (a space may
+ * override a shared theme by shipping its own `themes/<name>/`). Pure — the
+ * shared map is always passed in, never imported, so `lib/space/` stays free of
+ * server globals.
+ */
+export function effectiveThemes(
+	shared: Map<string, Theme>,
+	perSpace: Map<string, Theme>
+): Map<string, Theme> {
+	return new Map([...shared, ...perSpace]);
+}
+
+/**
  * Pick the active theme via the per-space resolution chain:
  *
  *   1. `spaceConfig.theme` if set and a discovered theme.
