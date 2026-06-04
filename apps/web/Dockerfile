@@ -28,7 +28,8 @@ USER bun
 ENV NODE_ENV=production \
 	PORT=3000 \
 	HOST=0.0.0.0 \
-	AMBER_SPACE_PATH=/space
+	AMBER_SPACE_PATH=/space \
+	AMBER_BUNDLED_THEMES_DIR=/app/build/themes
 
 EXPOSE 3000
 
