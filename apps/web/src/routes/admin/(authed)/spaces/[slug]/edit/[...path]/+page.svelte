@@ -106,8 +106,14 @@
 {#if conflict}
 	<div class="amber-conflict" role="alert">
 		<p>This page changed on disk since you opened it.</p>
-		<button type="button" onclick={reloadFromDisk}>Reload disk version</button>
-		<button type="button" onclick={() => save(true)}>Overwrite with my changes</button>
+		<button type="button" class="amber-btn amber-btn--ghost amber-btn--sm" onclick={reloadFromDisk}
+			>Reload disk version</button
+		>
+		<button
+			type="button"
+			class="amber-btn amber-btn--primary amber-btn--sm"
+			onclick={() => save(true)}>Overwrite with my changes</button
+		>
 	</div>
 {/if}
 
@@ -119,11 +125,17 @@
 		{#if data.fmEditable}
 			<label>
 				Title
-				<input type="text" bind:value={fmTitle} oninput={markFmDirty} />
+				<input class="amber-input" type="text" bind:value={fmTitle} oninput={markFmDirty} />
 			</label>
 			<label>
 				Date
-				<input type="text" placeholder="YYYY-MM-DD" bind:value={fmDate} oninput={markFmDirty} />
+				<input
+					class="amber-input"
+					type="text"
+					placeholder="YYYY-MM-DD"
+					bind:value={fmDate}
+					oninput={markFmDirty}
+				/>
 			</label>
 			<label class="amber-check">
 				<input type="checkbox" bind:checked={fmDraft} onchange={markFmDirty} />
@@ -139,7 +151,12 @@
 </div>
 
 <p class="amber-actions">
-	<button type="button" onclick={() => save(false)} disabled={saving}>Save</button>
+	<button
+		type="button"
+		class="amber-btn amber-btn--primary"
+		onclick={() => save(false)}
+		disabled={saving}>Save</button
+	>
 	<span class="amber-status">{status}</span>
 </p>
 
@@ -151,7 +168,7 @@
 		align-items: start;
 	}
 	.amber-body {
-		border: 1px solid #ddd;
+		border: 1px solid var(--amber-rule);
 		border-radius: 4px;
 		min-height: 24rem;
 	}
@@ -169,22 +186,82 @@
 		gap: 0.4rem;
 		align-items: center;
 	}
+	.amber-check input[type='checkbox'] {
+		accent-color: var(--amber-accent);
+	}
 	.amber-fm-disabled {
-		color: #885500;
+		color: var(--amber-accent);
 		font-size: 0.9rem;
 	}
 	.amber-conflict {
-		border: 1px solid #cc6600;
-		background: #fff6e8;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		align-items: center;
+		color: var(--amber-ink);
+		border: 1px solid var(--amber-accent);
+		background: color-mix(in srgb, var(--amber-accent) 12%, var(--amber-bg));
 		padding: 0.75rem 1rem;
-		border-radius: 4px;
+		border-radius: 8px;
 		margin-bottom: 1rem;
+	}
+	.amber-conflict p {
+		flex-basis: 100%;
+		margin: 0;
 	}
 	.amber-actions {
 		margin-top: 1rem;
 	}
 	.amber-status {
 		margin-left: 0.75rem;
-		color: #555;
+		color: var(--amber-ink-muted);
+	}
+
+	/*
+	 * Keep the global admin heading rule (brand.css `.amber-admin :is(h1,h2,h3)`,
+	 * which sets Fraunces + --amber-ink at specificity 0,1,1) from bleeding into
+	 * the document the user is editing. Crepe owns the editor's content
+	 * typography; without this the bled --amber-ink renders the document's own
+	 * headings as light-beige text on the editor surface in dark mode. The 0,2,1
+	 * selector below re-asserts Crepe's own heading styling for editor content.
+	 */
+	:global(.amber-admin .milkdown :is(h1, h2, h3)) {
+		font-family: var(--crepe-font-title);
+		font-variation-settings: normal;
+		letter-spacing: normal;
+		color: var(--crepe-color-on-background);
+	}
+
+	/*
+	 * The Crepe frame theme imported above is light-only (a white editor
+	 * surface). Follow the OS the same way the admin tokens do: when the OS
+	 * prefers dark, re-declare the frame theme's variables so the editor matches
+	 * the dark admin chrome instead of glaring white. Values copied verbatim from
+	 * @milkdown/crepe/theme/frame-dark.css (crepe 7.21.1) — re-sync on upgrade.
+	 */
+	@media (prefers-color-scheme: dark) {
+		:global(.milkdown) {
+			--crepe-color-background: #1a1a1a;
+			--crepe-color-on-background: #e6e6e6;
+			--crepe-color-surface: #121212;
+			--crepe-color-surface-low: #1c1c1c;
+			--crepe-color-on-surface: #d1d1d1;
+			--crepe-color-on-surface-variant: #a9a9a9;
+			--crepe-color-outline: #757575;
+			--crepe-color-primary: #b5b5b5;
+			--crepe-color-secondary: #4d4d4d;
+			--crepe-color-on-secondary: #d6d6d6;
+			--crepe-color-inverse: #e5e5e5;
+			--crepe-color-on-inverse: #2a2a2a;
+			--crepe-color-inline-code: #ff6666;
+			--crepe-color-error: #ff6666;
+			--crepe-color-hover: #232323;
+			--crepe-color-selected: #2f2f2f;
+			--crepe-color-inline-area: #2b2b2b;
+			--crepe-shadow-1:
+				0px 1px 2px 0px rgba(255, 255, 255, 0.3), 0px 1px 3px 1px rgba(255, 255, 255, 0.15);
+			--crepe-shadow-2:
+				0px 1px 2px 0px rgba(255, 255, 255, 0.3), 0px 2px 6px 2px rgba(255, 255, 255, 0.15);
+		}
 	}
 </style>
