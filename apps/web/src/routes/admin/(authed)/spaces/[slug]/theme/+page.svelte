@@ -44,8 +44,9 @@
 	<div class="amber-page-head__text">
 		<h1>Theme</h1>
 		<p class="amber-page-head__lede">
-			Choose how this space looks. Themes are discovered from the space's <code>themes/</code>
-			directory; your pick is saved to <code>space.toml</code> and hot-reloads — no restart.
+			Choose how this space looks. Themes come from Amber's built-in shared set plus any in this
+			space's <code>themes/</code> directory; your pick is saved to <code>space.toml</code> and
+			hot-reloads — no restart.
 		</p>
 	</div>
 </header>
@@ -62,8 +63,8 @@
 
 {#if data.themes.length === 0}
 	<p class="hint">
-		No themes are discovered under <code>themes/</code>. Add a theme directory and restart to pick
-		it here.
+		No themes are available. Add a theme directory under this space's <code>themes/</code> and
+		restart.
 	</p>
 {/if}
 
@@ -86,7 +87,10 @@
 			<li>
 				<label class="row">
 					<input type="radio" name="theme" value={t.name} bind:group={selected} />
-					<span class="row-main">{t.name}</span>
+					<span class="row-title">
+						<span class="row-main">{t.name}</span>
+						<span class="source-tag">{t.source === 'shared' ? 'shared' : 'this space'}</span>
+					</span>
 					{#if data.declaredTheme === t.name}<span class="amber-badge amber-badge--accent"
 							>Selected</span
 						>{/if}
@@ -199,9 +203,26 @@
 		margin-top: 0.2rem;
 		accent-color: var(--amber-accent);
 	}
+	.row-title {
+		display: flex;
+		align-items: baseline;
+		gap: 0.45rem;
+		flex-wrap: wrap;
+	}
 	.row-main {
 		font-weight: 600;
 		color: var(--amber-ink);
+	}
+	.source-tag {
+		font-size: 0.7rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--amber-ink-muted);
+		background: var(--amber-surface-sunken);
+		border: 1px solid var(--amber-rule);
+		border-radius: 3px;
+		padding: 0.05rem 0.35rem;
+		line-height: 1.4;
 	}
 	.row .amber-badge {
 		justify-self: end;

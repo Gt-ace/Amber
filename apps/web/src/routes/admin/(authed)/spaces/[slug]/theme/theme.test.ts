@@ -18,6 +18,7 @@ import {
 	readFileSync,
 	existsSync
 } from 'node:fs';
+import { __resetSharedThemesForTests } from '$lib/server/shared-themes';
 import { tmpdir } from 'node:os';
 import { join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -278,5 +279,41 @@ describe('/admin/spaces/[slug]/theme action', () => {
 		const out = readFileSync(join(workDir, 'space.toml'), 'utf8');
 		expect(out).toContain('host = "example.com"');
 		expect(out).toContain('theme = "amber-editorial"');
+	});
+});
+
+describe('/admin/spaces/[slug]/theme load — shared themes', () => {
+	let sharedDir: string;
+	let prevBundled: string | undefined;
+
+	beforeEach(() => {
+		prevBundled = process.env.AMBER_BUNDLED_THEMES_DIR;
+		sharedDir = mkdtempSync(join(tmpdir(), 'amber-picker-shared-'));
+		const d = join(sharedDir, 'amber-brand');
+		mkdirSync(d, { recursive: true });
+		writeFileSync(join(d, 'theme.toml'), 'name = "Brand"\n');
+		writeFileSync(
+			join(d, 'chrome.html'),
+			'<header></header><!--amber:content--><footer></footer>'
+		);
+		writeFileSync(join(d, 'page.html'), '<article>{{{html}}}</article>');
+		writeFileSync(join(d, 'error.html'), '<p>{{status}}</p>');
+		process.env.AMBER_BUNDLED_THEMES_DIR = sharedDir;
+		__resetSharedThemesForTests();
+	});
+
+	afterEach(() => {
+		if (prevBundled === undefined) delete process.env.AMBER_BUNDLED_THEMES_DIR;
+		else process.env.AMBER_BUNDLED_THEMES_DIR = prevBundled;
+		__resetSharedThemesForTests();
+		rmSync(sharedDir, { recursive: true, force: true });
+	});
+
+	test('shared themes appear, labelled by source', async () => {
+		const { load } = await import('./+page.server.ts');
+		const data = (await load(await loadEvent({ id: 'owner', isInstallAdmin: false }))) as LoadData;
+		const byName = Object.fromEntries(data.themes.map((t) => [t.name, t.source]));
+		expect(byName['amber-brand']).toBe('shared');
+		expect(byName['amber-default']).toBe('this-space'); // per-space copy from outer setup
 	});
 });

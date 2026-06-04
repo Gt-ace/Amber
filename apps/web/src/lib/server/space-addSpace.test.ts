@@ -9,6 +9,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { __resetRegistryForTests } from './space';
+import { __resetSharedThemesForTests } from './shared-themes';
 import { setResolverIndex, __resetResolverIndexForTests } from './resolver-index-holder';
 import { setReroutePrefixes } from '$lib/reroute-prefixes';
 import { setDefaultSlug } from '$lib/server/default-space';
@@ -132,5 +133,35 @@ describe('addSpace()', () => {
 		expect(getDefaultSlug()).toBe(slugBefore);
 
 		spy.mockRestore();
+	});
+
+	test('hot-added space sees install-level shared themes without restart', async () => {
+		const sharedDir = mkdtempSync(join(tmpdir(), 'amber-addspace-shared-'));
+		const prevEnv = process.env.AMBER_BUNDLED_THEMES_DIR;
+		mkdirSync(join(sharedDir, 'amber-brand'), { recursive: true });
+		writeFileSync(join(sharedDir, 'amber-brand', 'theme.toml'), 'name = "Brand"\n');
+		writeFileSync(
+			join(sharedDir, 'amber-brand', 'chrome.html'),
+			'<header></header><!--amber:content--><footer></footer>'
+		);
+		writeFileSync(join(sharedDir, 'amber-brand', 'page.html'), '<article>{{{html}}}</article>');
+		writeFileSync(join(sharedDir, 'amber-brand', 'error.html'), '<p>{{status}}</p>');
+		process.env.AMBER_BUNDLED_THEMES_DIR = sharedDir;
+		__resetSharedThemesForTests();
+
+		const slug = 'brandless';
+		const dir = join(parentDir, slug);
+		mkdirSync(dir, { recursive: true });
+		writeFileSync(join(dir, 'amber.toml'), 'amber_version = "0.2"\n');
+		writeFileSync(join(dir, 'index.md'), '# hi\n');
+
+		const { addSpace } = await import('./space');
+		const space = await addSpace(dir);
+		expect(space.themes.has('amber-brand')).toBe(true);
+
+		if (prevEnv === undefined) delete process.env.AMBER_BUNDLED_THEMES_DIR;
+		else process.env.AMBER_BUNDLED_THEMES_DIR = prevEnv;
+		__resetSharedThemesForTests();
+		rmSync(sharedDir, { recursive: true, force: true });
 	});
 });

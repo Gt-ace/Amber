@@ -20,6 +20,7 @@ import type { Actions, PageServerLoad } from './$types';
 import type { Space } from '$lib/space/space';
 import { requireSpaceAccess } from '$lib/server/permissions';
 import { getDiscoveryMode, getRegistryEntries } from '$lib/server/space';
+import { getSharedThemes } from '$lib/server/shared-themes';
 import { readSpaceConfig } from '$lib/space/config';
 import { describeThemeSource } from '$lib/space/themes';
 import { publicUrlForSpace } from '$lib/server/space-routing';
@@ -67,13 +68,20 @@ export const load: PageServerLoad = async (event) => {
 	const { source, staleThemeName } = describeThemeSource(declaredTheme, space.themes);
 	const publicUrl = publicUrlForSpace(config, process.env.AMBER_PUBLIC_URL!, getDiscoveryMode());
 
+	const shared = getSharedThemes();
 	const themes = [...space.themes.values()]
-		.map((t) => ({
-			name: t.name,
-			description: t.manifest.description ?? null,
-			version: t.manifest.version ?? null,
-			author: t.manifest.author ?? null
-		}))
+		.map((t) => {
+			const sharedHit = shared.get(t.name);
+			const source: 'shared' | 'this-space' =
+				sharedHit && sharedHit.path === t.path ? 'shared' : 'this-space';
+			return {
+				name: t.name,
+				description: t.manifest.description ?? null,
+				version: t.manifest.version ?? null,
+				author: t.manifest.author ?? null,
+				source
+			};
+		})
 		.sort((a, b) => {
 			if (a.name === 'amber-default') return -1;
 			if (b.name === 'amber-default') return 1;
