@@ -1,5 +1,7 @@
 import { rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 const FIXTURE_AMBER = fileURLToPath(new URL('./fixtures/example-space/.amber/', import.meta.url));
 
@@ -14,6 +16,14 @@ export function setup() {
 	}
 	if (!process.env.AMBER_PUBLIC_URL) {
 		process.env.AMBER_PUBLIC_URL = 'http://localhost:3000';
+	}
+	// Shared themes (install-level) default to *empty* in tests: point the
+	// bundled-themes dir at a path that does not exist so `discoverThemesInDir`
+	// returns an empty map. Registry-path tests then see only per-space themes,
+	// preserving exact-list assertions. Tests that exercise shared themes
+	// override AMBER_BUNDLED_THEMES_DIR and call __resetSharedThemesForTests().
+	if (!process.env.AMBER_BUNDLED_THEMES_DIR) {
+		process.env.AMBER_BUNDLED_THEMES_DIR = join(tmpdir(), 'amber-test-no-shared-themes');
 	}
 }
 
