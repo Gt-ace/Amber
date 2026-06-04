@@ -286,18 +286,24 @@ describe('/admin/spaces/[slug]/theme load — shared themes', () => {
 	let sharedDir: string;
 	let prevBundled: string | undefined;
 
+	// Write a complete theme directly under the bundled (shared) dir.
+	function writeBundledTheme(name: string): void {
+		const d = join(sharedDir, name);
+		mkdirSync(d, { recursive: true });
+		writeFileSync(join(d, 'theme.toml'), `name = "${name}"\n`);
+		writeFileSync(join(d, 'chrome.html'), '<header></header><!--amber:content--><footer></footer>');
+		writeFileSync(join(d, 'page.html'), '<article>{{{html}}}</article>');
+		writeFileSync(join(d, 'error.html'), '<p>{{status}}</p>');
+	}
+
 	beforeEach(() => {
 		prevBundled = process.env.AMBER_BUNDLED_THEMES_DIR;
 		sharedDir = mkdtempSync(join(tmpdir(), 'amber-picker-shared-'));
-		const d = join(sharedDir, 'amber-brand');
-		mkdirSync(d, { recursive: true });
-		writeFileSync(join(d, 'theme.toml'), 'name = "Brand"\n');
-		writeFileSync(
-			join(d, 'chrome.html'),
-			'<header></header><!--amber:content--><footer></footer>'
-		);
-		writeFileSync(join(d, 'page.html'), '<article>{{{html}}}</article>');
-		writeFileSync(join(d, 'error.html'), '<p>{{status}}</p>');
+		// amber-brand: shared-only. amber-default: also shipped per-space by the
+		// outer setup, so the effective entry is the per-space copy — exercises the
+		// override branch (same name, different path → "this-space").
+		writeBundledTheme('amber-brand');
+		writeBundledTheme('amber-default');
 		process.env.AMBER_BUNDLED_THEMES_DIR = sharedDir;
 		__resetSharedThemesForTests();
 	});
@@ -315,7 +321,8 @@ describe('/admin/spaces/[slug]/theme load — shared themes', () => {
 		const byName = Object.fromEntries(
 			data.themes.map((t: { name: string; source: string }) => [t.name, t.source])
 		);
-		expect(byName['amber-brand']).toBe('shared');
-		expect(byName['amber-default']).toBe('this-space'); // per-space copy from outer setup
+		expect(byName['amber-brand']).toBe('shared'); // shared-only
+		expect(byName['amber-default']).toBe('this-space'); // override: per-space copy shadows shared
+		expect(byName['amber-editorial']).toBe('this-space'); // per-space only, absent from shared
 	});
 });

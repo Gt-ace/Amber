@@ -71,15 +71,19 @@ export const load: PageServerLoad = async (event) => {
 	const shared = getSharedThemes();
 	const themes = [...space.themes.values()]
 		.map((t) => {
+			// `space.themes` is the effective map (shared ∪ per-space, per-space
+			// wins). A theme is "shared" only if it's the *same* entry as the
+			// install-level shared one — a per-space override has the same name but
+			// a different path, so it reads as "this-space".
 			const sharedHit = shared.get(t.name);
-			const source: 'shared' | 'this-space' =
+			const sourceLabel: 'shared' | 'this-space' =
 				sharedHit && sharedHit.path === t.path ? 'shared' : 'this-space';
 			return {
 				name: t.name,
 				description: t.manifest.description ?? null,
 				version: t.manifest.version ?? null,
 				author: t.manifest.author ?? null,
-				source
+				source: sourceLabel
 			};
 		})
 		.sort((a, b) => {
