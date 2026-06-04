@@ -37,10 +37,12 @@ is the theme that runs.
 ## File contract
 
 A usable theme directory contains exactly these files. The order below is
-the order you'd build them in.
+the order you'd build them in. The built-in `amber-*` themes are app-bundled
+and need no copy — this layout is for a theme you author yourself: a private
+theme, or a per-space override of a shared one.
 
 ```
-spaces/<space>/themes/<your-theme>/
+<space>/themes/<your-theme>/
   theme.toml          metadata
   theme.css           --amber-* tokens + styles
   chrome.html         site shell (header, nav, footer)
@@ -545,7 +547,11 @@ These belong to Amber, not the theme. Don't try to override them.
 
 ## Installing and selecting a theme
 
-1. Put your theme directory at `spaces/<space>/themes/<your-theme>/`.
+To use one of the built-in `amber-*` themes, skip step 1 — they're already
+available to every space. Start at step 2 and set, e.g., `theme = "amber-editorial"`.
+Step 1 is only for installing a theme you author yourself.
+
+1. Put your theme directory at `<space>/themes/<your-theme>/`.
 2. In that space's `space.toml`, set:
 
    ```toml
@@ -569,8 +575,8 @@ Resolution order, per space:
 The three `amber-*` themes are **shared/app-bundled** — they are pickable from
 any space without copying files. To override one for a single space, ship a
 `<space>/themes/<name>/` of the same name; the per-space copy wins for that
-space (templates and assets alike). Resolution resolves names against the
-*effective* set (shared ∪ this space's `themes/`, per-space winning).
+space (templates and assets alike). Names are resolved against the *effective*
+set (shared ∪ this space's `themes/`, per-space winning).
 
 Changes to `space.toml` are hot-reloaded — save and refresh.
 Changes to `amber.toml` require a server restart. Theme directories

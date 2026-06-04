@@ -129,7 +129,8 @@ ship with the app (`apps/web/themes/`, carried into the image as
 every space. A space's own `themes/<name>/` overrides a shared theme of the
 same name (per-space wins). The effective theme set a space resolves against is
 `shared ∪ <space>/themes/`. This is an install-wide asset shipped with the app,
-alongside the `/fonts/` precedent — not stored in any content space.
+alongside the install-level `/fonts/` asset path — not stored in any content
+space.
 
 ### Reserved names
 
@@ -342,6 +343,7 @@ up from a working content pipeline; the substrate is in place.
      existing `space_config_change` watcher path; no new mutation API
      needed. Owner-or-install-admin only; works in both single-space and
      multi-space modes.
+
      Install-level shared themes (post-subsystem-6) make the three `amber-*`
      themes app-bundled and pickable from any space; per-space `themes/` still
      overrides. See `docs/specs/v0.5-install-level-shared-themes.md`.
