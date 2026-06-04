@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { __resetSharedThemesForTests } from '$lib/server/shared-themes';
 
 let GET: typeof import('./+server.ts').GET;
 let root: string;
@@ -79,5 +80,42 @@ describe('theme asset route', () => {
 	test('404 when the theme name contains a slash', async () => {
 		const res = await call('amber-default/fonts', 'x.woff2');
 		expect(res.status).toBe(404);
+	});
+});
+
+describe('theme asset route — shared themes', () => {
+	let sharedDir: string;
+	let prevEnv: string | undefined;
+
+	beforeAll(() => {
+		prevEnv = process.env.AMBER_BUNDLED_THEMES_DIR;
+		sharedDir = mkdtempSync(join(tmpdir(), 'amber-shared-assets-'));
+		mkdirSync(join(sharedDir, 'amber-brand'), { recursive: true });
+		writeFileSync(join(sharedDir, 'amber-brand', 'theme.css'), ':root{--brand:1}');
+		process.env.AMBER_BUNDLED_THEMES_DIR = sharedDir;
+		__resetSharedThemesForTests();
+	});
+
+	afterAll(() => {
+		if (prevEnv === undefined) delete process.env.AMBER_BUNDLED_THEMES_DIR;
+		else process.env.AMBER_BUNDLED_THEMES_DIR = prevEnv;
+		__resetSharedThemesForTests();
+		rmSync(sharedDir, { recursive: true, force: true });
+	});
+
+	test('serves a shared theme css when the space has no per-space copy', async () => {
+		// `testSpace` has only `amber-default` on disk, not `amber-brand`,
+		// so amber-brand resolves from the shared dir.
+		const res = await call('amber-brand', 'theme.css');
+		expect(res.status).toBe(200);
+		expect(await res.text()).toBe(':root{--brand:1}');
+	});
+
+	test('per-space dir wins over shared for the same name', async () => {
+		// `amber-default` exists in the per-space `themes/` (outer setup); even if
+		// a shared amber-default existed, the per-space copy is served.
+		const res = await call('amber-default', 'theme.css');
+		expect(res.status).toBe(200);
+		expect(await res.text()).toBe(':root{--x:1}');
 	});
 });

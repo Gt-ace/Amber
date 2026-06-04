@@ -23,6 +23,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { resolve, sep, extname } from 'node:path';
 import type { RequestHandler } from './$types';
+import { sharedThemesDir } from '$lib/server/shared-themes';
 
 const CONTENT_TYPES: Record<string, string> = {
 	'.css': 'text/css; charset=utf-8',
@@ -43,6 +44,14 @@ const CONTENT_TYPES: Record<string, string> = {
 
 const NOT_FOUND = () => new Response('Not found', { status: 404 });
 
+function isDir(p: string): boolean {
+	try {
+		return statSync(p).isDirectory();
+	} catch {
+		return false;
+	}
+}
+
 export const GET: RequestHandler = ({ params, locals }) => {
 	const name = params.name ?? '';
 	const file = params.file ?? '';
@@ -55,7 +64,19 @@ export const GET: RequestHandler = ({ params, locals }) => {
 
 	const space = locals.space;
 	if (!space) return NOT_FOUND();
-	const themeRoot = resolve(space.root, 'themes', name);
+
+	// Directory precedence (spec §7): serve from the space's own `themes/<name>/`
+	// if that directory exists, else from the install-level shared themes dir.
+	// Per-space wins on name collision; we never mix assets across the two roots.
+	// Deliberately independent of theme *discovery* — an incomplete theme dir
+	// (e.g. css-only, missing templates) still serves its assets.
+	const perSpaceRoot = resolve(space.root, 'themes', name);
+	const sharedRoot = resolve(sharedThemesDir(), name);
+	let themeRoot: string | null = null;
+	if (isDir(perSpaceRoot)) themeRoot = perSpaceRoot;
+	else if (isDir(sharedRoot)) themeRoot = sharedRoot;
+	if (!themeRoot) return NOT_FOUND();
+
 	const target = resolve(themeRoot, file);
 
 	// Containment check: `target` must be strictly below `themeRoot`.
