@@ -60,7 +60,10 @@ offline `bin/grant-ownership.ts` CLI) has shipped. Subsystem 5
 `amber.toml`, optional `space.toml` routing, and hot-adds the space into the
 resolver) has shipped. Subsystem 6 (theme-picker UI: writes `space.toml`'s
 `theme` field, owner-or-install-admin, hot-reloaded by the existing watcher)
-has shipped, completing the authoring layer.
+has shipped, completing the authoring layer. Beyond the six subsystems,
+install-level shared themes now ship the three `amber-*` themes with the app
+(`apps/web/themes/`), so every space — a freshly created one included — can
+pick a real theme with no per-space copies.
 
 ## Concepts
 
@@ -74,7 +77,10 @@ source of truth. SQLite at `.amber/cache.db` is a regenerable cache and can
 be deleted without losing data.
 
 A **theme** is a directory of CSS and HTML templates that decides
-presentation. Each space picks its own theme. See
+presentation. Amber ships three built-in **shared** themes (`amber-default`,
+`amber-editorial`, `amber-brand`) available to every space out of the box; a
+space can still ship its own `themes/<name>/` to add a private theme or
+override a shared one. Each space picks its theme via `space.toml`. See
 [`docs/themes.md`](docs/themes.md) for the contract.
 
 ## Docs

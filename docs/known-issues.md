@@ -62,7 +62,7 @@ status dot, no side-stripe; auto-index: ruled list with Fraunces display titles
 and right-pushed mono dates), verified rendered in light and dark with the real
 fonts. Recorded here for the trail.
 
-The `amber-brand` theme (`spaces/avp-software/themes/amber-brand/`) referenced
+The `amber-brand` theme (now `apps/web/themes/amber-brand/`) referenced
 two classes in its templates that have no CSS. Neither is exercised by the live
 `avp-software` space (its three pages use no `draft:` and no `auto_index`), so
 nothing renders unstyled **today** — but any future draft or auto-index page on
