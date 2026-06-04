@@ -157,10 +157,12 @@ export class Space implements SpaceData {
 		const cache = new SpaceCache(spacePath);
 		const hydrated = cache.tryHydrate(spacePath);
 		if (hydrated) {
-			// The SQLite cache does not persist themes or space.toml — discover
-			// themes fresh and re-read space.toml on every hydration. Resolver
-			// warnings are merged into the hydrated warnings array so the
-			// `Space` constructor can bucket them like cold-load warnings.
+			// The SQLite cache does not persist themes or space.toml — re-discover
+			// per-space themes and merge the install-level shared set (per-space
+			// wins) so the effective map is always shared ∪ per-space, then re-read
+			// space.toml on every hydration. Resolver warnings are merged into the
+			// hydrated warnings array so the `Space` constructor can bucket them
+			// like cold-load warnings.
 			hydrated.space.themes = effectiveThemes(
 				sharedThemes,
 				discoverThemes(hydrated.space.root, log)

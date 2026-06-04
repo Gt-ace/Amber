@@ -8,7 +8,6 @@ import { Database } from 'bun:sqlite';
 import { Space } from './space.ts';
 import { SpaceCache } from './cache.ts';
 import { bodyHash } from '$lib/render/cache';
-import { effectiveThemes } from './themes.ts';
 
 const FIXTURE = fileURLToPath(new URL('../../../fixtures/example-space/', import.meta.url));
 
@@ -438,13 +437,10 @@ describe('Space.load with shared themes', () => {
 		writeFileSync(join(td, 'error.html'), '<p>{{status}}</p>');
 
 		// A shared set carrying amber-default (collides) and amber-brand (unique).
-		const shared = effectiveThemes(
-			new Map(),
-			new Map([
-				['amber-default', { name: 'amber-default', path: '/app/themes/amber-default', assetBase: '/themes/amber-default', manifest: { name: 'Shared default' }, hasScript: false }],
-				['amber-brand', { name: 'amber-brand', path: '/app/themes/amber-brand', assetBase: '/themes/amber-brand', manifest: {}, hasScript: false }]
-			])
-		);
+		const shared = new Map([
+			['amber-default', { name: 'amber-default', path: '/app/themes/amber-default', assetBase: '/themes/amber-default', manifest: { name: 'Shared default' }, hasScript: false }],
+			['amber-brand', { name: 'amber-brand', path: '/app/themes/amber-brand', assetBase: '/themes/amber-brand', manifest: {}, hasScript: false }]
+		]);
 
 		const { space } = Space.load(root, { cache: false, sharedThemes: shared });
 		try {

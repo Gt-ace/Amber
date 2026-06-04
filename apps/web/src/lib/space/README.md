@@ -19,11 +19,14 @@ await watcher.close();
 space.close();
 ```
 
-`Space.load(path, { cache?: boolean })` returns `{ space: Space, warnings }`.
-The `Space` instance exposes `manifest`, `pages` (URL → `Page`), `nav`,
-`redirects`, and `warnings` — the same shape the pure `load()` returns —
-plus `apply(event)` and `close()`. Pass `{ cache: false }` to skip the
-SQLite layer (used by isolation-sensitive unit tests).
+`Space.load(path, { cache?: boolean, sharedThemes?: Map<string, Theme> })`
+returns `{ space: Space, warnings }`. The `Space` instance exposes `manifest`,
+`pages` (URL → `Page`), `nav`, `redirects`, and `warnings` — the same shape the
+pure `load()` returns — plus `apply(event)` and `close()`. Pass `{ cache: false }`
+to skip the SQLite layer (used by isolation-sensitive unit tests). Pass
+`sharedThemes` (the install-level shared theme set) to merge it into
+`space.themes`; per-space `themes/` wins on name collision. The registry
+supplies it via `getSharedThemes()`; it defaults to an empty map.
 
 `apply(event)` mutates the index in place and returns the _newly added_
 warnings produced by the event. Warnings that go away as a result of the
