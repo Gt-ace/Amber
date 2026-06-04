@@ -1,17 +1,20 @@
 /**
- * Static asset handler for theme files: `/themes/<name>/<path>` maps to
- * `<spaceRoot>/themes/<name>/<path>` on disk. Covers `theme.css` and anything
- * under a theme's optional `fonts/` directory.
+ * Static asset handler for theme files: `/themes/<name>/<path>` serves from
+ * `<spaceRoot>/themes/<name>/<path>` (the space's own theme) or, as a fallback,
+ * the install-level shared themes dir `<sharedThemesDir()>/<name>/<path>` — see
+ * the directory-precedence comment inside `GET`. Covers `theme.css` and
+ * anything under a theme's optional `fonts/` directory.
  *
- * Why a route and not SvelteKit's `static/` dir: themes live in the *space*
- * directory (the bind-mounted, user-owned content tree), not the app bundle —
- * they aren't known at build time. Caddy proxies everything to this Node
- * server anyway (see Caddyfile), so a `+server.ts` is the idiomatic fit, same
- * as `robots.txt` / `sitemap.xml`.
+ * Why a route and not SvelteKit's `static/` dir: per-space themes live in the
+ * *space* directory (the bind-mounted, user-owned content tree), and the shared
+ * set ships with the app outside `static/`; neither is known at build time as a
+ * public asset. Caddy proxies everything to this Node server anyway (see
+ * Caddyfile), so a `+server.ts` is the idiomatic fit, same as `robots.txt` /
+ * `sitemap.xml`.
  *
- * Path-traversal guard: the resolved target must stay inside
- * `<spaceRoot>/themes/<name>/`. Anything that escapes → 404 (not 403; we don't
- * want to confirm the file exists elsewhere).
+ * Path-traversal guard: the resolved target must stay strictly inside whichever
+ * `themes/<name>/` root was selected (per-space or shared). Anything that
+ * escapes → 404 (not 403; we don't want to confirm the file exists elsewhere).
  *
  * Cache policy: `public, max-age=3600`. There's no prior disk-served-asset
  * policy in the repo to match; this is a modest default. Theme files are
