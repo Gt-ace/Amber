@@ -98,37 +98,52 @@
 	<title>Editing {data.url} — Amber admin</title>
 </svelte:head>
 
-<p>
+<p class="back">
 	<a href={resolve(`/admin/spaces/${data.slug}` as '/admin/spaces/[slug]')}>← All pages</a>
 </p>
-<h1>Editing <code>{data.url}</code></h1>
+<header class="amber-page-head">
+	<div class="amber-page-head__text">
+		<h1>Editing <code>{data.url}</code></h1>
+	</div>
+</header>
 
 {#if conflict}
-	<div class="amber-conflict" role="alert">
-		<p>This page changed on disk since you opened it.</p>
-		<button type="button" class="amber-btn amber-btn--ghost amber-btn--sm" onclick={reloadFromDisk}
-			>Reload disk version</button
-		>
-		<button
-			type="button"
-			class="amber-btn amber-btn--primary amber-btn--sm"
-			onclick={() => save(true)}>Overwrite with my changes</button
-		>
+	<div class="amber-notice amber-notice--warn" role="alert">
+		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+			<path
+				d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"
+			/>
+		</svg>
+		<span class="conflict-body">
+			<span>This page changed on disk since you opened it.</span>
+			<span class="conflict-actions">
+				<button
+					type="button"
+					class="amber-btn amber-btn--ghost amber-btn--sm"
+					onclick={reloadFromDisk}>Reload disk version</button
+				>
+				<button
+					type="button"
+					class="amber-btn amber-btn--primary amber-btn--sm"
+					onclick={() => save(true)}>Overwrite with my changes</button
+				>
+			</span>
+		</span>
 	</div>
 {/if}
 
 <div class="amber-edit-grid">
 	<div class="amber-body" bind:this={editorEl}></div>
 
-	<aside class="amber-fm">
+	<aside class="amber-panel">
 		<h2>Frontmatter</h2>
 		{#if data.fmEditable}
-			<label>
-				Title
+			<label class="amber-field">
+				<span>Title</span>
 				<input class="amber-input" type="text" bind:value={fmTitle} oninput={markFmDirty} />
 			</label>
-			<label>
-				Date
+			<label class="amber-field">
+				<span>Date</span>
 				<input
 					class="amber-input"
 					type="text"
@@ -142,9 +157,22 @@
 				Draft
 			</label>
 		{:else}
-			<p class="amber-fm-disabled">
-				This page's frontmatter YAML cannot be parsed, so the panel is read-only. Fix the YAML
-				directly in the file to re-enable it. A save here leaves the frontmatter block untouched.
+			<p class="amber-notice amber-notice--warn" role="alert">
+				<svg
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					aria-hidden="true"
+				>
+					<path
+						d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"
+					/>
+				</svg>
+				<span>
+					This page's frontmatter YAML cannot be parsed, so the panel is read-only. Fix the YAML
+					directly in the file to re-enable it. A save here leaves the frontmatter block untouched.
+				</span>
 			</p>
 		{/if}
 	</aside>
@@ -161,6 +189,38 @@
 </p>
 
 <style>
+	.back {
+		margin: 0 0 0.75rem;
+	}
+	.back a {
+		color: var(--amber-ink-muted);
+		text-decoration: none;
+		font-size: 0.9rem;
+	}
+	.back a:hover {
+		color: var(--amber-ink);
+	}
+	h1 code {
+		font-size: 0.85em;
+		background: var(--amber-bg);
+		border: 1px solid var(--amber-rule);
+		border-radius: 4px;
+		padding: 0.05rem 0.3rem;
+	}
+
+	/* The conflict notice stacks its actions below the text when they don't
+	   fit the notice's flex row. */
+	.conflict-body {
+		display: flex;
+		flex-direction: column;
+		gap: 0.6rem;
+	}
+	.conflict-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+
 	.amber-edit-grid {
 		display: grid;
 		grid-template-columns: 1fr 18rem;
@@ -172,12 +232,10 @@
 		border-radius: 4px;
 		min-height: 24rem;
 	}
-	.amber-fm label {
-		display: block;
+	.amber-panel .amber-field {
 		margin-bottom: 0.75rem;
 	}
-	.amber-fm input[type='text'] {
-		display: block;
+	.amber-panel .amber-input {
 		width: 100%;
 		box-sizing: border-box;
 	}
@@ -185,36 +243,22 @@
 		display: flex;
 		gap: 0.4rem;
 		align-items: center;
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: var(--amber-ink);
 	}
 	.amber-check input[type='checkbox'] {
 		accent-color: var(--amber-accent);
 	}
-	.amber-fm-disabled {
-		color: var(--amber-accent);
-		font-size: 0.9rem;
-	}
-	.amber-conflict {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem;
-		align-items: center;
-		color: var(--amber-ink);
-		border: 1px solid var(--amber-accent);
-		background: color-mix(in srgb, var(--amber-accent) 12%, var(--amber-bg));
-		padding: 0.75rem 1rem;
-		border-radius: 8px;
-		margin-bottom: 1rem;
-	}
-	.amber-conflict p {
-		flex-basis: 100%;
-		margin: 0;
-	}
 	.amber-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
 		margin-top: 1rem;
 	}
 	.amber-status {
-		margin-left: 0.75rem;
 		color: var(--amber-ink-muted);
+		font-size: 0.9rem;
 	}
 
 	/*

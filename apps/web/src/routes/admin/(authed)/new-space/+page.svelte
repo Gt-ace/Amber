@@ -71,51 +71,71 @@
 	<title>New space — Amber admin</title>
 </svelte:head>
 
-<h1>New space</h1>
-<p class="hint">
-	Creates a directory under your spaces folder, scaffolds <code>amber.toml</code> and
-	<code>index.md</code>, and (if you pick host or path routing) writes <code>space.toml</code>. The
-	new space is hot-added — no restart.
-</p>
-
-<form method="POST" onsubmit={() => (submitting = true)}>
-	<div class="field">
-		<label for="title">Title</label>
-		<input
-			id="title"
-			name="title"
-			type="text"
-			bind:value={title}
-			required
-			autofocus
-			aria-invalid={errorFor('title') ? 'true' : undefined}
+{#snippet alertIcon()}
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+		<path
+			d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"
 		/>
+	</svg>
+{/snippet}
+
+<header class="amber-page-head">
+	<div class="amber-page-head__text">
+		<h1>New space</h1>
+		<p class="amber-page-head__lede">
+			Creates a directory under your spaces folder, scaffolds <code>amber.toml</code> and
+			<code>index.md</code>, and (if you pick host or path routing) writes
+			<code>space.toml</code>. The new space is hot-added — no restart.
+		</p>
+	</div>
+</header>
+
+<form method="POST" onsubmit={() => (submitting = true)} class="new-space-form">
+	<div class="field">
+		<label class="amber-field">
+			<span>Title</span>
+			<input
+				class="amber-input"
+				id="title"
+				name="title"
+				type="text"
+				bind:value={title}
+				required
+				autofocus
+				aria-invalid={errorFor('title') ? 'true' : undefined}
+			/>
+		</label>
 		{#if errorFor('title')}
 			<p class="err" role="alert" aria-live="polite">{errorFor('title')}</p>
 		{/if}
 	</div>
 
 	<div class="field">
-		<label for="slug">Slug</label>
-		<input
-			id="slug"
-			name="slug"
-			type="text"
-			bind:value={slug}
-			oninput={() => (slugDirty = true)}
-			required
-			pattern={'^[a-z0-9][a-z0-9-]{0,62}$'}
-			aria-invalid={errorFor('slug') ? 'true' : undefined}
-		/>
-		<p class="hint">
-			Becomes the directory name and <code>/admin/spaces/{slug || '<slug>'}</code>.
-		</p>
+		<label class="amber-field">
+			<span>
+				Slug
+				<span class="amber-field__hint">
+					Becomes the directory name and <code>/admin/spaces/{slug || '<slug>'}</code>.
+				</span>
+			</span>
+			<input
+				class="amber-input"
+				id="slug"
+				name="slug"
+				type="text"
+				bind:value={slug}
+				oninput={() => (slugDirty = true)}
+				required
+				pattern={'^[a-z0-9][a-z0-9-]{0,62}$'}
+				aria-invalid={errorFor('slug') ? 'true' : undefined}
+			/>
+		</label>
 		{#if errorFor('slug')}
 			<p class="err" role="alert" aria-live="polite">{errorFor('slug')}</p>
 		{/if}
 	</div>
 
-	<fieldset class="field">
+	<fieldset class="routing">
 		<legend>How is it reached?</legend>
 
 		<label class="row">
@@ -127,6 +147,7 @@
 			<div class="reveal">
 				<label for="prefix" class="sublabel">Prefix</label>
 				<input
+					class="amber-input"
 					id="prefix"
 					name="prefix"
 					type="text"
@@ -154,6 +175,7 @@
 			<div class="reveal">
 				<label for="host" class="sublabel">Host</label>
 				<input
+					class="amber-input"
 					id="host"
 					name="host"
 					type="text"
@@ -209,77 +231,86 @@
 	</fieldset>
 
 	{#if writeError === 'permission_denied'}
-		<p class="form-err" role="alert">
-			Amber doesn't have write access to your spaces directory. Fix the directory permissions and
-			try again.
+		<p class="amber-notice amber-notice--error" role="alert">
+			{@render alertIcon()}
+			<span>
+				Amber doesn't have write access to your spaces directory. Fix the directory permissions and
+				try again.
+			</span>
 		</p>
 	{:else if writeError === 'write_failed'}
-		<p class="form-err" role="alert">
-			Couldn't create the space. Check the server logs for details.
+		<p class="amber-notice amber-notice--error" role="alert">
+			{@render alertIcon()}
+			<span>Couldn't create the space. Check the server logs for details.</span>
 		</p>
 	{:else if writeError === 'dir_already_exists'}
-		<p class="form-err" role="alert">A directory with this slug already exists.</p>
+		<p class="amber-notice amber-notice--error" role="alert">
+			{@render alertIcon()}
+			<span>A directory with this slug already exists.</span>
+		</p>
 	{/if}
 
 	<div class="actions">
-		<button type="submit" disabled={submitting}>
+		<button type="submit" class="amber-btn amber-btn--primary" disabled={submitting}>
 			{submitting ? 'Creating…' : 'Create space'}
 		</button>
-		<a href={resolve('/admin')} class="cancel">Cancel</a>
+		<a href={resolve('/admin')} class="amber-btn amber-btn--ghost">Cancel</a>
 	</div>
 </form>
 
 <style>
-	h1 {
-		margin-bottom: 0.25rem;
+	.amber-page-head__lede code,
+	.row-sub code,
+	.hint code,
+	.amber-field__hint code,
+	.preview code {
+		font-size: 0.85em;
+		background: var(--amber-surface-sunken);
+		border: 1px solid var(--amber-rule);
+		border-radius: 4px;
+		padding: 0.05rem 0.3rem;
 	}
-	.hint {
-		color: #777;
-		font-size: 0.9rem;
-		margin-top: 0.25rem;
-	}
-	form {
+
+	.new-space-form {
 		max-width: 36rem;
 		display: flex;
 		flex-direction: column;
 		gap: 1.25rem;
-		margin-top: 1.5rem;
+		margin-top: 0.25rem;
 	}
+
 	.field {
 		display: flex;
 		flex-direction: column;
 		gap: 0.35rem;
 	}
-	label {
-		font-weight: 500;
+
+	/* aria-invalid inputs read as in-error. */
+	.amber-input[aria-invalid='true'] {
+		border-color: var(--amber-danger);
 	}
-	input[type='text'] {
-		font: inherit;
-		padding: 0.5rem 0.6rem;
-		border: 1px solid #ccc;
-		border-radius: 4px;
-		min-height: 2.5rem;
-	}
-	input[aria-invalid='true'] {
-		border-color: #b00020;
-	}
-	fieldset {
-		border: 1px solid #ddd;
-		border-radius: 4px;
+
+	.routing {
+		border: 1px solid var(--amber-rule);
+		border-radius: 10px;
 		padding: 0.75rem 1rem 1rem;
 	}
-	legend {
+	.routing legend {
 		padding: 0 0.25rem;
-		font-weight: 500;
+		font-weight: 600;
+		color: var(--amber-ink);
 	}
+
+	/* Radio rows mirror the theme page's `.row`: bold ink main line, muted sub,
+	   accent-tinted control. Two-column grid (no badge column here). */
 	.row {
 		display: grid;
 		grid-template-columns: auto 1fr;
 		grid-template-rows: auto auto;
 		gap: 0.2rem 0.6rem;
 		padding: 0.5rem 0;
-		font-weight: 400;
 		cursor: pointer;
+		align-items: baseline;
 	}
 	.row.disabled {
 		cursor: not-allowed;
@@ -289,14 +320,17 @@
 		grid-row: 1 / span 2;
 		align-self: start;
 		margin-top: 0.2rem;
+		accent-color: var(--amber-accent);
 	}
 	.row-main {
-		font-weight: 500;
+		font-weight: 600;
+		color: var(--amber-ink);
 	}
 	.row-sub {
-		color: #777;
+		color: var(--amber-ink-muted);
 		font-size: 0.88rem;
 	}
+
 	.reveal {
 		margin: 0.25rem 0 0.5rem 1.7rem;
 		display: flex;
@@ -315,62 +349,31 @@
 		}
 	}
 	.sublabel {
-		font-weight: 500;
-		font-size: 0.9rem;
+		font-weight: 600;
+		font-size: 0.85rem;
+		color: var(--amber-ink);
+	}
+
+	.hint {
+		color: var(--amber-ink-muted);
+		font-size: 0.88rem;
+		margin: 0;
 	}
 	.err {
-		color: #b00020;
+		color: var(--amber-danger);
 		font-size: 0.88rem;
 		margin: 0;
 	}
 	.preview {
-		color: #555;
+		color: var(--amber-ink-muted);
 		font-size: 0.88rem;
 		margin: 0;
 	}
-	.preview code {
-		background: #f4f4f4;
-		padding: 0.05rem 0.35rem;
-		border-radius: 3px;
-	}
-	.form-err {
-		color: #b00020;
-		background: #fdecef;
-		border: 1px solid #f4c1cc;
-		padding: 0.6rem 0.8rem;
-		border-radius: 4px;
-		font-size: 0.9rem;
-		margin: 0;
-	}
+
 	.actions {
 		display: flex;
 		gap: 0.8rem;
 		align-items: center;
-	}
-	button {
-		font: inherit;
-		font-weight: 500;
-		padding: 0.55rem 1rem;
-		border: 1px solid #333;
-		border-radius: 4px;
-		background: #333;
-		color: #fff;
-		cursor: pointer;
-		min-height: 2.5rem;
-		transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
-	}
-	button:active {
-		transform: scale(0.97);
-	}
-	button:disabled {
-		opacity: 0.6;
-		cursor: progress;
-	}
-	.cancel {
-		color: #555;
-		text-decoration: none;
-	}
-	.cancel:hover {
-		text-decoration: underline;
+		margin-top: 0.25rem;
 	}
 </style>

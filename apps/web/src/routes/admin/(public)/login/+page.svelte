@@ -8,22 +8,53 @@
 	<title>Sign in · Amber</title>
 </svelte:head>
 
-<h1>Sign in</h1>
+<header class="amber-page-head">
+	<div class="amber-page-head__text">
+		<h1>Sign in</h1>
+		<p class="amber-page-head__lede">Sign in to manage this Amber install.</p>
+	</div>
+</header>
 
-<form method="post" use:enhance class="amber-auth-form">
+<form method="post" use:enhance class="amber-form">
 	<input type="hidden" name="next" value={data.next ?? ''} />
-	<label>
-		Email
-		<input type="email" name="email" autocomplete="username" required value={form?.email ?? ''} />
+	<label class="amber-field">
+		<span>Email</span>
+		<input
+			class="amber-input"
+			type="email"
+			name="email"
+			autocomplete="username"
+			required
+			value={form?.email ?? ''}
+		/>
 	</label>
-	<label>
-		Password
-		<input type="password" name="password" autocomplete="current-password" required />
+	<label class="amber-field">
+		<span>Password</span>
+		<input
+			class="amber-input"
+			type="password"
+			name="password"
+			autocomplete="current-password"
+			required
+		/>
 	</label>
 	{#if form?.error}
-		<p class="amber-form-error" role="alert">{form.error}</p>
+		<p class="amber-notice amber-notice--error" role="alert">
+			<svg
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				aria-hidden="true"
+			>
+				<path
+					d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"
+				/>
+			</svg>
+			{form.error}
+		</p>
 	{/if}
-	<button type="submit">Sign in</button>
+	<button type="submit" class="amber-btn amber-btn--primary">Sign in</button>
 </form>
 
 {#if data.googleEnabled}
@@ -31,53 +62,9 @@
 	<!-- /api/auth/* is handled by better-auth's svelteKitHandler, not a SvelteKit route. -->
 	<!-- eslint-disable svelte/no-navigation-without-resolve -->
 	<a
-		class="amber-oauth-button"
+		class="amber-btn amber-btn--ghost"
 		href={`/api/auth/sign-in/social/google?callbackURL=${encodeURIComponent(data.next ?? '/admin')}`}
 		>Continue with Google</a
 	>
 	<!-- eslint-enable svelte/no-navigation-without-resolve -->
 {/if}
-
-<style>
-	.amber-auth-form {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-		max-width: 24rem;
-	}
-	.amber-auth-form label {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-		font-size: 0.9rem;
-	}
-	.amber-auth-form input {
-		padding: 0.5rem;
-		border: 1px solid #ccc;
-		border-radius: 4px;
-		font: inherit;
-	}
-	.amber-auth-form button {
-		padding: 0.55rem 0.9rem;
-		font: inherit;
-		cursor: pointer;
-	}
-	.amber-form-error {
-		color: #a40000;
-		margin: 0;
-	}
-	.amber-or {
-		max-width: 24rem;
-		text-align: center;
-		color: #777;
-		margin: 1rem 0 0.5rem;
-	}
-	.amber-oauth-button {
-		display: inline-block;
-		padding: 0.5rem 0.9rem;
-		border: 1px solid #ccc;
-		border-radius: 4px;
-		text-decoration: none;
-		color: inherit;
-	}
-</style>
