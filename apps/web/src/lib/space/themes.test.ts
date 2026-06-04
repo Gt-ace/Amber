@@ -2,7 +2,13 @@ import { describe, expect, test } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { discoverThemes, resolveActiveTheme, readTemplate, readPartial, effectiveThemes } from './themes.ts';
+import {
+	discoverThemes,
+	resolveActiveTheme,
+	readTemplate,
+	readPartial,
+	effectiveThemes
+} from './themes.ts';
 import { BUILTIN_THEME, BUILTIN_PARTIALS } from '$lib/theme/builtin';
 import type { AmberManifest } from '$lib/types/schema';
 import { logger } from '$lib/server/logger';
@@ -240,7 +246,7 @@ describe('effectiveThemes', () => {
 		expect(eff.get('amber-brand')!.path).toBe('/app/themes/amber-brand');
 	});
 
-	test('empty shared → just per-space (today\'s behavior)', () => {
+	test("empty shared → just per-space (today's behavior)", () => {
 		const perSpace = new Map([['mine', t('mine', '/space/themes/mine')]]);
 		const eff = effectiveThemes(new Map(), perSpace);
 		expect([...eff.keys()]).toEqual(['mine']);

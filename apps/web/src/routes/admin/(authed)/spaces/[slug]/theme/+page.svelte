@@ -45,8 +45,8 @@
 		<h1>Theme</h1>
 		<p class="amber-page-head__lede">
 			Choose how this space looks. Themes come from Amber's built-in shared set plus any in this
-			space's <code>themes/</code> directory; your pick is saved to <code>space.toml</code> and
-			hot-reloads — no restart.
+			space's <code>themes/</code> directory; your pick is saved to <code>space.toml</code> and hot-reloads
+			— no restart.
 		</p>
 	</div>
 </header>
@@ -63,8 +63,7 @@
 
 {#if data.themes.length === 0}
 	<p class="hint">
-		No themes are available. Add a theme directory under this space's <code>themes/</code> and
-		restart.
+		No themes are available. Add a theme directory under this space's <code>themes/</code> and restart.
 	</p>
 {/if}
 

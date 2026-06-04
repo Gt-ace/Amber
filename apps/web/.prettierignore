@@ -12,3 +12,9 @@ bun.lockb
 # slugs, unusual YAML). Prettier would normalize these and break the
 # robustness tests that assert the loader handles them.
 /fixtures/
+
+# App-bundled shared themes are hand-authored templates (whitespace-sensitive
+# HTML with mustache tags, CSS, an optional theme.js). They are content, not
+# app source — like /static and /fixtures — and shipped unformatted when they
+# lived under spaces/. Normalizing them risks altering rendered output.
+/themes/

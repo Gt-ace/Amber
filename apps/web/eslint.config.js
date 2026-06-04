@@ -12,6 +12,10 @@ const gitignorePath = path.resolve(import.meta.dirname, '.gitignore');
 
 export default defineConfig(
 	includeIgnoreFile(gitignorePath),
+	// App-bundled shared themes are hand-authored content (templates + an
+	// optional browser theme.js), not app source — mirror the .prettierignore
+	// exclusion so the app linter doesn't police them.
+	{ ignores: ['themes/**'] },
 	js.configs.recommended,
 	ts.configs.recommended,
 	svelte.configs.recommended,

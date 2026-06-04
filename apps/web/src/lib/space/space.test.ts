@@ -432,14 +432,35 @@ describe('Space.load with shared themes', () => {
 		const td = join(root, 'themes', 'amber-default');
 		mkdirSync(td, { recursive: true });
 		writeFileSync(join(td, 'theme.toml'), 'name = "Local default"\n');
-		writeFileSync(join(td, 'chrome.html'), '<header></header><!--amber:content--><footer></footer>');
+		writeFileSync(
+			join(td, 'chrome.html'),
+			'<header></header><!--amber:content--><footer></footer>'
+		);
 		writeFileSync(join(td, 'page.html'), '<article>{{{html}}}</article>');
 		writeFileSync(join(td, 'error.html'), '<p>{{status}}</p>');
 
 		// A shared set carrying amber-default (collides) and amber-brand (unique).
 		const shared = new Map([
-			['amber-default', { name: 'amber-default', path: '/app/themes/amber-default', assetBase: '/themes/amber-default', manifest: { name: 'Shared default' }, hasScript: false }],
-			['amber-brand', { name: 'amber-brand', path: '/app/themes/amber-brand', assetBase: '/themes/amber-brand', manifest: {}, hasScript: false }]
+			[
+				'amber-default',
+				{
+					name: 'amber-default',
+					path: '/app/themes/amber-default',
+					assetBase: '/themes/amber-default',
+					manifest: { name: 'Shared default' },
+					hasScript: false
+				}
+			],
+			[
+				'amber-brand',
+				{
+					name: 'amber-brand',
+					path: '/app/themes/amber-brand',
+					assetBase: '/themes/amber-brand',
+					manifest: {},
+					hasScript: false
+				}
+			]
 		]);
 
 		const { space } = Space.load(root, { cache: false, sharedThemes: shared });
