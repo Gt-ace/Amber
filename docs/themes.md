@@ -25,7 +25,11 @@ same name (per-space wins). Each space picks its theme via its own `space.toml`,
 with fallbacks to the install-level `amber.toml`, then `amber-default`, then a
 built-in floor. Shared themes live with the app at `apps/web/themes/` and are
 addressed at runtime via `AMBER_BUNDLED_THEMES_DIR` (the Docker image carries
-them in `build/themes/`).
+them in `build/themes/` and sets the variable for you). Running the built bundle
+outside Docker is the one case that needs care: set `AMBER_BUNDLED_THEMES_DIR`
+to your bundled-themes directory, otherwise the shared set is empty and spaces
+fall back to the built-in floor. (`bun --bun run dev` from the repo needs
+nothing — the default resolves `apps/web/themes/`.)
 
 Themes are vanilla CSS and HTML. No build step, no framework. A theme *may*
 ship one optional `theme.js` purely for progressive-enhancement motion — the
@@ -574,9 +578,14 @@ Resolution order, per space:
 
 The three `amber-*` themes are **shared/app-bundled** — they are pickable from
 any space without copying files. To override one for a single space, ship a
-`<space>/themes/<name>/` of the same name; the per-space copy wins for that
-space (templates and assets alike). Names are resolved against the *effective*
-set (shared ∪ this space's `themes/`, per-space winning).
+*complete* `<space>/themes/<name>/` of the same name; the per-space copy wins
+for that space (templates and assets alike). A per-space directory overrides a
+shared theme **as a whole unit** — the asset route serves that theme's CSS and
+fonts from the per-space directory whenever it exists — so ship the entire theme
+there, not a partial: a dir that's missing template files won't be discovered
+yet would still shadow the shared theme's assets, which renders inconsistently.
+Names are resolved against the *effective* set (shared ∪ this space's `themes/`,
+per-space winning).
 
 Changes to `space.toml` are hot-reloaded — save and refresh.
 Changes to `amber.toml` require a server restart. Theme directories
