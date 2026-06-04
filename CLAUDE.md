@@ -123,6 +123,14 @@ covers all of it.
 - Redirects table is reserved from day one even if unused.
 - Theme contract (file layout, `--amber-*` tokens, template runtime) is documented in [`docs/themes.md`](docs/themes.md).
 
+**Themes are install-level shared by default.** The three `amber-*` themes
+ship with the app (`apps/web/themes/`, carried into the image as
+`build/themes/`, addressed via `AMBER_BUNDLED_THEMES_DIR`) and are available to
+every space. A space's own `themes/<name>/` overrides a shared theme of the
+same name (per-space wins). The effective theme set a space resolves against is
+`shared ∪ <space>/themes/`. This is an install-wide asset shipped with the app,
+alongside the `/fonts/` precedent — not stored in any content space.
+
 ### Reserved names
 
 `amber.toml`, `.amber/`, `themes/`, plus the `_*` and `.*` prefixes anywhere
@@ -207,8 +215,8 @@ Every code in the enum must have a defined trigger. The loader emits:
   a top-level table, or its `theme` field isn't a string. The space loads
   normally; the theme resolver falls through.
 - `space_theme_not_found` — `space.toml` or `amber.toml` named a theme
-  that isn't a discovered directory under `<space>/themes/`. The chain
-  falls through.
+  that isn't in the space's effective theme set (shared themes ∪
+  `<space>/themes/`). The chain falls through.
 
 ### Multi-space routing (v0.5 subsystem 3)
 
@@ -334,6 +342,9 @@ up from a working content pipeline; the substrate is in place.
      existing `space_config_change` watcher path; no new mutation API
      needed. Owner-or-install-admin only; works in both single-space and
      multi-space modes.
+     Install-level shared themes (post-subsystem-6) make the three `amber-*`
+     themes app-bundled and pickable from any space; per-space `themes/` still
+     overrides. See `docs/specs/v0.5-install-level-shared-themes.md`.
 
   Build order is risk-first. Subsystem 1 (the editor) is **spiked before
   any binding rule is revised** — "a WYSIWYG editor that round-trips to

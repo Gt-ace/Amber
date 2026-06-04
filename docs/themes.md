@@ -2,10 +2,10 @@
 
 A theme is how an Amber space looks. This document is the reference and a
 guided tour of the two themes that define Amber's theme contract —
-[`amber-default`](../spaces/avp-software/themes/amber-default/) and
-[`amber-editorial`](../spaces/avp-software/themes/amber-editorial/) — read as
+[`amber-default`](../apps/web/themes/amber-default/) and
+[`amber-editorial`](../apps/web/themes/amber-editorial/) — read as
 the spec. A third theme,
-[`amber-brand`](../spaces/avp-software/themes/amber-brand/), also ships — it
+[`amber-brand`](../apps/web/themes/amber-brand/), also ships — it
 dresses Amber's own landing page and exercises the optional extensions
 (self-hosted webfonts, a progressive-enhancement `theme.js`) — but the two
 above are what the contract is proven against. Anything not proven by one of
@@ -17,9 +17,15 @@ own theme. It assumes nothing about the Amber source.
 ## What a theme is
 
 A directory of CSS and HTML templates that decides how a space's content is
-presented. Themes live per-space under `spaces/<space>/themes/<name>/`. Each
-space picks its theme via its own `space.toml`, with fallbacks to the
-install-level `amber.toml`, then `amber-default`, then a built-in floor.
+presented. Amber ships three built-in **shared** themes (`amber-default`,
+`amber-editorial`, `amber-brand`) that are available to every space out of the
+box — no per-space copies. A space may additionally ship its own
+`<space>/themes/<name>/` to add a private theme or override a shared one of the
+same name (per-space wins). Each space picks its theme via its own `space.toml`,
+with fallbacks to the install-level `amber.toml`, then `amber-default`, then a
+built-in floor. Shared themes live with the app at `apps/web/themes/` and are
+addressed at runtime via `AMBER_BUNDLED_THEMES_DIR` (the Docker image carries
+them in `build/themes/`).
 
 Themes are vanilla CSS and HTML. No build step, no framework. A theme *may*
 ship one optional `theme.js` purely for progressive-enhancement motion — the
@@ -560,6 +566,12 @@ Resolution order, per space:
 3. `amber-default` if discovered.
 4. A built-in unstyled floor.
 
+The three `amber-*` themes are **shared/app-bundled** — they are pickable from
+any space without copying files. To override one for a single space, ship a
+`<space>/themes/<name>/` of the same name; the per-space copy wins for that
+space (templates and assets alike). Resolution resolves names against the
+*effective* set (shared ∪ this space's `themes/`, per-space winning).
+
 Changes to `space.toml` are hot-reloaded — save and refresh.
 Changes to `amber.toml` require a server restart. Theme directories
 themselves are discovered once at cold start; adding a new theme
@@ -577,13 +589,13 @@ diverge on every value and on the typographic decisions.
 laid out in the same four sections (color, type, space, motion) in the
 same order. Compare them side by side:
 
-- [`amber-default/theme.css`](../spaces/avp-software/themes/amber-default/theme.css) lines 17–61.
-- [`amber-editorial/theme.css`](../spaces/avp-software/themes/amber-editorial/theme.css) lines 29–84. The trailing `--ed-rail-width` is the theme-local exception — note the comment explaining why it isn't `--amber-*`.
+- [`amber-default/theme.css`](../apps/web/themes/amber-default/theme.css) lines 17–61.
+- [`amber-editorial/theme.css`](../apps/web/themes/amber-editorial/theme.css) lines 29–84. The trailing `--ed-rail-width` is the theme-local exception — note the comment explaining why it isn't `--amber-*`.
 
 **The dark blocks.** Both immediately after the `:root` block:
 
-- [`amber-default/theme.css`](../spaces/avp-software/themes/amber-default/theme.css) lines 63–77.
-- [`amber-editorial/theme.css`](../spaces/avp-software/themes/amber-editorial/theme.css) lines 86–100.
+- [`amber-default/theme.css`](../apps/web/themes/amber-default/theme.css) lines 63–77.
+- [`amber-editorial/theme.css`](../apps/web/themes/amber-editorial/theme.css) lines 86–100.
 
 The eight tokens line up one-for-one in both. That's the contract.
 
@@ -591,39 +603,39 @@ The eight tokens line up one-for-one in both. That's the contract.
 markup is the same; the layout (centered column vs. sidebar rail) is
 entirely a stylesheet decision. Compare:
 
-- [`amber-default/chrome.html`](../spaces/avp-software/themes/amber-default/chrome.html) — the markup.
-- [`amber-default/theme.css`](../spaces/avp-software/themes/amber-default/theme.css) lines 109–156 — the centered-column treatment.
-- [`amber-editorial/theme.css`](../spaces/avp-software/themes/amber-editorial/theme.css) lines 125–207 — the sidebar-rail treatment, plus the
+- [`amber-default/chrome.html`](../apps/web/themes/amber-default/chrome.html) — the markup.
+- [`amber-default/theme.css`](../apps/web/themes/amber-default/theme.css) lines 109–156 — the centered-column treatment.
+- [`amber-editorial/theme.css`](../apps/web/themes/amber-editorial/theme.css) lines 125–207 — the sidebar-rail treatment, plus the
   responsive collapse at the bottom of the file (lines 604–662).
 
 **The page template.** One small difference: the editorial template puts
 the date *above* the title; the default puts the title above the date.
 That's a template-level decision, not a stylesheet one.
 
-- [`amber-default/page.html`](../spaces/avp-software/themes/amber-default/page.html).
-- [`amber-editorial/page.html`](../spaces/avp-software/themes/amber-editorial/page.html).
+- [`amber-default/page.html`](../apps/web/themes/amber-default/page.html).
+- [`amber-editorial/page.html`](../apps/web/themes/amber-editorial/page.html).
 
 **The auto-index partial.** Same data, different markup choice (`<ul>`
 vs. `<ol>`), and very different visual treatment.
 
-- [`amber-default/partials/index.html`](../spaces/avp-software/themes/amber-default/partials/index.html).
-- [`amber-editorial/partials/index.html`](../spaces/avp-software/themes/amber-editorial/partials/index.html).
+- [`amber-default/partials/index.html`](../apps/web/themes/amber-default/partials/index.html).
+- [`amber-editorial/partials/index.html`](../apps/web/themes/amber-editorial/partials/index.html).
 - The editorial number-counter treatment lives in
-  [`amber-editorial/theme.css`](../spaces/avp-software/themes/amber-editorial/theme.css) lines 432–487 — CSS counters
+  [`amber-editorial/theme.css`](../apps/web/themes/amber-editorial/theme.css) lines 432–487 — CSS counters
   on the list element, no markup change needed.
 
 **The error template.** `amber-default` keeps it minimal; `amber-editorial`
 adds a small `.error-page` wrapper so it can be styled distinctly.
 
-- [`amber-default/error.html`](../spaces/avp-software/themes/amber-default/error.html).
-- [`amber-editorial/error.html`](../spaces/avp-software/themes/amber-editorial/error.html).
+- [`amber-default/error.html`](../apps/web/themes/amber-default/error.html).
+- [`amber-editorial/error.html`](../apps/web/themes/amber-editorial/error.html).
 
 **Entrance animation.** Both themes ship a single one-off entrance and
 nothing else. Same shape: a `prefers-reduced-motion: no-preference` guard,
 one keyframe, applied to the article header and body with a small delay.
 
-- [`amber-default/theme.css`](../spaces/avp-software/themes/amber-default/theme.css) lines 407–427.
-- [`amber-editorial/theme.css`](../spaces/avp-software/themes/amber-editorial/theme.css) lines 565–600 — adds the cobalt rule draw-in.
+- [`amber-default/theme.css`](../apps/web/themes/amber-default/theme.css) lines 407–427.
+- [`amber-editorial/theme.css`](../apps/web/themes/amber-editorial/theme.css) lines 565–600 — adds the cobalt rule draw-in.
 
 If you want a starting point for your own theme, copy `amber-default`'s
 directory wholesale, rename it, and start changing values.
