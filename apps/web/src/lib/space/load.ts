@@ -36,9 +36,10 @@ import {
 	type NavEntry,
 	type Page,
 	type PageFrontmatter,
-	type Space
+	type Space,
+	type Theme
 } from '$lib/types/schema';
-import { discoverThemes, resolveActiveTheme } from './themes.ts';
+import { discoverThemes, resolveActiveTheme, effectiveThemes } from './themes.ts';
 import { readSpaceConfig } from './config.ts';
 import { validateAutoIndex } from './auto-index.ts';
 
@@ -114,7 +115,10 @@ export function coerceDate(input: unknown): { value: string } | { error: string 
 	};
 }
 
-export function load(spacePath: string): { space: Space; warnings: LoadWarning[] } {
+export function load(
+	spacePath: string,
+	sharedThemes: Map<string, Theme> = new Map()
+): { space: Space; warnings: LoadWarning[] } {
 	const root = resolve(spacePath);
 	const warnings: LoadWarning[] = [];
 
@@ -134,7 +138,7 @@ export function load(spacePath: string): { space: Space; warnings: LoadWarning[]
 	}
 	mergeFrontmatterRedirects(pages, redirects, 'manifest');
 
-	const themes = discoverThemes(root, log);
+	const themes = effectiveThemes(sharedThemes, discoverThemes(root, log));
 
 	const { config: spaceConfig, warnings: spaceConfigWarnings } = readSpaceConfig(root);
 	for (const w of spaceConfigWarnings) warnings.push(w);

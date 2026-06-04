@@ -27,7 +27,7 @@ import {
 	normalizeRelativePath,
 	LoadError
 } from './load.ts';
-import { discoverThemes, resolveActiveTheme } from './themes.ts';
+import { discoverThemes, resolveActiveTheme, effectiveThemes } from './themes.ts';
 import { readSpaceConfig } from './config.ts';
 import { SpaceCache } from './cache.ts';
 import { bodyHash } from '$lib/render/cache';
@@ -144,11 +144,12 @@ export class Space implements SpaceData {
 	 */
 	static load(
 		spacePath: string,
-		options?: { cache?: boolean }
+		options?: { cache?: boolean; sharedThemes?: Map<string, Theme> }
 	): { space: Space; warnings: LoadWarning[] } {
 		const useCache = options?.cache !== false;
+		const sharedThemes = options?.sharedThemes ?? new Map<string, Theme>();
 		if (!useCache) {
-			const result = pureLoad(spacePath);
+			const result = pureLoad(spacePath, sharedThemes);
 			const space = new Space(result.space, null);
 			return { space, warnings: space.warnings };
 		}
@@ -160,7 +161,10 @@ export class Space implements SpaceData {
 			// themes fresh and re-read space.toml on every hydration. Resolver
 			// warnings are merged into the hydrated warnings array so the
 			// `Space` constructor can bucket them like cold-load warnings.
-			hydrated.space.themes = discoverThemes(hydrated.space.root, log);
+			hydrated.space.themes = effectiveThemes(
+				sharedThemes,
+				discoverThemes(hydrated.space.root, log)
+			);
 			const { config: spaceConfig, warnings: configWarnings } = readSpaceConfig(
 				hydrated.space.root
 			);
@@ -183,7 +187,7 @@ export class Space implements SpaceData {
 			return { space, warnings: space.warnings };
 		}
 
-		const result = pureLoad(spacePath);
+		const result = pureLoad(spacePath, sharedThemes);
 		const space = new Space(result.space, cache);
 		// Persist a fresh cache reflecting the in-memory truth. `writeAll`
 		// also detects body-hash-stable renames against the previous snapshot

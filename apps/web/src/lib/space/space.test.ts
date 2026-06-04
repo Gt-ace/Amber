@@ -8,6 +8,7 @@ import { Database } from 'bun:sqlite';
 import { Space } from './space.ts';
 import { SpaceCache } from './cache.ts';
 import { bodyHash } from '$lib/render/cache';
+import { effectiveThemes } from './themes.ts';
 
 const FIXTURE = fileURLToPath(new URL('../../../fixtures/example-space/', import.meta.url));
 
@@ -420,5 +421,41 @@ describe('Space.apply space_config_change', () => {
 		writeFileSync(join(root, 'space.toml'), 'this = = not toml');
 		space.apply({ type: 'space_config_change' });
 		expect(space.warnings.some((w) => w.code === 'space_config_invalid')).toBe(true);
+	});
+});
+
+describe('Space.load with shared themes', () => {
+	test('merges shared into space.themes; per-space wins on collision', () => {
+		// Build a scratch space dir with a per-space `amber-default` theme.
+		const root = mkdtempSync(join(tmpdir(), 'amber-space-shared-'));
+		writeFileSync(join(root, 'amber.toml'), 'amber_version = "0.2"\n');
+		writeFileSync(join(root, 'index.md'), '# hi\n');
+		const td = join(root, 'themes', 'amber-default');
+		mkdirSync(td, { recursive: true });
+		writeFileSync(join(td, 'theme.toml'), 'name = "Local default"\n');
+		writeFileSync(join(td, 'chrome.html'), '<header></header><!--amber:content--><footer></footer>');
+		writeFileSync(join(td, 'page.html'), '<article>{{{html}}}</article>');
+		writeFileSync(join(td, 'error.html'), '<p>{{status}}</p>');
+
+		// A shared set carrying amber-default (collides) and amber-brand (unique).
+		const shared = effectiveThemes(
+			new Map(),
+			new Map([
+				['amber-default', { name: 'amber-default', path: '/app/themes/amber-default', assetBase: '/themes/amber-default', manifest: { name: 'Shared default' }, hasScript: false }],
+				['amber-brand', { name: 'amber-brand', path: '/app/themes/amber-brand', assetBase: '/themes/amber-brand', manifest: {}, hasScript: false }]
+			])
+		);
+
+		const { space } = Space.load(root, { cache: false, sharedThemes: shared });
+		try {
+			expect([...space.themes.keys()].sort()).toEqual(['amber-brand', 'amber-default']);
+			// per-space wins: amber-default points at the space's own dir
+			expect(space.themes.get('amber-default')!.path).toBe(td);
+			// shared-only survives
+			expect(space.themes.get('amber-brand')!.path).toBe('/app/themes/amber-brand');
+		} finally {
+			space.close();
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 });

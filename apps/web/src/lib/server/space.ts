@@ -35,6 +35,7 @@ import { getResolverIndex, setResolverIndex } from './resolver-index-holder';
 import { setReroutePrefixes } from '$lib/reroute-prefixes';
 import { setDefaultSlug, computeDefaultSlug } from './default-space';
 import type { LoadWarning } from '$lib/types/schema';
+import { getSharedThemes } from './shared-themes';
 
 const log = logger.child({ subsystem: 'server' });
 // Second module-level logger: `addSpace()` participates in the space-create
@@ -55,7 +56,7 @@ let shutdownRegistered = false;
 
 function loadEntry(spacePath: string): Entry {
 	log.info({ path: spacePath }, 'space singleton init');
-	const { space, warnings } = Space.load(spacePath);
+	const { space, warnings } = Space.load(spacePath, { sharedThemes: getSharedThemes() });
 
 	const watcher = new SpaceWatcher(space);
 	log.info({ root: space.root }, 'watcher started');
