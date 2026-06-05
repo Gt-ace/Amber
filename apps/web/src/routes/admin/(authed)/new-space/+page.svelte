@@ -49,7 +49,7 @@
 			case 'host_invalid':
 				return 'Bare host only, no scheme or port. Example: notes.example.com.';
 			case 'host_is_admin':
-				return 'This is the admin host. The admin/auth endpoints always win here — pick a different host.';
+				return 'This is the admin host. The admin/auth endpoints always win here. Pick a different host.';
 			case 'host_taken':
 				return `"${host}" is already used by another space.`;
 			case 'prefix_invalid':
@@ -68,7 +68,7 @@
 </script>
 
 <svelte:head>
-	<title>New space — Amber admin</title>
+	<title>New space · Amber admin</title>
 </svelte:head>
 
 {#snippet alertIcon()}
@@ -85,7 +85,7 @@
 		<p class="amber-page-head__lede">
 			Creates a directory under your spaces folder, scaffolds <code>amber.toml</code> and
 			<code>index.md</code>, and (if you pick host or path routing) writes
-			<code>space.toml</code>. The new space is hot-added — no restart.
+			<code>space.toml</code>. The new space is hot-added, no restart needed.
 		</p>
 	</div>
 </header>

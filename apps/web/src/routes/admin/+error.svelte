@@ -4,7 +4,7 @@
 </script>
 
 <svelte:head>
-	<title>{page.status} — Amber admin</title>
+	<title>{page.status} · Amber admin</title>
 </svelte:head>
 
 <h1>{page.status}</h1>

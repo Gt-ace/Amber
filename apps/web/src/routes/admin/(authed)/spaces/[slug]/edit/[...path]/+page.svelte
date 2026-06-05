@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { resolve } from '$app/paths';
 	import type { PageData } from './$types';
-	// Crepe's CSS is static (Vite extracts it — no JS executes); the Crepe
+	// Crepe's CSS is static (Vite extracts it, no JS executes); the Crepe
 	// runtime itself is dynamic-imported in onMount so it never enters SSR.
 	import '@milkdown/crepe/theme/common/style.css';
 	import '@milkdown/crepe/theme/frame.css';
@@ -13,12 +13,12 @@
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let crepe: any = null;
 
-	// `hash` is mutated by save() but never read in the template — a plain
+	// `hash` is mutated by save() but never read in the template, so a plain
 	// `let` is sufficient and avoids a needless reactive binding.
 	// svelte-ignore state_referenced_locally
 	let hash = data.hash;
 	// These three seed local form state from the server-loaded values and then
-	// diverge as the user edits — a one-time snapshot is exactly the intent, so
+	// diverge as the user edits; a one-time snapshot is exactly the intent, so
 	// the state_referenced_locally advisory is suppressed deliberately.
 	// svelte-ignore state_referenced_locally
 	let fmTitle = $state(data.frontmatter.title);
@@ -36,7 +36,7 @@
 	}
 
 	onMount(async () => {
-		// Client-only, dynamic import — Crepe (ProseMirror + Vue) stays out of
+		// Client-only, dynamic import: Crepe (ProseMirror + Vue) stays out of
 		// the SSR bundle and out of the public render path entirely (spec §9).
 		const { Crepe } = await import('@milkdown/crepe');
 		crepe = new Crepe({ root: editorEl, defaultValue: data.body });
@@ -95,7 +95,7 @@
 </script>
 
 <svelte:head>
-	<title>Editing {data.url} — Amber admin</title>
+	<title>Editing {data.url} · Amber admin</title>
 </svelte:head>
 
 <p class="back">
@@ -170,8 +170,8 @@
 					/>
 				</svg>
 				<span>
-					This page's frontmatter YAML cannot be parsed, so the panel is read-only. Fix the YAML
-					directly in the file to re-enable it. A save here leaves the frontmatter block untouched.
+					Frontmatter YAML can't be parsed, so this panel is read-only. Fix it in the file to
+					re-enable editing.
 				</span>
 			</p>
 		{/if}
@@ -221,16 +221,23 @@
 		gap: 0.5rem;
 	}
 
+	/* The editor needs far more room than the default admin column. Widen the
+	   whole edit page (header, notices, grid, save row together) only when the
+	   edit grid is present, so every other admin page keeps the narrow column. */
+	:global(.amber-admin-main:has(.amber-edit-grid)) {
+		max-width: 88rem;
+	}
+
 	.amber-edit-grid {
 		display: grid;
-		grid-template-columns: 1fr 18rem;
+		grid-template-columns: 1fr 20rem;
 		gap: 1.5rem;
 		align-items: start;
 	}
 	.amber-body {
 		border: 1px solid var(--amber-rule);
 		border-radius: 4px;
-		min-height: 24rem;
+		min-height: min(72vh, 44rem);
 	}
 	.amber-panel .amber-field {
 		margin-bottom: 0.75rem;
@@ -281,7 +288,7 @@
 	 * surface). Follow the OS the same way the admin tokens do: when the OS
 	 * prefers dark, re-declare the frame theme's variables so the editor matches
 	 * the dark admin chrome instead of glaring white. Values copied verbatim from
-	 * @milkdown/crepe/theme/frame-dark.css (crepe 7.21.1) — re-sync on upgrade.
+	 * @milkdown/crepe/theme/frame-dark.css (crepe 7.21.1); re-sync on upgrade.
 	 */
 	@media (prefers-color-scheme: dark) {
 		:global(.milkdown) {

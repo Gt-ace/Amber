@@ -5,7 +5,7 @@
 </script>
 
 <svelte:head>
-	<title>New page — Amber admin</title>
+	<title>New page · Amber admin</title>
 </svelte:head>
 
 <p class="back">

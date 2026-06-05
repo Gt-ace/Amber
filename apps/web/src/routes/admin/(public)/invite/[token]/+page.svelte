@@ -84,7 +84,7 @@
 	{:else if state.kind === 'install-admin'}
 		<section class="amber-panel">
 			<p>
-				You're the install-admin — you already have access to every space, including
+				You're the install-admin, so you already have access to every space, including
 				<strong>{state.invite.spaceTitle ?? state.invite.slug}</strong>. This invite is intact.
 			</p>
 			<form method="POST" action="?/revokeIfAdmin" use:enhance>

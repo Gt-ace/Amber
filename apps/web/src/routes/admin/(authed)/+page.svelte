@@ -5,7 +5,7 @@
 </script>
 
 <svelte:head>
-	<title>Spaces — Amber admin</title>
+	<title>Spaces · Amber admin</title>
 </svelte:head>
 
 <header class="amber-page-head">

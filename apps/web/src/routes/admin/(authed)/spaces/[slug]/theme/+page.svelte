@@ -19,12 +19,12 @@
 
 	function renderingLine(): string {
 		if (data.themeSource === 'space-toml') {
-			return `Currently rendering: ${data.resolvedThemeName} — this space's space.toml.`;
+			return `Currently rendering: ${data.resolvedThemeName}, from this space's space.toml.`;
 		}
 		if (data.staleThemeName) {
-			return `Currently rendering: ${data.resolvedThemeName} — fell back after space.toml named "${data.staleThemeName}", which isn't a discovered theme.`;
+			return `Currently rendering: ${data.resolvedThemeName}. Fell back after space.toml named "${data.staleThemeName}", which isn't a discovered theme.`;
 		}
-		return `Currently rendering: ${data.resolvedThemeName} — inherited install default.`;
+		return `Currently rendering: ${data.resolvedThemeName}, inherited install default.`;
 	}
 </script>
 
@@ -46,7 +46,7 @@
 		<p class="amber-page-head__lede">
 			Choose how this space looks. Themes come from Amber's built-in shared set plus any in this
 			space's <code>themes/</code> directory; your pick is saved to <code>space.toml</code> and hot-reloads
-			— no restart.
+			with no restart.
 		</p>
 	</div>
 </header>
@@ -114,7 +114,7 @@
 	</p>
 	{#if !data.publicUrl}
 		<p class="hint">
-			This space has no public URL yet — set <code>host</code> or <code>prefix</code> in
+			This space has no public URL yet. Set <code>host</code> or <code>prefix</code> in
 			<code>space.toml</code> to make it reachable.
 		</p>
 	{/if}
