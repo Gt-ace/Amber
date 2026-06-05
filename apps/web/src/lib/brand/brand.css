@@ -101,3 +101,22 @@
 	color: var(--amber-ink);
 	text-wrap: balance;
 }
+
+/*
+ * Base link colour for the admin surface. Component classes (.amber-btn*,
+ * .amber-list__link, …) carry their own colour at class specificity (0,1,0)
+ * and keep winning over this bare element rule (0,0,1); this only catches the
+ * plain, un-classed anchors — admin nav (Users / Account), "← All pages",
+ * "view your site ↗", inline links in notices — which otherwise fall to the
+ * user-agent defaults and read as UA visited-purple on the dark-mode paper.
+ * An author `color` on `a` beats the UA `:visited` rule by cascade origin, so
+ * no explicit `:visited` is needed. Scoped to the admin surface only because
+ * brand.css loads on routes/admin/+layout.svelte and nowhere else.
+ */
+a {
+	color: var(--amber-accent);
+}
+
+a:hover {
+	color: var(--amber-accent-hover);
+}

@@ -165,6 +165,19 @@ main {
 	flex: 1 0 auto;
 }
 
+/* Base link colour for any anchor not covered by a more specific chrome rule
+   below — notably error.html's un-classed "Back to home" link, which would
+   otherwise fall to the user-agent visited-purple, unreadable on the dark-mode
+   paper. The classed rules (.site-nav a, .site-footer a, .article-body a,
+   .site-title) all out-specify this and keep their intended colours. */
+a {
+	color: var(--amber-accent);
+}
+
+a:hover {
+	color: var(--amber-accent-hover);
+}
+
 /* ── Article ───────────────────────────────────────────────────────────── */
 
 .article-header {
