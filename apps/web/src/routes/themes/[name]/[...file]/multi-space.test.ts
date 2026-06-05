@@ -43,6 +43,7 @@ afterAll(() => {
 const call = (name: string, file: string, root: string) =>
 	GET({
 		params: { name, file },
+		url: new URL(`http://localhost/themes/${name}/${file}`),
 		locals: { space: { root } }
 	} as unknown as Parameters<typeof GET>[0]);
 

@@ -57,13 +57,13 @@ const stub = (mountPrefix: string) =>
 	}) as unknown as Parameters<typeof layoutLoad>[0];
 
 describe('root +layout.server load — mountPrefix and theme assets', () => {
-	test('no prefix → themeCssHref is rooted at /themes', () => {
+	test('no prefix → themeCssHref is rooted at /themes and carries a cache-busting ?v=', () => {
 		const out = layoutLoad(stub('')) as { themeCssHref: string | null };
-		expect(out.themeCssHref).toBe('/themes/amber-default/theme.css');
+		expect(out.themeCssHref).toMatch(/^\/themes\/amber-default\/theme\.css\?v=[^&]+$/);
 	});
 
 	test('prefix → themeCssHref carries the prefix so the asset request stays in this space', () => {
 		const out = layoutLoad(stub('/scratch')) as { themeCssHref: string | null };
-		expect(out.themeCssHref).toBe('/scratch/themes/amber-default/theme.css');
+		expect(out.themeCssHref).toMatch(/^\/scratch\/themes\/amber-default\/theme\.css\?v=[^&]+$/);
 	});
 });

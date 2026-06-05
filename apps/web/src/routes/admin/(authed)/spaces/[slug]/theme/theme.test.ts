@@ -186,6 +186,21 @@ describe('/admin/spaces/[slug]/theme load', () => {
 		expect(data.themes.length).toBe(2);
 	});
 
+	test('each theme entry carries a live preview document with its versioned stylesheet', async () => {
+		const { load } = await import('./+page.server.ts');
+		const data = (await load(await loadEvent({ id: 'owner', isInstallAdmin: false }))) as LoadData;
+		for (const t of data.themes as Array<{ name: string; previewHtml: string }>) {
+			expect(typeof t.previewHtml).toBe('string');
+			expect(t.previewHtml.toLowerCase()).toContain('<!doctype html>');
+			// links its own theme.css, cache-busted with a ?v= token
+			expect(t.previewHtml).toMatch(
+				new RegExp(`<link rel="stylesheet" href="/themes/${t.name}/theme\\.css\\?v=[^"]+"`)
+			);
+			// a true render of the sample content (markdown → HTML), not just metadata
+			expect(t.previewHtml).toContain('A subheading');
+		}
+	});
+
 	test('stale declared theme → staleThemeName populated, source inherited', async () => {
 		writeFileSync(join(workDir, 'space.toml'), 'theme = "ghost"\n');
 		const { load } = await import('./+page.server.ts');

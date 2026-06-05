@@ -28,7 +28,7 @@
 
 import { getOrRenderHtml } from '$lib/render/cache';
 import { renderTemplate, CONTENT_SLOT } from '$lib/render/template';
-import { readTemplate } from '$lib/space/themes';
+import { readTemplate, themeAssetVersion } from '$lib/space/themes';
 import type { LayoutServerLoad } from './$types';
 
 // The /admin authoring surface renders inside its own minimal chrome
@@ -86,9 +86,17 @@ export const load: LayoutServerLoad = ({ url, locals }) => {
 	// flows through the same reroute hook page paths use, so the handler
 	// still receives `params.name`/`params.file` after the prefix is stripped.
 	const mountPrefix = locals.mountPrefix ?? '';
-	const themeCssHref = theme.assetBase ? `${mountPrefix}${theme.assetBase}/theme.css` : null;
+	// `?v=<mtime>` cache-busts the asset: theme files are served with a long
+	// cache lifetime at a name-stable URL, so without a version a browser keeps
+	// serving the previous bytes after a theme is edited (or the file a name
+	// points at changes) — the "wrong font/colours until a hard refresh" bug.
+	const themeCssHref = theme.assetBase
+		? `${mountPrefix}${theme.assetBase}/theme.css?v=${themeAssetVersion(theme, 'theme.css')}`
+		: null;
 	const themeJsHref =
-		theme.assetBase && theme.hasScript ? `${mountPrefix}${theme.assetBase}/theme.js` : null;
+		theme.assetBase && theme.hasScript
+			? `${mountPrefix}${theme.assetBase}/theme.js?v=${themeAssetVersion(theme, 'theme.js')}`
+			: null;
 
 	const notFoundPage = space.pages.get('/404');
 	const notFoundHtml =
