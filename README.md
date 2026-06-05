@@ -29,6 +29,24 @@ desktop compose file ships a placeholder `AMBER_AUTH_SECRET`; rotate it
 with `openssl rand -hex 32` before exposing this Amber to anyone (the
 self-hosting guide threads a real secret through production).
 
+## Developing from source
+
+To run the dev server from a clone instead of Docker you need
+[Bun](https://bun.sh):
+
+```
+cd apps/web
+bun install
+bun --bun run dev -- --port 3000 --host
+```
+
+The `--bun` flag is required — it forces Bun's runtime for server-side
+rendering so the `bun:sqlite` import resolves; plain `bun run dev` 500s every
+request. The server reads `apps/web/.env`: set `AMBER_SPACE_PATH` (a space
+directory), `AMBER_AUTH_SECRET` (`openssl rand -hex 32`), and
+`AMBER_PUBLIC_URL` (e.g. `http://localhost:3000`). `docker compose up` above
+remains the supported path for simply trying Amber.
+
 ## Status
 
 Current version: 0.5. Early development. A production instance runs at

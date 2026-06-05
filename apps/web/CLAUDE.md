@@ -15,6 +15,18 @@ bun run --cwd apps/web test:unit
 
 `bun --bun vitest --run` for a single non-watch run (what CI would use).
 
+## Dev server
+
+`bun --bun run dev` (from `apps/web/`; add `-- --port 3000 --host` to pick a
+port). The `--bun` flag is required for the **same reason as the test
+command**: Vite's SSR module evaluation otherwise delegates the `bun:sqlite`
+import in `lib/space/cache.ts` to Node's ESM loader, which can't resolve the
+`bun:` scheme — plain `bun run dev` 500s every request with
+`ERR_UNSUPPORTED_ESM_URL_SCHEME ... protocol 'bun:'`. The server reads
+`apps/web/.env` (Bun auto-loads it) and needs `AMBER_SPACE_PATH` (or
+`AMBER_SPACES_DIR`), `AMBER_AUTH_SECRET`, and `AMBER_PUBLIC_URL`; boot fails
+loudly without them.
+
 ## End-to-end smoke
 
 `src/**/*.e2e.test.ts` is a separate Vitest project (`e2e`) that builds the
