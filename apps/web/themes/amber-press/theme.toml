@@ -1,0 +1,10 @@
+name = "amber-press"
+version = "0.1.0"
+author = "Amber"
+description = "Brutalist Swiss-print theme — newsprint substrate, carbon ink, burnt-amber hazard accent."
+
+# theme-color meta. Mirrors --amber-bg light/dark from theme.css — declared
+# once here instead of duplicated in route code (the layout renders these).
+[theme_color]
+light = "#f3f1ea"
+dark = "#141210"

@@ -1,0 +1,504 @@
+/*
+ * amber-dusk — a soft, warm, rounded reading theme.
+ *
+ * Cozy dark-first long-form reading: a gentle amber accent on a warm
+ * plum-charcoal ground, one humanist sans voice across body / heading / chrome,
+ * rounded surfaces and generous spacing. A floating pill header, soft raised
+ * auto-index cards, a card-style blockquote.
+ *
+ * Vanilla CSS, no build step. Every value a second theme would plausibly want
+ * to change is an `--amber-*` custom property on :root; layout-only variables
+ * use the theme-local `--dusk-*` prefix (the `--ed-rail-width` precedent).
+ *
+ * Dark-first, contract-honest: unlike amber-default / amber-editorial (which
+ * are light-base), amber-dusk's `:root` holds the DARK palette — that is the
+ * theme's identity. The `@media (prefers-color-scheme: light)` block remaps the
+ * eight colour tokens (and the colour-derived `--dusk-surface-raised`) and
+ * nothing else; type, spacing, layout and motion are mode-agnostic. Which mode
+ * lives in `:root` is the only difference from the reference themes — the
+ * binding rule (only the eight colour tokens move between modes) is honoured.
+ */
+
+:root {
+	/* ── Color (dark base — the theme's identity) ───────────────────────── */
+	--amber-bg: #1c1a21; /* page background — warm plum-charcoal */
+	--amber-ink: #ece6e9; /* primary text — soft warm off-white */
+	--amber-ink-muted: #9b94a0; /* secondary text — dates, captions, chrome, footer */
+	--amber-accent: #e0a06a; /* links and ::marker accents — gentle warm amber */
+	--amber-accent-hover: #f0bb8c; /* link hover — a shade brighter */
+	--amber-rule: #2e2b35; /* hairlines — header/footer/article rules, borders */
+	--amber-surface-sunken: #25222b; /* recessed fill — code blocks, inline code */
+	--amber-selection-bg: rgba(224, 160, 106, 0.22); /* ::selection highlight — faint amber wash */
+
+	/* Theme-local: raised card surface (sits above the page ground). Not a
+	   contract token, so it carries the --dusk-* prefix. Colour-derived, so it
+	   is remapped alongside the eight colour tokens in the light block below. */
+	--dusk-surface-raised: #232029; /* soft raised fill — header pill, auto-index cards */
+
+	/* ── Type (one voice — humanist sans, soft and round) ───────────────── */
+	--amber-font-body:
+		'Hanken Grotesk', 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
+	--amber-font-heading: var(--amber-font-body); /* headings — same voice */
+	--amber-font-ui: var(--amber-font-body); /* chrome (nav, dates, footer) — same voice */
+	--amber-font-mono:
+		ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Menlo, Consolas, monospace; /* code only */
+
+	--amber-text-base: 1.14rem; /* root body size */
+	--amber-text-sm: 0.82rem; /* small chrome text — nav, date, footer */
+	--amber-text-h1: 2.3rem; /* article title */
+	--amber-text-h2: 1.4rem; /* section heading */
+	--amber-text-h3: 1.12rem; /* sub-heading */
+
+	--amber-leading-body: 1.78; /* body line-height — generous, for reading */
+	--amber-leading-tight: 1.18; /* headings line-height */
+	--amber-tracking-ui: 0.02em; /* letter-spacing for chrome (no uppercase here) */
+
+	/* ── Space & layout ─────────────────────────────────────────────────── */
+	--amber-measure: 36rem; /* content column max-width — ~65–70 chars */
+	--amber-pad-page: 1.6rem; /* horizontal page padding */
+	--amber-gap-flow: 1.4rem; /* vertical rhythm between flowing blocks (p, ul, …) */
+	--amber-gap-section: 3rem; /* extra space above a section heading (h2) */
+	--amber-gap-chrome: 1.2rem; /* gap between header/footer chrome and the content */
+
+	/* ── Shape & motion ─────────────────────────────────────────────────── */
+	--amber-radius: 16px; /* corner radius — rounded surfaces, the dusk signature */
+	--amber-ease: cubic-bezier(0.23, 1, 0.32, 1); /* strong ease-out for entrances/hovers */
+	--amber-duration: 360ms; /* page-entrance duration */
+}
+
+@media (prefers-color-scheme: light) {
+	/* amber-dusk is dark-first, so the light variant is the remap. Only the
+	   eight colour tokens (and the colour-derived --dusk-surface-raised) move;
+	   everything else is mode-agnostic. A soft, warm light reading surface. */
+	:root {
+		--amber-bg: #f6f2ee;
+		--amber-ink: #2a2530;
+		--amber-ink-muted: #766e7a;
+		--amber-accent: #b5703a;
+		--amber-accent-hover: #965a2b;
+		--amber-rule: #e6ddd6;
+		--amber-surface-sunken: #efe7e0;
+		--amber-selection-bg: rgba(181, 112, 58, 0.18);
+
+		--dusk-surface-raised: #fdfaf7;
+	}
+}
+
+/* ───────────────────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	font-family: var(--amber-font-body);
+	font-size: var(--amber-text-base);
+	line-height: var(--amber-leading-body);
+	color: var(--amber-ink);
+	background: var(--amber-bg);
+	-webkit-text-size-adjust: 100%;
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+}
+
+body {
+	margin: 0;
+	min-height: 100dvh;
+	display: flex;
+	flex-direction: column;
+}
+
+::selection {
+	background: var(--amber-selection-bg);
+}
+
+/* ── Page chrome: header — a floating soft pill ────────────────────────── */
+
+.site-header {
+	width: 100%;
+	/* The pill runs a little wider than the reading column for an airy frame. */
+	max-width: calc(var(--amber-measure) + 6rem);
+	margin: var(--amber-gap-chrome) auto 0;
+	padding: 0.7rem 0.8rem 0.7rem 1.4rem;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.75rem 1.5rem;
+	background: var(--dusk-surface-raised);
+	border: 1px solid var(--amber-rule);
+	border-radius: 999px;
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+}
+
+.site-header .site-title {
+	margin-right: auto;
+	color: var(--amber-ink);
+	text-decoration: none;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	transition: color 150ms var(--amber-ease);
+}
+
+/* Decorative glyph — pure CSS on the shared chrome markup. */
+.site-header .site-title::before {
+	content: '◗';
+	color: var(--amber-accent);
+	padding-right: 0.5em;
+}
+
+.site-header .site-title:hover {
+	color: var(--amber-accent);
+}
+
+.site-nav ul {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+/* Pill-shaped hover targets. */
+.site-nav a {
+	color: var(--amber-ink-muted);
+	text-decoration: none;
+	padding: 0.4rem 0.9rem;
+	border-radius: 999px;
+	transition:
+		color 220ms var(--amber-ease),
+		background 220ms var(--amber-ease);
+}
+
+.site-nav a:hover {
+	color: var(--amber-ink);
+	background: var(--amber-surface-sunken);
+}
+
+/* ── Content column ────────────────────────────────────────────────────── */
+
+main {
+	width: 100%;
+	max-width: var(--amber-measure);
+	margin: var(--amber-gap-section) auto;
+	padding: 0 var(--amber-pad-page);
+	flex: 1 0 auto;
+}
+
+/* ── Article ───────────────────────────────────────────────────────────── */
+
+.article-header {
+	margin-bottom: var(--amber-gap-section);
+}
+
+.article-title {
+	font-family: var(--amber-font-heading);
+	font-size: var(--amber-text-h1);
+	line-height: var(--amber-leading-tight);
+	font-weight: 700;
+	margin: 0 0 0.7rem;
+	letter-spacing: -0.02em;
+}
+
+.article-date {
+	margin: 0;
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	color: var(--amber-ink-muted);
+}
+
+/* The markdown body. All selectors are scoped under .article-body because the
+   HTML here is injected via {@html} — these styles can't ride on Svelte's
+   component scoping, so the stylesheet is global and we scope by hand. */
+
+.article-body > :first-child {
+	margin-top: 0;
+}
+
+.article-body p,
+.article-body ul,
+.article-body ol,
+.article-body blockquote,
+.article-body pre,
+.article-body figure {
+	margin: 0 0 var(--amber-gap-flow);
+}
+
+.article-body h2,
+.article-body h3 {
+	font-family: var(--amber-font-heading);
+	line-height: var(--amber-leading-tight);
+	font-weight: 700;
+	letter-spacing: -0.01em;
+	margin: var(--amber-gap-section) 0 0.6rem;
+}
+
+.article-body h2 {
+	font-size: var(--amber-text-h2);
+}
+
+.article-body h3 {
+	font-size: var(--amber-text-h3);
+}
+
+.article-body a {
+	color: var(--amber-accent);
+	text-decoration: underline;
+	text-decoration-thickness: 1px;
+	text-decoration-color: color-mix(in srgb, var(--amber-accent) 40%, transparent);
+	text-underline-offset: 3px;
+	transition:
+		color 150ms var(--amber-ease),
+		text-decoration-color 150ms var(--amber-ease);
+}
+
+.article-body a:hover {
+	color: var(--amber-accent-hover);
+	text-decoration-color: currentColor;
+}
+
+.article-body strong {
+	font-weight: 700;
+}
+
+.article-body em {
+	font-style: italic;
+}
+
+.article-body ul,
+.article-body ol {
+	padding-left: 1.4rem;
+}
+
+.article-body li {
+	margin-bottom: 0.3rem;
+}
+
+.article-body li::marker {
+	color: var(--amber-accent);
+}
+
+/* Card-style blockquote — a rounded sunken surface with an accent rule. */
+.article-body blockquote {
+	padding: 1.2rem 1.5rem;
+	background: var(--amber-surface-sunken);
+	border-left: 3px solid var(--amber-accent);
+	border-radius: var(--amber-radius);
+	color: var(--amber-ink);
+	font-style: normal;
+}
+
+.article-body blockquote > :first-child {
+	margin-top: 0;
+}
+
+.article-body blockquote > :last-child {
+	margin-bottom: 0;
+}
+
+.article-body img {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	margin: var(--amber-gap-flow) auto;
+	border-radius: var(--amber-radius);
+	border: 1px solid var(--amber-rule);
+}
+
+.article-body code {
+	font-family: var(--amber-font-mono);
+	font-size: 0.86em;
+	background: var(--amber-surface-sunken);
+	padding: 0.12em 0.45em;
+	border-radius: 6px;
+}
+
+.article-body pre {
+	font-family: var(--amber-font-mono);
+	font-size: 0.9em;
+	line-height: 1.55;
+	background: var(--amber-surface-sunken);
+	border: 1px solid var(--amber-rule);
+	padding: 1.1rem 1.3rem;
+	border-radius: var(--amber-radius);
+	overflow-x: auto;
+}
+
+.article-body pre code {
+	background: transparent;
+	padding: 0;
+	border-radius: 0;
+	font-size: inherit;
+}
+
+.article-body hr {
+	border: none;
+	border-top: 1px solid var(--amber-rule);
+	width: 4rem;
+	margin: var(--amber-gap-section) auto;
+}
+
+/* ── Draft banner (dev-only) ───────────────────────────────────────────── */
+
+.draft-banner {
+	margin: 0 0 1.6rem;
+	padding: 0.7rem 1rem;
+	border: 1px solid var(--amber-accent);
+	border-radius: var(--amber-radius);
+	background: var(--amber-surface-sunken);
+	color: var(--amber-ink-muted);
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+}
+
+/* ── Page chrome: footer ───────────────────────────────────────────────── */
+
+.site-footer {
+	width: 100%;
+	max-width: var(--amber-measure);
+	margin: var(--amber-gap-section) auto 0;
+	padding: 1.6rem var(--amber-pad-page) 2.4rem;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem 1rem;
+	align-items: baseline;
+	border-top: 1px solid var(--amber-rule);
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	color: var(--amber-ink-muted);
+}
+
+.site-footer a {
+	margin-left: auto;
+	color: var(--amber-ink-muted);
+	text-decoration: none;
+	transition: color 150ms var(--amber-ease);
+}
+
+.site-footer a:hover {
+	color: var(--amber-accent);
+}
+
+/* ── Auto-index list — soft raised cards ───────────────────────────────── */
+
+.amber-auto-index {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 0.6rem;
+}
+
+.amber-auto-index-item {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	align-items: baseline;
+	gap: 0.35rem 1rem;
+	padding: 0.95rem 1.2rem;
+	background: var(--dusk-surface-raised);
+	border: 1px solid var(--amber-rule);
+	border-radius: var(--amber-radius);
+	transition:
+		transform 240ms var(--amber-ease),
+		border-color 240ms var(--amber-ease);
+}
+
+.amber-auto-index-item:hover {
+	transform: translateY(-2px);
+	border-color: var(--amber-accent);
+}
+
+.amber-auto-index-link {
+	color: var(--amber-ink);
+	text-decoration: none;
+	font-weight: 600;
+	transition: color 150ms var(--amber-ease);
+}
+
+.amber-auto-index-link:hover {
+	color: var(--amber-accent);
+}
+
+.amber-auto-index-date {
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	color: var(--amber-ink-muted);
+	white-space: nowrap;
+}
+
+/* ── Error / 404 page ──────────────────────────────────────────────────── */
+
+.error-page {
+	padding: var(--amber-gap-section) 0;
+}
+
+.error-code {
+	margin: 0 0 0.4rem;
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	color: var(--amber-accent);
+	font-weight: 600;
+}
+
+.error-title {
+	font-family: var(--amber-font-heading);
+	font-size: var(--amber-text-h1);
+	line-height: var(--amber-leading-tight);
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	margin: 0 0 var(--amber-gap-flow);
+}
+
+.error-page p {
+	margin: 0 0 var(--amber-gap-flow);
+}
+
+.error-back a {
+	color: var(--amber-accent);
+	text-decoration: underline;
+	text-decoration-thickness: 1px;
+	text-decoration-color: color-mix(in srgb, var(--amber-accent) 40%, transparent);
+	text-underline-offset: 3px;
+	transition:
+		color 150ms var(--amber-ease),
+		text-decoration-color 150ms var(--amber-ease);
+}
+
+.error-back a:hover {
+	color: var(--amber-accent-hover);
+	text-decoration-color: currentColor;
+}
+
+/* ── Entrance: one quiet orchestrated moment, then nothing ─────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+	.article-header,
+	.article-body {
+		animation: amber-enter var(--amber-duration) var(--amber-ease) both;
+	}
+
+	.article-body {
+		animation-delay: 70ms;
+	}
+
+	@keyframes amber-enter {
+		from {
+			opacity: 0;
+			transform: translateY(8px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+}

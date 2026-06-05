@@ -1,0 +1,11 @@
+name = "amber-dusk"
+version = "0.1.0"
+author = "Amber"
+description = "Soft, warm, rounded dark-first reading theme — gentle amber on plum-charcoal."
+
+# theme-color meta. Mirrors --amber-bg in each mode from theme.css. amber-dusk
+# is dark-first: the base :root holds the dark value, the light @media remap the
+# light one.
+[theme_color]
+light = "#f6f2ee"
+dark = "#1c1a21"
