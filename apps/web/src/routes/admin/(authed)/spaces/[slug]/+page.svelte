@@ -28,6 +28,17 @@
 	</p>
 {/if}
 
+{#if data.canManageMembers}
+	<p class="meta">
+		Members
+		<a
+			class="amber-btn amber-btn--ghost amber-btn--sm"
+			href={resolve(`/admin/spaces/${data.slug}/members` as '/admin/spaces/[slug]/members')}
+			>Manage</a
+		>
+	</p>
+{/if}
+
 <p class="new-page">
 	<a
 		class="amber-btn amber-btn--primary"
