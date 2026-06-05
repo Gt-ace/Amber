@@ -16,3 +16,9 @@ credentials.txt
 # Design scratch: the Claude Design prototype + exploration + screenshots the
 # amber-brand theme was ported from. Local reference only — never ships to prod.
 amber-claude-design/
+
+# Local dogfooding scratch — throwaway test spaces/pages created while
+# exercising the editor and space-creation UI. Kept on disk for local
+# testing, never shipped.
+spaces/testing/
+spaces/example/testing.md
