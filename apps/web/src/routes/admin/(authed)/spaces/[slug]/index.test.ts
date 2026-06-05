@@ -178,3 +178,17 @@ describe('per-space admin index — theme affordance fields', () => {
 		expect((await loadData(EDITOR)).canPickTheme).toBe(false);
 	});
 });
+
+describe('per-space admin index — members affordance field', () => {
+	test('install-admin: canManageMembers true', async () => {
+		expect((await loadData(ADMIN)).canManageMembers).toBe(true);
+	});
+
+	test('owner: canManageMembers true', async () => {
+		expect((await loadData(OWNER)).canManageMembers).toBe(true);
+	});
+
+	test('editor: canManageMembers false', async () => {
+		expect((await loadData(EDITOR)).canManageMembers).toBe(false);
+	});
+});

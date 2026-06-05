@@ -49,6 +49,12 @@ export const load = ((event) => {
 		.sort((a, b) => a.url.localeCompare(b.url));
 
 	const canPickTheme = locals.role === 'owner' || locals.role === 'install-admin';
+	// Separate flag from canPickTheme by intent: theme-picking and member
+	// management share an owner-or-install-admin gate today, but they are
+	// distinct concerns — collapsing them would mislead if either diverges.
+	// Governs only whether the link shows; the members page itself enforces
+	// requireSpaceAccess(..., 'owner'), so editors who URL-hop still get 403.
+	const canManageMembers = locals.role === 'owner' || locals.role === 'install-admin';
 	const { config } = readSpaceConfig(space.root);
 	const publicUrl = publicUrlForSpace(config, process.env.AMBER_PUBLIC_URL!, getDiscoveryMode());
 
@@ -57,6 +63,7 @@ export const load = ((event) => {
 		slug: params.slug,
 		activeThemeName: space.theme.name,
 		publicUrl,
-		canPickTheme
+		canPickTheme,
+		canManageMembers
 	};
 }) satisfies PageServerLoad;
