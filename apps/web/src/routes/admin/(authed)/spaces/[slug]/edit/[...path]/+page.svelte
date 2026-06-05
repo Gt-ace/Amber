@@ -38,8 +38,42 @@
 	onMount(async () => {
 		// Client-only, dynamic import: Crepe (ProseMirror + Vue) stays out of
 		// the SSR bundle and out of the public render path entirely (spec §9).
-		const { Crepe } = await import('@milkdown/crepe');
-		crepe = new Crepe({ root: editorEl, defaultValue: data.body });
+		const { Crepe, CrepeFeature } = await import('@milkdown/crepe');
+		crepe = new Crepe({
+			root: editorEl,
+			defaultValue: data.body,
+			// Surface Crepe's already-enabled features behind a persistent,
+			// always-visible toolbar instead of leaving them hidden behind the
+			// `/` slash menu and the select-text floating bar. Curated so every
+			// control round-trips to markdown the public renderer can actually
+			// render: the renderer is plugin-free markdown-it (lib/render/render.ts),
+			// so math (`$…$`) and task lists (`- [ ]`) would degrade on the public
+			// site. We drop both from the toolbar AND the slash menu so the editor
+			// never advertises something the site silently mangles.
+			features: {
+				[CrepeFeature.TopBar]: true,
+				// Latex gates the math button in both the toolbar and the slash
+				// menu, so one flag removes it from both surfaces.
+				[CrepeFeature.Latex]: false
+			},
+			featureConfigs: {
+				[CrepeFeature.TopBar]: {
+					// buildTopBar runs after the default groups are built and
+					// receives the live builder; `getGroup('list').group.items` is
+					// the same array `build()` returns, so filtering it drops just
+					// the task-list button without reconstructing the others.
+					buildTopBar: (builder) => {
+						const list = builder.getGroup('list').group;
+						list.items = list.items.filter((item) => item.key !== 'task-list');
+					}
+				},
+				[CrepeFeature.BlockEdit]: {
+					// Mirror the removal in the `/` slash menu. Partial override:
+					// bulletList/orderedList are untouched and stay.
+					listGroup: { taskList: null }
+				}
+			}
+		});
 		await crepe.create();
 	});
 

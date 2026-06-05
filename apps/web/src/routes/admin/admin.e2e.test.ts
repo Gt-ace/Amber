@@ -167,7 +167,7 @@ describe('admin surface smoke (AMBER_E2E)', () => {
 		}
 	}, 60_000);
 
-	test('the editor mounts Crepe for a page', async () => {
+	test('the editor mounts Crepe with a curated top toolbar', async () => {
 		const page = await signedInContext.newPage();
 		try {
 			await page.goto(base + '/admin/spaces/' + spaceSlug + '/edit/about', {
@@ -175,6 +175,23 @@ describe('admin surface smoke (AMBER_E2E)', () => {
 			});
 			await page.waitForSelector('.amber-body [contenteditable="true"]', { timeout: 20_000 });
 			expect(await page.locator('.amber-body [contenteditable="true"]').count()).toBe(1);
+
+			// The persistent toolbar is surfaced (CrepeFeature.TopBar enabled) so
+			// features aren't hidden behind the `/` menu and select-text bar.
+			await page.waitForSelector('.milkdown-top-bar', { timeout: 20_000 });
+			expect(await page.locator('.milkdown-top-bar').count()).toBe(1);
+
+			// The slash menu is curated to blocks the public renderer supports:
+			// bullet/ordered lists survive; the two markdown-it's plugin-free
+			// default preset can't render — task lists (`- [ ]`) and math
+			// (`$…$`) — are dropped from the menu so the editor never advertises
+			// output the public site would mangle.
+			const slash = page.locator('.milkdown-slash-menu');
+			await slash.waitFor({ state: 'attached', timeout: 20_000 });
+			const slashText = (await slash.textContent()) ?? '';
+			expect(slashText).toContain('Bullet List');
+			expect(slashText).not.toContain('Task List');
+			expect(slashText).not.toContain('Math');
 		} finally {
 			await page.close();
 		}
