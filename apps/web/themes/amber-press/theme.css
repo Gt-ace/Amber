@@ -1,0 +1,561 @@
+/*
+ * amber-press — Amber's brutalist Swiss-print theme.
+ *
+ * The loudest, most editorial theme in the set. A newsprint paper substrate,
+ * carbon ink, heavy grotesque display headlines set tight / large / uppercase,
+ * a serif reading face, monospace metadata, and a single burnt-amber hazard
+ * accent. Rule-heavy structural grid, hard edges (--amber-radius: 0), an
+ * oversized clamp() title, a drop-cap, inverted code blocks. It reads as a
+ * printed dispatch, not a blog.
+ *
+ * It speaks the same 28-token `--amber-*` contract amber-default established —
+ * no new variable names — but every value moves. Three voices: a heavy system
+ * grotesque for display, an old-style serif for prose, a system monospace for
+ * the chrome / metadata. The one theme-local variable (--press-wrap) is
+ * prefixed differently to signal it isn't part of the contract.
+ *
+ * Light-first: the :root base holds the light newsprint palette; the dark block
+ * remaps the eight colour tokens to a carbon-substrate inversion and nothing
+ * else. System font stacks only — a self-hosted canvas shouldn't phone a font
+ * CDN on every page load.
+ *
+ * Pairs with chrome.html / page.html / error.html / partials/index.html in this
+ * directory and the `theme_color` slot in theme.toml.
+ */
+
+:root {
+	/* ── Color ──────────────────────────────────────────────────────────── */
+	--amber-bg: #f3f1ea; /* page background — warm newsprint paper */
+	--amber-ink: #14110c; /* primary text — carbon, near-black */
+	--amber-ink-muted: #6b6453; /* secondary text — dates, captions, chrome, footer */
+	--amber-accent: #c2480f; /* links and accents — burnt-amber hazard */
+	--amber-accent-hover: #97370b; /* link hover — a deeper burnt amber */
+	--amber-rule: #14110c; /* hairlines — kept on carbon ink: the rules are heavy, structural, not faint */
+	--amber-surface-sunken: #e7e3d6; /* recessed fill — inline code */
+	--amber-selection-bg: rgba(194, 72, 15, 0.18); /* ::selection highlight — faint hazard wash */
+
+	/* ── Type ───────────────────────────────────────────────────────────── */
+	/* Three voices. Display: a heavy system grotesque, set large / tight /
+	   uppercase. Body: an old-style serif for readable prose. Chrome &
+	   metadata: a system monospace. System stacks only — no font CDN. */
+	--amber-font-heading: 'Helvetica Neue', 'Arial Narrow', 'Arial Nova', Arial, system-ui, sans-serif;
+	--amber-font-body:
+		'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, 'Times New Roman',
+		serif;
+	--amber-font-ui: ui-monospace, 'SF Mono', 'IBM Plex Mono', 'Cascadia Code', Menlo, Consolas, monospace; /* chrome, dates, footer, auto-index numerals */
+	--amber-font-mono:
+		ui-monospace, 'SF Mono', 'IBM Plex Mono', 'Cascadia Code', Menlo, Consolas, monospace; /* code */
+
+	--amber-text-base: 1.12rem; /* root body size — the serif at a comfortable reading size */
+	--amber-text-sm: 0.7rem; /* small chrome text — nav, date, footer, numerals */
+	--amber-text-h1: clamp(2.6rem, 7vw, 4.4rem); /* article title — oversized display */
+	--amber-text-h2: 1.5rem; /* section heading */
+	--amber-text-h3: 1.18rem; /* sub-heading */
+
+	--amber-leading-body: 1.62; /* body line-height */
+	--amber-leading-tight: 0.92; /* display line-height — compressed for the big headline */
+	--amber-tracking-ui: 0.14em; /* letter-spacing for the uppercased monospace chrome */
+
+	/* ── Space & layout ─────────────────────────────────────────────────── */
+	--amber-measure: 38rem; /* prose column max-width */
+	--amber-pad-page: 2rem; /* horizontal page padding */
+	--amber-gap-flow: 1.1rem; /* vertical rhythm between flowing blocks (p, ul, …) */
+	--amber-gap-section: 3rem; /* extra space above a section heading (h2) */
+	--amber-gap-chrome: 2.4rem; /* gap between header/footer chrome and the content */
+
+	/* ── Shape & motion ─────────────────────────────────────────────────── */
+	--amber-radius: 0; /* hard edges — no rounded corners anywhere */
+	--amber-ease: cubic-bezier(0.16, 1, 0.3, 1); /* snappy ease-out for entrances/hovers */
+	--amber-duration: 300ms; /* page-entrance duration */
+
+	/* Masthead / footer full-bleed width — not part of the --amber-* contract;
+	   an implementation detail of this theme's wide rule-bar chrome, scoped here
+	   so it can be reused by header and footer. */
+	--press-wrap: 64rem;
+}
+
+@media (prefers-color-scheme: dark) {
+	/* Carbon-substrate inversion: dark paper, light ink, the same hazard accent.
+	   Only the eight colour tokens move; type, spacing, layout and motion are
+	   mode-agnostic. --amber-rule stays coupled to the (now light) ink so the
+	   heavy structural rules survive inversion, and the accent/hover brighten
+	   rather than darken on the dark ground. */
+	:root {
+		--amber-bg: #141210;
+		--amber-ink: #ede8dc;
+		--amber-ink-muted: #948b78;
+		--amber-accent: #e8703a;
+		--amber-accent-hover: #f59462;
+		--amber-rule: #ede8dc;
+		--amber-surface-sunken: #221f1a;
+		--amber-selection-bg: rgba(232, 112, 58, 0.26);
+	}
+}
+
+/* ───────────────────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	font-family: var(--amber-font-body);
+	font-size: var(--amber-text-base);
+	line-height: var(--amber-leading-body);
+	color: var(--amber-ink);
+	background: var(--amber-bg);
+	-webkit-text-size-adjust: 100%;
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+}
+
+body {
+	margin: 0;
+	min-height: 100dvh;
+	display: flex;
+	flex-direction: column;
+}
+
+::selection {
+	background: var(--amber-selection-bg);
+}
+
+/* ── Page chrome: the masthead ─────────────────────────────────────────────
+   chrome.html is byte-identical to amber-default's, so <body> has exactly three
+   children: .site-header, main, .site-footer. There is no .wrap/.layout
+   wrapper — the full-bleed rule-bar width lives directly on these. ── */
+
+.site-header {
+	width: 100%;
+	max-width: var(--press-wrap);
+	margin: 1rem auto 0;
+	padding: 1rem var(--amber-pad-page) 0.7rem;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 0.6rem 1.5rem;
+	border-bottom: 3px solid var(--amber-rule);
+}
+
+.site-header .site-title {
+	font-family: var(--amber-font-heading);
+	font-weight: 800;
+	font-size: 1.5rem;
+	text-transform: uppercase;
+	letter-spacing: -0.02em;
+	color: var(--amber-ink);
+	text-decoration: none;
+	transition: color 150ms var(--amber-ease);
+}
+
+.site-header .site-title:hover,
+.site-header .site-title:focus-visible {
+	color: var(--amber-accent);
+}
+
+.site-nav ul {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1.4rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.site-nav a {
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	text-transform: uppercase;
+	color: var(--amber-ink);
+	text-decoration: none;
+	padding-bottom: 2px;
+	border-bottom: 2px solid transparent;
+	transition:
+		color 150ms var(--amber-ease),
+		border-color 150ms var(--amber-ease);
+}
+
+.site-nav a:hover,
+.site-nav a:focus-visible {
+	color: var(--amber-accent);
+	border-color: var(--amber-accent);
+}
+
+/* ── Content column ────────────────────────────────────────────────────── */
+
+main {
+	width: 100%;
+	max-width: var(--amber-measure);
+	margin: var(--amber-gap-section) auto;
+	padding: 0 var(--amber-pad-page);
+	flex: 1 0 auto;
+}
+
+/* ── Article ───────────────────────────────────────────────────────────── */
+
+.article-header {
+	position: relative;
+	margin-bottom: var(--amber-gap-section);
+}
+
+.article-title {
+	font-family: var(--amber-font-heading);
+	font-weight: 800;
+	font-size: var(--amber-text-h1);
+	line-height: var(--amber-leading-tight);
+	letter-spacing: -0.035em;
+	text-transform: uppercase;
+	margin: 0 0 1rem;
+}
+
+.article-date {
+	margin: 0;
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	text-transform: uppercase;
+	color: var(--amber-ink-muted);
+}
+
+/* The markdown body. All selectors are scoped under .article-body because the
+   HTML here is injected via {@html} — these styles can't ride on Svelte's
+   component scoping, so the stylesheet is global and we scope by hand. */
+
+.article-body > :first-child {
+	margin-top: 0;
+}
+
+.article-body p,
+.article-body ul,
+.article-body ol,
+.article-body blockquote,
+.article-body pre,
+.article-body figure,
+.article-body table {
+	margin: 0 0 var(--amber-gap-flow);
+}
+
+/* Drop-cap on the first paragraph — pure CSS, in the hazard accent. */
+.article-body > p:first-of-type::first-letter {
+	font-family: var(--amber-font-heading);
+	font-weight: 800;
+	float: left;
+	font-size: 3.6rem;
+	line-height: 0.74;
+	padding: 0.35rem 0.55rem 0 0;
+	color: var(--amber-accent);
+}
+
+.article-body h2,
+.article-body h3 {
+	font-family: var(--amber-font-heading);
+	font-weight: 800;
+	line-height: 1.05; /* section headings can wrap — looser than the title's display leading so lines don't overlap */
+	text-transform: uppercase;
+	letter-spacing: -0.02em;
+}
+
+.article-body h2 {
+	font-size: var(--amber-text-h2);
+	margin: var(--amber-gap-section) 0 0.6rem;
+	padding-top: 0.8rem;
+	border-top: 2px solid var(--amber-rule);
+}
+
+.article-body h3 {
+	font-size: var(--amber-text-h3);
+	margin: calc(var(--amber-gap-section) * 0.6) 0 0.4rem;
+}
+
+.article-body a {
+	color: var(--amber-accent);
+	text-decoration: underline;
+	text-decoration-thickness: 2px;
+	text-underline-offset: 3px;
+	transition: color 150ms var(--amber-ease);
+}
+
+.article-body a:hover,
+.article-body a:focus-visible {
+	color: var(--amber-accent-hover);
+}
+
+.article-body strong {
+	font-weight: 700;
+}
+
+.article-body em {
+	font-style: italic;
+}
+
+.article-body ul,
+.article-body ol {
+	padding-left: 1.2rem;
+}
+
+.article-body li {
+	margin-bottom: 0.3rem;
+}
+
+.article-body li::marker {
+	color: var(--amber-accent);
+}
+
+/* Blockquote as a large grotesque pull-quote, hazard quotation marks. */
+.article-body blockquote {
+	margin: var(--amber-gap-section) 0;
+	padding: 0;
+	border: none;
+	font-family: var(--amber-font-heading);
+	font-weight: 700;
+	font-size: 1.7rem;
+	line-height: 1.1;
+	letter-spacing: -0.02em;
+	color: var(--amber-ink);
+}
+
+.article-body blockquote::before {
+	content: '\201C';
+	color: var(--amber-accent);
+}
+
+.article-body blockquote::after {
+	content: '\201D';
+	color: var(--amber-accent);
+}
+
+.article-body blockquote p {
+	display: inline;
+	margin: 0;
+}
+
+.article-body img {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	margin: var(--amber-gap-flow) 0;
+	border-radius: var(--amber-radius);
+	border: 1px solid var(--amber-rule);
+}
+
+/* Inline code: recessed fill, hard-edged. */
+.article-body code {
+	font-family: var(--amber-font-mono);
+	font-size: 0.82em;
+	background: var(--amber-surface-sunken);
+	padding: 0.1em 0.4em;
+	border-radius: var(--amber-radius);
+}
+
+/* Code blocks: inverted — ink ground, paper text. Inverts correctly in dark
+   too, since both colours reference the tokens. */
+.article-body pre {
+	font-family: var(--amber-font-mono);
+	font-size: 0.82em;
+	line-height: 1.55;
+	background: var(--amber-ink);
+	color: var(--amber-bg);
+	padding: 1rem 1.1rem;
+	border-radius: var(--amber-radius);
+	overflow-x: auto;
+}
+
+.article-body pre code {
+	background: transparent;
+	color: inherit;
+	padding: 0;
+	border-radius: 0;
+	font-size: inherit;
+}
+
+.article-body hr {
+	border: none;
+	border-top: 2px solid var(--amber-rule);
+	margin: var(--amber-gap-section) 0;
+}
+
+.article-body table {
+	border-collapse: collapse;
+	width: 100%;
+	font-size: 0.94em;
+}
+
+.article-body th,
+.article-body td {
+	padding: 0.4rem 0.7rem 0.4rem 0;
+	border-bottom: 1px solid var(--amber-rule);
+	text-align: left;
+	vertical-align: top;
+}
+
+.article-body th {
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	text-transform: uppercase;
+	color: var(--amber-ink-muted);
+}
+
+/* ── Draft banner (dev-only) ───────────────────────────────────────────── */
+
+.draft-banner {
+	margin: 0 0 1.6rem;
+	padding: 0.55rem 0.85rem;
+	border: 2px solid var(--amber-accent);
+	border-radius: var(--amber-radius);
+	background: var(--amber-surface-sunken);
+	color: var(--amber-ink);
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	text-transform: uppercase;
+}
+
+/* ── Auto-index list — numbered index card (decimal-leading-zero counter) ── */
+
+.amber-auto-index {
+	counter-reset: amber-idx;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	border-top: 2px solid var(--amber-rule);
+}
+
+.amber-auto-index-item {
+	counter-increment: amber-idx;
+	display: grid;
+	grid-template-columns: 2.6rem 1fr auto;
+	align-items: baseline;
+	gap: 0.4rem 1rem;
+	padding: 0.8rem 0;
+	border-bottom: 1px solid var(--amber-rule);
+}
+
+.amber-auto-index-item::before {
+	content: counter(amber-idx, decimal-leading-zero);
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: 0.1em;
+	color: var(--amber-accent);
+}
+
+.amber-auto-index-link {
+	font-family: var(--amber-font-heading);
+	font-weight: 700;
+	font-size: 1.25rem;
+	text-transform: uppercase;
+	letter-spacing: -0.02em;
+	color: var(--amber-ink);
+	text-decoration: none;
+	transition: color 150ms var(--amber-ease);
+}
+
+.amber-auto-index-link:hover,
+.amber-auto-index-link:focus-visible {
+	color: var(--amber-accent);
+}
+
+.amber-auto-index-date {
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	text-transform: uppercase;
+	color: var(--amber-ink-muted);
+	white-space: nowrap;
+}
+
+/* ── Error page ────────────────────────────────────────────────────────── */
+
+.error-code {
+	margin: 0 0 0.5rem;
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	text-transform: uppercase;
+	color: var(--amber-accent);
+}
+
+.error-title {
+	margin: 0 0 1.2rem;
+	font-family: var(--amber-font-heading);
+	font-weight: 800;
+	font-size: var(--amber-text-h1);
+	line-height: var(--amber-leading-tight);
+	letter-spacing: -0.035em;
+	text-transform: uppercase;
+}
+
+.error-back {
+	margin-top: 1.4rem;
+}
+
+.error-page a {
+	color: var(--amber-accent);
+	text-decoration: underline;
+	text-decoration-thickness: 2px;
+	text-underline-offset: 3px;
+}
+
+.error-page a:hover,
+.error-page a:focus-visible {
+	color: var(--amber-accent-hover);
+}
+
+/* ── Page chrome: footer ───────────────────────────────────────────────── */
+
+.site-footer {
+	width: 100%;
+	max-width: var(--press-wrap);
+	margin: var(--amber-gap-chrome) auto 0;
+	padding: 1rem var(--amber-pad-page);
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem 1rem;
+	align-items: baseline;
+	justify-content: space-between;
+	border-top: 3px solid var(--amber-rule);
+	font-family: var(--amber-font-ui);
+	font-size: var(--amber-text-sm);
+	letter-spacing: var(--amber-tracking-ui);
+	text-transform: uppercase;
+	color: var(--amber-ink-muted);
+}
+
+.site-footer a {
+	color: var(--amber-ink);
+	text-decoration: none;
+	transition: color 150ms var(--amber-ease);
+}
+
+.site-footer a:hover,
+.site-footer a:focus-visible {
+	color: var(--amber-accent);
+}
+
+/* ── Entrance: one quiet orchestrated moment, then nothing ─────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+	.article-header,
+	.article-body {
+		animation: press-enter var(--amber-duration) var(--amber-ease) both;
+	}
+
+	.article-body {
+		animation-delay: 70ms;
+	}
+
+	@keyframes press-enter {
+		from {
+			opacity: 0;
+			transform: translateY(8px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+}

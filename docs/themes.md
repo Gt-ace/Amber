@@ -11,15 +11,21 @@ dresses Amber's own landing page and exercises the optional extensions
 above are what the contract is proven against. Anything not proven by one of
 those two is not yet part of the contract.
 
+Two further shared themes — [`amber-press`](../apps/web/themes/amber-press/)
+(brutalist Swiss print, light-first) and
+[`amber-dusk`](../apps/web/themes/amber-dusk/) (soft, dark-first reading) —
+also ship. Like `amber-brand`, they *consume* the contract rather than define
+it.
+
 The audience is someone who can read CSS and HTML and wants to build their
 own theme. It assumes nothing about the Amber source.
 
 ## What a theme is
 
 A directory of CSS and HTML templates that decides how a space's content is
-presented. Amber ships three built-in **shared** themes (`amber-default`,
-`amber-editorial`, `amber-brand`) that are available to every space out of the
-box — no per-space copies. A space may additionally ship its own
+presented. Amber ships five built-in **shared** themes (`amber-default`,
+`amber-editorial`, `amber-brand`, `amber-press`, `amber-dusk`) that are
+available to every space out of the box — no per-space copies. A space may additionally ship its own
 `<space>/themes/<name>/` to add a private theme or override a shared one of the
 same name (per-space wins). Each space picks its theme via its own `space.toml`,
 with fallbacks to the install-level `amber.toml`, then `amber-default`, then a
@@ -388,6 +394,14 @@ Type, spacing, layout, motion — all mode-agnostic. This is the contract:
 themes that want dark mode must honor it. Themes that don't ship a dark
 block render in light mode in both contexts (and that is a valid choice).
 
+Which mode is the *base* — the values that live directly on `:root` — is the
+theme's identity choice, not part of the contract. A dark-first theme may put
+its dark palette on `:root` and remap to light under
+`@media (prefers-color-scheme: light)`; the binding requirement is only that
+**exactly the eight color tokens move between the two modes** (everything else
+stays mode-agnostic). `amber-default`, `amber-editorial`, `amber-brand`, and
+`amber-press` are light-base; `amber-dusk` is the first dark-base theme.
+
 This is `amber-default`'s entire dark block:
 
 ```css
@@ -576,7 +590,7 @@ Resolution order, per space:
 3. `amber-default` if discovered.
 4. A built-in unstyled floor.
 
-The three `amber-*` themes are **shared/app-bundled** — they are pickable from
+The five `amber-*` themes are **shared/app-bundled** — they are pickable from
 any space without copying files. To override one for a single space, ship a
 *complete* `<space>/themes/<name>/` of the same name; the per-space copy wins
 for that space (templates and assets alike). A per-space directory overrides a

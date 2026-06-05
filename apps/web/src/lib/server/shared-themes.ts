@@ -1,8 +1,9 @@
 /**
  * Install-level shared themes (spec §4).
  *
- * The three canonical themes ship *with the app*, not inside any content space,
- * so they are available to every space out of the box — new spaces included.
+ * The canonical `amber-*` themes ship *with the app*, not inside any content
+ * space, so they are available to every space out of the box — new spaces
+ * included.
  * This module resolves where they live on disk and discovers them once at
  * install scope, reusing the pure `discoverThemes`. The result is merged into
  * each space's effective theme map by the registry (`lib/server/space.ts`).
