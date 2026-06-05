@@ -91,8 +91,8 @@
 		--amber-bg: #0d0e11;
 		--amber-ink: #e7e8ea;
 		--amber-ink-muted: #888a90;
-		--amber-accent: #8b9bff;
-		--amber-accent-hover: #b0bbff;
+		--amber-accent: #7fb3ff; /* clean azure — kept off the violet edge so dark links don't read as purple on the near-black bg */
+		--amber-accent-hover: #a3ccff; /* lighter azure */
 		--amber-rule: #25262b;
 		--amber-surface-sunken: #16171b;
 		--amber-selection-bg: rgba(139, 155, 255, 0.26);
