@@ -22,7 +22,8 @@ import { requireSpaceAccess } from '$lib/server/permissions';
 import { getDiscoveryMode, getRegistryEntries } from '$lib/server/space';
 import { getSharedThemes } from '$lib/server/shared-themes';
 import { readSpaceConfig } from '$lib/space/config';
-import { describeThemeSource } from '$lib/space/themes';
+import { describeThemeSource, themeAssetVersion } from '$lib/space/themes';
+import { buildThemePreview } from '$lib/space/theme-preview';
 import { publicUrlForSpace } from '$lib/server/space-routing';
 import { validateThemePick } from '$lib/server/space-config-validate';
 import { writeSpaceConfig, type SpaceConfigUpdate } from '$lib/server/space-config-write';
@@ -78,12 +79,20 @@ export const load: PageServerLoad = async (event) => {
 			const sharedHit = shared.get(t.name);
 			const sourceLabel: 'shared' | 'this-space' =
 				sharedHit && sharedHit.path === t.path ? 'shared' : 'this-space';
+			// A live mini-render of the theme for the picker. The stylesheet is
+			// linked from the install-level /themes asset route (cache-busted), the
+			// same path the public layout uses; the body is the shared sample
+			// content rendered through this theme's own chrome + page templates.
+			const cssHref = t.assetBase
+				? `${t.assetBase}/theme.css?v=${themeAssetVersion(t, 'theme.css')}`
+				: null;
 			return {
 				name: t.name,
 				description: t.manifest.description ?? null,
 				version: t.manifest.version ?? null,
 				author: t.manifest.author ?? null,
-				source: sourceLabel
+				source: sourceLabel,
+				previewHtml: buildThemePreview(t, { cssHref })
 			};
 		})
 		.sort((a, b) => {

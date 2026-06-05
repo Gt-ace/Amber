@@ -16,11 +16,14 @@
  * `themes/<name>/` root was selected (per-space or shared). Anything that
  * escapes → 404 (not 403; we don't want to confirm the file exists elsewhere).
  *
- * Cache policy: `public, max-age=3600`. There's no prior disk-served-asset
- * policy in the repo to match; this is a modest default. Theme files are
- * effectively immutable per deploy (the image is rebuilt, the container
- * restarts) but they don't carry content-hashed names, so `immutable` /
- * year-long max-age would be wrong.
+ * Cache policy: a request carrying a `?v=` version token (added by the layout
+ * to `theme.css` / `theme.js` URLs — the token is the file's mtime, so the URL
+ * changes whenever the bytes do) is served `public, max-age=31536000,
+ * immutable`: the URL is now content-versioned, so caching it forever is both
+ * correct and fast. A bare, un-versioned request (a direct hit, or a
+ * `@font-face` URL inside a theme's CSS that we don't version) keeps the modest
+ * `public, max-age=3600` — short enough that an un-versioned theme edit can't
+ * go stale for long.
  */
 
 import { readFileSync, statSync } from 'node:fs';
@@ -55,7 +58,7 @@ function isDir(p: string): boolean {
 	}
 }
 
-export const GET: RequestHandler = ({ params, locals }) => {
+export const GET: RequestHandler = ({ params, locals, url }) => {
 	const name = params.name ?? '';
 	const file = params.file ?? '';
 	if (!name || !file) return NOT_FOUND();
@@ -99,10 +102,13 @@ export const GET: RequestHandler = ({ params, locals }) => {
 	}
 
 	const contentType = CONTENT_TYPES[extname(target).toLowerCase()] ?? 'application/octet-stream';
+	const cacheControl = url.searchParams.has('v')
+		? 'public, max-age=31536000, immutable'
+		: 'public, max-age=3600';
 	return new Response(data, {
 		headers: {
 			'content-type': contentType,
-			'cache-control': 'public, max-age=3600'
+			'cache-control': cacheControl
 		}
 	});
 };

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, utimesSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
@@ -7,7 +7,8 @@ import {
 	resolveActiveTheme,
 	readTemplate,
 	readPartial,
-	effectiveThemes
+	effectiveThemes,
+	themeAssetVersion
 } from './themes.ts';
 import { BUILTIN_THEME, BUILTIN_PARTIALS } from '$lib/theme/builtin';
 import type { AmberManifest } from '$lib/types/schema';
@@ -250,5 +251,55 @@ describe('effectiveThemes', () => {
 		const perSpace = new Map([['mine', t('mine', '/space/themes/mine')]]);
 		const eff = effectiveThemes(new Map(), perSpace);
 		expect([...eff.keys()]).toEqual(['mine']);
+	});
+});
+
+describe('themeAssetVersion', () => {
+	test('returns a non-empty string derived from the file mtime', () => {
+		const root = scratchSpace();
+		try {
+			writeTheme(root, 'amber-default', FULL_THEME_FILES);
+			const themes = discoverThemes(root, log);
+			const theme = themes.get('amber-default')!;
+			const v = themeAssetVersion(theme, 'theme.css');
+			expect(typeof v).toBe('string');
+			expect(v.length).toBeGreaterThan(0);
+			expect(v).not.toBe('0');
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	test('changes when the file is rewritten with a newer mtime', () => {
+		const root = scratchSpace();
+		try {
+			writeTheme(root, 'amber-default', FULL_THEME_FILES);
+			const theme = discoverThemes(root, log).get('amber-default')!;
+			const before = themeAssetVersion(theme, 'theme.css');
+			// Force a strictly-later mtime so the version differs regardless of clock granularity.
+			const cssPath = join(theme.path, 'theme.css');
+			const future = new Date(Date.now() + 5000);
+			writeFileSync(cssPath, ':root { --x: 2 }');
+			utimesSync(cssPath, future, future);
+			const after = themeAssetVersion(theme, 'theme.css');
+			expect(after).not.toBe(before);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	test("returns '0' for the built-in theme (empty path)", () => {
+		expect(themeAssetVersion(BUILTIN_THEME, 'theme.css')).toBe('0');
+	});
+
+	test("returns '0' when the file does not exist", () => {
+		const root = scratchSpace();
+		try {
+			writeTheme(root, 'amber-default', FULL_THEME_FILES);
+			const theme = discoverThemes(root, log).get('amber-default')!;
+			expect(themeAssetVersion(theme, 'does-not-exist.css')).toBe('0');
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 });

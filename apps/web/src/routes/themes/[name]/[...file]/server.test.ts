@@ -30,9 +30,10 @@ afterAll(async () => {
 	rmSync(root, { recursive: true, force: true });
 });
 
-const call = (name: string, file: string) =>
+const call = (name: string, file: string, query = '') =>
 	GET({
 		params: { name, file },
+		url: new URL(`http://localhost/themes/${name}/${file}${query}`),
 		locals: { space: testSpace }
 	} as unknown as Parameters<typeof GET>[0]);
 
@@ -80,6 +81,20 @@ describe('theme asset route', () => {
 	test('404 when the theme name contains a slash', async () => {
 		const res = await call('amber-default/fonts', 'x.woff2');
 		expect(res.status).toBe(404);
+	});
+});
+
+describe('theme asset route — cache policy', () => {
+	test('un-versioned request gets a modest revalidating max-age', async () => {
+		const res = await call('amber-default', 'theme.css');
+		expect(res.status).toBe(200);
+		expect(res.headers.get('cache-control')).toBe('public, max-age=3600');
+	});
+
+	test('a ?v= versioned request is immutable + long-lived (URL changes when bytes change)', async () => {
+		const res = await call('amber-default', 'theme.css', '?v=abc123');
+		expect(res.status).toBe(200);
+		expect(res.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
 	});
 });
 

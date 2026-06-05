@@ -99,6 +99,20 @@
 							>{t.version ?? ''}{t.version && t.author ? ' · ' : ''}{t.author ?? ''}</span
 						>
 					{/if}
+					<span class="row-preview" class:row-preview--active={selected === t.name}>
+						<!-- Live mini-render of the theme. Sandboxed (no scripts, opaque
+						     origin) and pointer-events:none so clicks fall through to the
+						     enclosing label and select the theme. -->
+						<iframe
+							class="theme-preview"
+							title="Preview of {t.name}"
+							srcdoc={t.previewHtml}
+							loading="lazy"
+							tabindex="-1"
+							scrolling="no"
+							sandbox=""
+						></iframe>
+					</span>
 				</label>
 			</li>
 		{/each}
@@ -237,6 +251,43 @@
 		grid-column: 2 / 4;
 		color: var(--amber-ink-muted);
 		font-size: 0.8rem;
+	}
+
+	/* Live theme preview. The iframe renders at a desktop-ish width and is
+	   scaled down to a thumbnail; the wrapper clips the result to a fixed
+	   height. transform-origin top-left keeps the masthead in view. */
+	.row-preview {
+		grid-column: 1 / 4;
+		margin-top: 0.7rem;
+		height: 200px;
+		overflow: hidden;
+		border: 1px solid var(--amber-rule);
+		border-radius: 8px;
+		background: var(--amber-surface-sunken);
+		/* A faint inner shadow reads as a recessed "screen". */
+		box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.06);
+		transition: border-color 0.15s ease;
+	}
+	.row-preview--active {
+		border-color: var(--amber-accent);
+	}
+	.theme-preview {
+		width: 1280px;
+		height: 800px;
+		border: 0;
+		display: block;
+		transform: scale(0.5);
+		transform-origin: top left;
+		pointer-events: none;
+		background: #fff;
+	}
+	@media (max-width: 640px) {
+		.row-preview {
+			height: 150px;
+		}
+		.theme-preview {
+			transform: scale(0.36);
+		}
 	}
 
 	.rendering {

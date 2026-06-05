@@ -126,6 +126,31 @@ export function readTemplate(theme: Theme, kind: TemplateKind): string {
 	return readFileSync(join(theme.path, TEMPLATE_FILES[kind]), 'utf8');
 }
 
+/**
+ * A cache-busting version token for one of a theme's on-disk asset files
+ * (`theme.css`, `theme.js`). The token is the file's `mtimeMs` in base-36 —
+ * it changes whenever the bytes change (an in-place edit, a `git pull`
+ * checkout, an image rebuild), which is exactly what a `?v=` query param on
+ * the asset URL needs so a browser holding a long-lived cache entry refetches.
+ *
+ * Returns `'0'` for the built-in theme (`path === ''`, no on-disk file) and
+ * when the stat fails (file absent / unreadable) — a stable sentinel so the
+ * URL is still well-formed; the asset route would 404 such a request anyway.
+ *
+ * One `stat` per page load is cheap (the active theme's `theme.css` and, if
+ * present, `theme.js`). Discovery doesn't watch `themes/`, so reading the
+ * mtime fresh at request time — rather than caching it at discovery — is what
+ * makes an in-place theme edit visible without a restart.
+ */
+export function themeAssetVersion(theme: Theme, file: string): string {
+	if (theme.path === '') return '0';
+	try {
+		return Math.floor(statSync(join(theme.path, file)).mtimeMs).toString(36);
+	} catch {
+		return '0';
+	}
+}
+
 export type PartialKind = 'index';
 const PARTIAL_FILES: Record<PartialKind, string> = {
 	index: 'partials/index.html'
