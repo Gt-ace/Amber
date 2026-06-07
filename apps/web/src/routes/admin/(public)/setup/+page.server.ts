@@ -16,9 +16,9 @@
 
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { getAuth, resolveGoogleEnv } from '$lib/server/auth-config';
+import { getAuth, getAuthDb, resolveGoogleEnv } from '$lib/server/auth-config';
 import { adminCount } from '$lib/server/auth-queries';
-import { markInstallAdmin } from '$lib/server/permissions';
+import { markInstallAdmin, deleteUserCascade } from '$lib/server/permissions';
 import { APIError } from 'better-auth/api';
 
 export const load: PageServerLoad = async () => {
@@ -68,7 +68,23 @@ export const actions: Actions = {
 		// admin row. Set the flag exactly here; subsystem 4's user-create hook
 		// (extended in Task 15) leaves `isInstallAdmin` at its default 0 for
 		// every subsequent (invite-redemption) creation.
-		markInstallAdmin(email);
+		// markInstallAdmin promotes atomically and returns false if an admin
+		// already exists — the case where a concurrent setup request won the
+		// race after our adminCount() check above passed. signUpEmail has by
+		// then created a real, credentialed account; roll it back rather than
+		// leave a stranger logged in (and blocking future sign-ups via the
+		// all-users adminCount), then report setup as already complete.
+		if (!markInstallAdmin(email)) {
+			const lost = getAuthDb().query('SELECT id FROM user WHERE email = ?').get(email) as
+				| { id: string }
+				| undefined;
+			if (lost) deleteUserCascade(lost.id);
+			return fail(409, {
+				email: '',
+				name: '',
+				error: 'Setup is already complete. Sign in instead.'
+			});
+		}
 		redirect(302, '/admin');
 	}
 };

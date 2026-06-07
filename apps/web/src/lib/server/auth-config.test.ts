@@ -93,6 +93,21 @@ describe('buildAuth', () => {
 		db.close();
 	});
 
+	test('pins an explicit session lifetime (not the library default)', () => {
+		const { dbPath, cleanup } = tmpAuthDb();
+		cleanups.push(cleanup);
+		const { auth, db } = buildAuth({
+			dbPath,
+			secret: 'x'.repeat(32),
+			publicUrl: 'http://localhost:3000',
+			google: null
+		});
+		// Explicit so a better-auth default change can't silently move it.
+		expect(auth.options.session?.expiresIn).toBe(60 * 60 * 24 * 7);
+		expect(auth.options.session?.updateAge).toBe(60 * 60 * 24);
+		db.close();
+	});
+
 	test('registers the Google provider when both vars are supplied', () => {
 		const { dbPath, cleanup } = tmpAuthDb();
 		cleanups.push(cleanup);

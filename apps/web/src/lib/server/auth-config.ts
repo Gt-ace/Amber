@@ -117,6 +117,14 @@ export function buildAuth(opts: BuildAuthOptions = {}): { auth: Auth; db: Databa
 		// Trust the public URL as the only allowed origin; SvelteKit's own
 		// CSRF/SameSite cookie defaults cover the rest.
 		trustedOrigins: [baseURL],
+		// Pin the session lifetime explicitly. These values match better-auth's
+		// own defaults today (7-day expiry, refreshed at most once a day), so
+		// this changes no behaviour — it just stops a future library default
+		// shift from silently moving the admin session window.
+		session: {
+			expiresIn: 60 * 60 * 24 * 7,
+			updateAge: 60 * 60 * 24
+		},
 		emailAndPassword: {
 			enabled: true
 			// disableSignUp stays false: the setup action calls signUpEmail() for

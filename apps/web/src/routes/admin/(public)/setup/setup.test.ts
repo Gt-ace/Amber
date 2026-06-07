@@ -133,6 +133,66 @@ describe('/admin/setup action', () => {
 		expect(r.data.error).toMatch(/already complete/i);
 	});
 
+	test('deleteUserCascade removes the orphan user and its session/account rows', async () => {
+		// Create the install admin so the real better-auth schema (user/session/
+		// account) is migrated into the singleton db.
+		await Promise.resolve(
+			actions.default!(formEvent({ email: 'admin@x.test', password: 'password123', name: 'Admin' }))
+		).catch((e: unknown) => {
+			if ((e as { status?: number }).status !== 302) throw e;
+		});
+
+		const { getAuth, getAuthDb } = await import('$lib/server/auth-config');
+		const { insertInvite } = await import('$lib/server/invites');
+		const { inviteContext } = await import('$lib/server/invite-context');
+		const { deleteUserCascade } = await import('$lib/server/permissions');
+
+		const auth = await getAuth();
+		const db = getAuthDb();
+		// A real second account, created the way an invited user would be — gives
+		// us genuine user + session + account rows to cascade-delete.
+		const { id: inviteId } = insertInvite(db, {
+			spaceSlug: 'site-a',
+			role: 'editor',
+			createdBy: 'admin'
+		});
+		await inviteContext.run({ pendingInviteId: inviteId }, async () => {
+			await auth.api.signUpEmail({
+				body: { email: 'orphan@x.test', password: 'password123', name: 'Orphan' },
+				headers: new Headers()
+			});
+		});
+
+		const orphan = db.query('SELECT id FROM user WHERE email = ?').get('orphan@x.test') as
+			| { id: string }
+			| undefined;
+		expect(orphan).toBeTruthy();
+		const sessions = db
+			.query('SELECT COUNT(*) AS n FROM session WHERE userId = ?')
+			.get(orphan!.id) as { n: number };
+		expect(sessions.n).toBeGreaterThanOrEqual(1);
+
+		deleteUserCascade(orphan!.id);
+
+		expect(db.query('SELECT id FROM user WHERE email = ?').get('orphan@x.test')).toBeNull();
+		expect(
+			(
+				db.query('SELECT COUNT(*) AS n FROM session WHERE userId = ?').get(orphan!.id) as {
+					n: number;
+				}
+			).n
+		).toBe(0);
+		expect(
+			(
+				db.query('SELECT COUNT(*) AS n FROM account WHERE userId = ?').get(orphan!.id) as {
+					n: number;
+				}
+			).n
+		).toBe(0);
+		// The admin row is untouched.
+		expect(db.query('SELECT id FROM user WHERE email = ?').get('admin@x.test')).toBeTruthy();
+	});
+
 	test('sets isInstallAdmin = 1 on the created user row', async () => {
 		await Promise.resolve(
 			actions.default!(formEvent({ email: 'first@x.test', password: 'password123', name: 'First' }))

@@ -26,7 +26,7 @@
  * go stale for long.
  */
 
-import { readFileSync, statSync } from 'node:fs';
+import { readFileSync, statSync, realpathSync } from 'node:fs';
 import { resolve, sep, extname } from 'node:path';
 import type { RequestHandler } from './$types';
 import { sharedThemesDir } from '$lib/server/shared-themes';
@@ -85,23 +85,36 @@ export const GET: RequestHandler = ({ params, locals, url }) => {
 
 	const target = resolve(themeRoot, file);
 
-	// Containment check: `target` must be strictly below `themeRoot`.
-	// If it equals themeRoot (a directory) or escapes via `../`, return 404.
+	// Lexical containment: `target` must be strictly below `themeRoot`. If it
+	// equals themeRoot (a directory) or escapes via `../`, return 404. This is
+	// a cheap pre-filter — it rejects obvious traversal without touching the FS,
+	// but `resolve()` collapses `../` lexically and does NOT resolve symlinks.
 	if (!target.startsWith(themeRoot + sep)) {
 		return NOT_FOUND();
 	}
 
 	let data: ArrayBuffer;
+	let realTarget: string;
 	try {
-		const st = statSync(target);
+		// Canonical containment: resolve symlinks on both ends and re-check. A
+		// symlink placed *inside* themeRoot whose target escapes the root passes
+		// the lexical check above but is caught here. A symlinked theme *dir* is
+		// unaffected — both ends canonicalize through the same link, so the
+		// prefix still holds. realpath throws on a non-existent path, which the
+		// catch turns into the same 404 as a missing file.
+		const realRoot = realpathSync(themeRoot);
+		realTarget = realpathSync(target);
+		if (!realTarget.startsWith(realRoot + sep)) return NOT_FOUND();
+		const st = statSync(realTarget);
 		if (!st.isFile()) return NOT_FOUND();
-		const buf = readFileSync(target);
+		const buf = readFileSync(realTarget);
 		data = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
 	} catch {
 		return NOT_FOUND();
 	}
 
-	const contentType = CONTENT_TYPES[extname(target).toLowerCase()] ?? 'application/octet-stream';
+	const contentType =
+		CONTENT_TYPES[extname(realTarget).toLowerCase()] ?? 'application/octet-stream';
 	const cacheControl = url.searchParams.has('v')
 		? 'public, max-age=31536000, immutable'
 		: 'public, max-age=3600';
