@@ -229,12 +229,37 @@ describe('CRUD helpers', () => {
 		expect(getRole('editor', 'site-a')).toBeNull();
 	});
 
-	test('markInstallAdmin sets the flag by email', async () => {
+	test('markInstallAdmin promotes and returns true when no install admin exists', async () => {
 		const { markInstallAdmin } = await import('./permissions');
-		markInstallAdmin('owner@x.test');
+		// Clear the fixture's pre-flagged admin so the install has no admin yet.
+		db.run('UPDATE user SET isInstallAdmin = 0 WHERE email = ?', ['admin@x.test']);
+		const ok = markInstallAdmin('owner@x.test');
+		expect(ok).toBe(true);
 		const row = db.query('SELECT isInstallAdmin FROM user WHERE email = ?').get('owner@x.test') as {
 			isInstallAdmin: number;
 		};
 		expect(row.isInstallAdmin).toBe(1);
+	});
+
+	test('markInstallAdmin returns false and flags no one when an admin already exists', async () => {
+		const { markInstallAdmin } = await import('./permissions');
+		// Fixture already has admin@x.test flagged.
+		const ok = markInstallAdmin('owner@x.test');
+		expect(ok).toBe(false);
+		const owner = db
+			.query('SELECT isInstallAdmin FROM user WHERE email = ?')
+			.get('owner@x.test') as { isInstallAdmin: number };
+		expect(owner.isInstallAdmin).toBe(0);
+		const flagged = db.query('SELECT COUNT(*) AS n FROM user WHERE isInstallAdmin = 1').get() as {
+			n: number;
+		};
+		expect(flagged.n).toBe(1);
+	});
+
+	test('a partial unique index structurally forbids a second install admin', () => {
+		// admin@x.test is already flagged; a raw second flag must hit the index.
+		expect(() =>
+			db.run('UPDATE user SET isInstallAdmin = 1 WHERE email = ?', ['owner@x.test'])
+		).toThrow();
 	});
 });

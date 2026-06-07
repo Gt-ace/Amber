@@ -89,8 +89,38 @@ export function removeMember(userId: string, slug: string): void {
 	getAuthDb().run('DELETE FROM member WHERE user_id = ? AND space_slug = ?', [userId, slug]);
 }
 
-export function markInstallAdmin(email: string): void {
-	getAuthDb().run('UPDATE user SET isInstallAdmin = 1 WHERE email = ?', [email]);
+/**
+ * Promote the user with this email to install-admin — but only if no install
+ * admin exists yet. Returns true if this call did the promotion, false if an
+ * admin already existed (the caller lost a setup race and should roll back the
+ * account it just created). The `NOT EXISTS` clause makes the check-and-set
+ * atomic in one synchronous statement; migration 0004's partial unique index
+ * is the structural backstop behind it.
+ */
+export function markInstallAdmin(email: string): boolean {
+	const result = getAuthDb().run(
+		`UPDATE user SET isInstallAdmin = 1
+		 WHERE email = ? AND NOT EXISTS (SELECT 1 FROM user WHERE isInstallAdmin = 1)`,
+		[email]
+	);
+	return result.changes === 1;
+}
+
+/**
+ * Hard-delete a user and the better-auth rows that hang off it (sessions,
+ * accounts), in one transaction. Used to roll back the account created by the
+ * losing request in a setup race (see `markInstallAdmin`): that request made a
+ * real, credentialed account before discovering another admin had already
+ * claimed the install, and leaving it behind would be a silent stranger login
+ * that also locks out future sign-ups (adminCount counts all users).
+ */
+export function deleteUserCascade(userId: string): void {
+	const db = getAuthDb();
+	db.transaction(() => {
+		db.run('DELETE FROM session WHERE userId = ?', [userId]);
+		db.run('DELETE FROM account WHERE userId = ?', [userId]);
+		db.run('DELETE FROM user WHERE id = ?', [userId]);
+	})();
 }
 
 export function resolveAccess(event: RequestEvent, slug: string): ResolvedAccess {

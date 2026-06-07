@@ -61,6 +61,16 @@ export const MIGRATIONS: Migration[] = [
 			CREATE INDEX invite_by_space   ON invite(space_slug);
 			CREATE INDEX invite_by_expires ON invite(expires_at);
 		`
+	},
+	{
+		// Structural backstop for the install-admin bootstrap race (security
+		// follow-up H4): a partial unique index that lets at most one user row
+		// carry isInstallAdmin = 1. Even if two concurrent /admin/setup requests
+		// both create a user, only one can be promoted; the second promotion
+		// hits this index. Existing installs have exactly one admin, so the
+		// index builds cleanly on upgrade.
+		id: '0004_one_install_admin',
+		sql: 'CREATE UNIQUE INDEX one_install_admin ON user(isInstallAdmin) WHERE isInstallAdmin = 1;'
 	}
 ];
 
