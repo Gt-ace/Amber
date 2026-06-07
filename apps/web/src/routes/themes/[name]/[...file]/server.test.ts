@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { __resetSharedThemesForTests } from '$lib/server/shared-themes';
@@ -66,6 +66,22 @@ describe('theme asset route', () => {
 	test('404 for an unknown theme name', async () => {
 		const res = await call('does-not-exist', 'theme.css');
 		expect(res.status).toBe(404);
+	});
+	// A symlink inside the theme dir is lexically contained (no `../` in the
+	// URL) but resolves outside the root. The lexical prefix check passes; only
+	// realpath canonicalisation catches it. Needs FS write into themes/, so it's
+	// shell-access-only defence-in-depth — but the route must still refuse it.
+	test('404 for a symlink that escapes the theme dir', async () => {
+		const secretDir = mkdtempSync(join(tmpdir(), 'amber-secret-'));
+		const secret = join(secretDir, 'secret.css');
+		writeFileSync(secret, 'LEAKED');
+		symlinkSync(secret, join(root, 'themes', 'amber-default', 'leak.css'));
+		try {
+			const res = await call('amber-default', 'leak.css');
+			expect(res.status).toBe(404);
+		} finally {
+			rmSync(secretDir, { recursive: true, force: true });
+		}
 	});
 	// `name` is meant to be a single path segment. These can't arrive via
 	// SvelteKit's normalized routing, but the explicit guard makes the
