@@ -97,11 +97,11 @@ export const GET: RequestHandler = ({ params, locals, url }) => {
 	let realTarget: string;
 	try {
 		// Canonical containment: resolve symlinks on both ends and re-check. A
-		// symlink placed inside themeRoot pointing outside passes the lexical
-		// check above but escapes here. realpath throws on a non-existent path,
-		// which the catch turns into the same 404 as a missing file. (This also
-		// refuses intentionally symlinked theme dirs — acceptable: themes are
-		// plain files in the bind-mounted space, not links.)
+		// symlink placed *inside* themeRoot whose target escapes the root passes
+		// the lexical check above but is caught here. A symlinked theme *dir* is
+		// unaffected — both ends canonicalize through the same link, so the
+		// prefix still holds. realpath throws on a non-existent path, which the
+		// catch turns into the same 404 as a missing file.
 		const realRoot = realpathSync(themeRoot);
 		realTarget = realpathSync(target);
 		if (!realTarget.startsWith(realRoot + sep)) return NOT_FOUND();
@@ -113,7 +113,8 @@ export const GET: RequestHandler = ({ params, locals, url }) => {
 		return NOT_FOUND();
 	}
 
-	const contentType = CONTENT_TYPES[extname(realTarget).toLowerCase()] ?? 'application/octet-stream';
+	const contentType =
+		CONTENT_TYPES[extname(realTarget).toLowerCase()] ?? 'application/octet-stream';
 	const cacheControl = url.searchParams.has('v')
 		? 'public, max-age=31536000, immutable'
 		: 'public, max-age=3600';

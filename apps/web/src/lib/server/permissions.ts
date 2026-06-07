@@ -113,6 +113,10 @@ export function markInstallAdmin(email: string): boolean {
  * real, credentialed account before discovering another admin had already
  * claimed the install, and leaving it behind would be a silent stranger login
  * that also locks out future sign-ups (adminCount counts all users).
+ *
+ * Scoped to that caller: removes session/account/user but NOT `member` rows.
+ * The setup-race loser has none; don't reuse this on a user that owns
+ * memberships without extending it.
  */
 export function deleteUserCascade(userId: string): void {
 	const db = getAuthDb();
